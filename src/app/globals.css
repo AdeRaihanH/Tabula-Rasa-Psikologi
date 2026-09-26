@@ -1,26 +1,214 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Palet earth tone: krem, terracotta, pasir, zaitun */
+  --color-paper: #fbf7f1;
+  --color-paper-2: #f4ece0;
+  --color-ink: #2b2622;
+  --color-ink-soft: #574e45;
+  --color-muted: #8c7f70;
+  --color-line: #e6daca;
+
+  --color-brand-50: #fbf1eb;
+  --color-brand-100: #f6dfd3;
+  --color-brand-200: #ebbda6;
+  --color-brand-300: #de9775;
+  --color-brand-400: #c97a55;
+  --color-brand-500: #b06342;
+  --color-brand-600: #945034;
+  --color-brand-700: #763f2a;
+  --color-brand-800: #5c3122;
+  --color-brand-900: #42231a;
+
+  --color-sand-100: #f7efdd;
+  --color-sand-200: #efdfbf;
+  --color-sand-300: #dfc48c;
+  --color-sand-400: #c9a458;
+  --color-sand-500: #a9863e;
+
+  --color-sage-50: #f1f3ec;
+  --color-sage-100: #e0e5d4;
+  --color-sage-200: #c3cdae;
+  --color-sage-300: #a3b189;
+  --color-sage-400: #84956a;
+  --color-sage-500: #687a52;
+  --color-sage-600: #52613f;
+
+  --color-zona1: #6b7f9e;
+  --color-zona2: #b07a3c;
+  --color-zona3: #6e7f55;
+
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 1rem;
+  --shadow-soft: 0 1px 2px rgb(43 38 34 / 0.04),
+    0 10px 30px -18px rgb(43 38 34 / 0.25);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-brand-200);
+  color: var(--color-brand-800);
+}
+
+@layer components {
+  .wadah {
+    width: 100%;
+    max-width: 76rem;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+
+  .kartu {
+    background: #ffffff;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .label-kecil {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-brand-600);
+  }
+
+  .tautan-nav {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-ink-soft);
+    transition: color 0.15s ease;
+  }
+  .tautan-nav:hover {
+    color: var(--color-brand-600);
+  }
+
+  .tombol {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.7rem 1.35rem;
+    transition: all 0.16s ease;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .tombol-utama {
+    background: var(--color-brand-600);
+    color: #fff;
+  }
+  .tombol-utama:hover {
+    background: var(--color-brand-700);
+  }
+  .tombol-garis {
+    background: transparent;
+    border-color: var(--color-line);
+    color: var(--color-ink);
+  }
+  .tombol-garis:hover {
+    border-color: var(--color-brand-400);
+    color: var(--color-brand-700);
+  }
+  .tombol-sand {
+    background: var(--color-sand-400);
+    color: #fff;
+  }
+  .tombol-sand:hover {
+    background: var(--color-sand-500);
+  }
+  .tombol-sage {
+    background: var(--color-sage-500);
+    color: #fff;
+  }
+  .tombol-sage:hover {
+    background: var(--color-sage-600);
+  }
+
+  .input {
+    width: 100%;
+    border-radius: 0.65rem;
+    border: 1px solid var(--color-line);
+    background: #fff;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.9rem;
+    color: var(--color-ink);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .input:focus {
+    border-color: var(--color-brand-400);
+    box-shadow: 0 0 0 3px var(--color-brand-100);
+  }
+  .label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-ink-soft);
+    margin-bottom: 0.35rem;
+  }
+
+  .pil {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+
+  /* Ornamen lembar / kertas */
+  .lembar {
+    background-image: linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent calc(100% - 1px),
+        var(--color-line) calc(100% - 1px)
+      );
+    background-size: 100% 2rem;
+  }
+}
+
+.animasi-naik {
+  animation: naik 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes naik {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.marquee {
+  animation: geser 28s linear infinite;
+}
+
+@keyframes geser {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }

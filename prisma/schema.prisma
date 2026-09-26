@@ -1,3 +1,9 @@
+// Tabula Rasa — Skema Data Biro Psikologi
+// Klasifikasi kerahasiaan (zona):
+//   ZONA_1  admin      -> data diri klien, jadwal sesi
+//   ZONA_2  asisten    -> lembar tes, skor mentah
+//   ZONA_3  psikolog   -> laporan hasil & interpretasi (hanya psikolog pemegang kasus)
+
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -5,4 +11,379 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  ASISTEN
+  PSIKOLOG
+  KLIEN
+}
+
+enum KategoriLayanan {
+  TES_ASESMEN
+  PERUSAHAAN
+}
+
+enum MetodeLayanan {
+  ONLINE
+  OFFLINE
+}
+
+enum StatusPendaftaran {
+  BARU
+  SKRINING
+  MENUNGGU_PEMBAYARAN
+  TERVERIFIKASI
+  TERJADWAL
+  PELAKSANAAN
+  PENGOLAHAN_DATA
+  SELESAI
+  DIBATALKAN
+}
+
+enum StatusPembayaran {
+  MENUNGGU
+  TERVERIFIKASI
+  DITOLAK
+}
+
+enum StatusSesi {
+  TERJADWAL
+  BERLANGSUNG
+  SELESAI
+  DIBATALKAN
+}
+
+enum StatusLembarTes {
+  MENUNGGU
+  DIKERJAKAN
+  SKOR_DIISI
+  SELESAI
+}
+
+enum StatusLaporan {
+  DRAFT
+  FINAL
+}
+
+enum KlasifikasiData {
+  ZONA_1
+  ZONA_2
+  ZONA_3
+}
+
+// ---------- Akun & akses ----------
+
+model User {
+  id           String   @id @default(cuid())
+  nama         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  aktif        Boolean  @default(true)
+  telepon      String?
+  fotoUrl      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profilPsikolog  ProfilPsikolog?
+  klien           Klien?
+  pendaftaranSebagaiPsikolog Pendaftaran[] @relation("PendaftaranPsikolog")
+  sesiSebagaiPsikolog JadwalSesi[]     @relation("SesiPsikolog")
+  lembarSebagaiAsisten LembarTes[]     @relation("LembarAsisten")
+  laporanSebagaiPsikolog LaporanHasil[] @relation("LaporanPsikolog")
+  verifikasiPembayaran Pembayaran[]    @relation("VerifikatorPembayaran")
+  auditLog        AuditLog[]
+  sesiLogin       SesiLogin[]
+
+  @@map("users")
+}
+
+model ProfilPsikolog {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  gelar         String?
+  spesialisasi  String
+  sipp          String?
+  str           String?
+  bio           String?
+  pengalaman    Int      @default(0)
+  publik        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profil_psikolog")
+}
+
+model SesiLogin {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  userAgent String?
+  ip        String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sesi_login")
+}
+
+// ---------- ZONA 1: data diri klien ----------
+
+model Klien {
+  id            String   @id @default(cuid())
+  userId        String?  @unique
+  nama          String
+  email         String
+  telepon       String
+  tanggalLahir  DateTime?
+  jenisKelamin  String?
+  alamat        String?
+  pekerjaan     String?
+  institusi     String?
+  catatan       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  pendaftaran  Pendaftaran[]
+
+  @@index([email])
+  @@map("klien")
+}
+
+// ---------- Katalog layanan ----------
+
+model Layanan {
+  id           String          @id @default(cuid())
+  slug         String          @unique
+  nama         String
+  kategori     KategoriLayanan
+  ringkasan    String
+  deskripsi    String?
+  harga        Decimal?        @db.Decimal(12, 2)
+  satuanHarga  String          @default("sesi")
+  durasiMenit  Int?
+  metode       MetodeLayanan[] @default([OFFLINE])
+  unggulan     Boolean         @default(false)
+  aktif        Boolean         @default(true)
+  urutan       Int             @default(0)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  pendaftaran Pendaftaran[]
+
+  @@index([kategori])
+  @@map("layanan")
+}
+
+// ---------- Pendaftaran & alur ----------
+
+model Pendaftaran {
+  id             String            @id @default(cuid())
+  nomor          String            @unique
+  klienId        String
+  layananId      String
+  psikologId     String?
+  metode         MetodeLayanan     @default(OFFLINE)
+  status         StatusPendaftaran @default(BARU)
+  kebutuhan      String?
+  sumber         String?
+  institusi      String?
+  informedConsent Boolean          @default(false)
+  catatanInternal String?
+  folderDriveUrl String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  klien     Klien      @relation(fields: [klienId], references: [id], onDelete: Cascade)
+  layanan   Layanan    @relation(fields: [layananId], references: [id])
+  psikolog  User?      @relation("PendaftaranPsikolog", fields: [psikologId], references: [id], onDelete: SetNull)
+
+  pembayaran Pembayaran[]
+  jadwal     JadwalSesi[]
+  lembarTes  LembarTes[]
+  laporan    LaporanHasil?
+  arsip      ArsipData?
+
+  @@index([status])
+  @@index([psikologId])
+  @@map("pendaftaran")
+}
+
+model Pembayaran {
+  id            String            @id @default(cuid())
+  pendaftaranId String
+  jumlah        Decimal           @db.Decimal(12, 2)
+  metode        String            @default("transfer")
+  buktiUrl      String?
+  status        StatusPembayaran  @default(MENUNGGU)
+  catatan       String?
+  diverifikasiOlehId String?
+  diverifikasiPada   DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  pendaftaran      Pendaftaran @relation(fields: [pendaftaranId], references: [id], onDelete: Cascade)
+  diverifikasiOleh User?       @relation("VerifikatorPembayaran", fields: [diverifikasiOlehId], references: [id], onDelete: SetNull)
+
+  @@index([pendaftaranId])
+  @@map("pembayaran")
+}
+
+model JadwalSesi {
+  id            String        @id @default(cuid())
+  pendaftaranId String
+  psikologId    String
+  mulai         DateTime
+  selesai       DateTime
+  metode        MetodeLayanan @default(OFFLINE)
+  lokasi        String?
+  tautan        String?
+  status        StatusSesi    @default(TERJADWAL)
+  catatan       String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  pendaftaran Pendaftaran @relation(fields: [pendaftaranId], references: [id], onDelete: Cascade)
+  psikolog    User        @relation("SesiPsikolog", fields: [psikologId], references: [id])
+
+  lembarTes LembarTes[]
+
+  @@index([psikologId])
+  @@index([mulai])
+  @@map("jadwal_sesi")
+}
+
+// ---------- ZONA 2: instrumen & skor mentah ----------
+
+model AlatTes {
+  id          String   @id @default(cuid())
+  kode        String   @unique
+  nama        String
+  kategori    String
+  deskripsi   String?
+  aktif       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lembarTes LembarTes[]
+
+  @@map("alat_tes")
+}
+
+model LembarTes {
+  id            String           @id @default(cuid())
+  pendaftaranId String
+  jadwalSesiId  String?
+  alatTesId     String
+  asistenId     String?
+  status        StatusLembarTes  @default(MENUNGGU)
+  catatan       String?
+  dikerjakanPada DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  pendaftaran Pendaftaran @relation(fields: [pendaftaranId], references: [id], onDelete: Cascade)
+  jadwalSesi  JadwalSesi? @relation(fields: [jadwalSesiId], references: [id], onDelete: SetNull)
+  alatTes     AlatTes     @relation(fields: [alatTesId], references: [id])
+  asisten     User?       @relation("LembarAsisten", fields: [asistenId], references: [id], onDelete: SetNull)
+
+  skor SkorMentah[]
+
+  @@index([pendaftaranId])
+  @@map("lembar_tes")
+}
+
+model SkorMentah {
+  id          String   @id @default(cuid())
+  lembarTesId String
+  aspek       String
+  skor        Decimal  @db.Decimal(12, 2)
+  satuan      String?
+  catatan     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lembarTes LembarTes @relation(fields: [lembarTesId], references: [id], onDelete: Cascade)
+
+  @@index([lembarTesId])
+  @@map("skor_mentah")
+}
+
+// ---------- ZONA 3: laporan hasil & interpretasi ----------
+
+model LaporanHasil {
+  id            String        @id @default(cuid())
+  pendaftaranId String        @unique
+  psikologId    String
+  ringkasan     String?
+  interpretasi  String?
+  rekomendasi   String?
+  kesimpulan    String?
+  status        StatusLaporan @default(DRAFT)
+  difinalkanPada DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  pendaftaran Pendaftaran @relation(fields: [pendaftaranId], references: [id], onDelete: Cascade)
+  psikolog    User        @relation("LaporanPsikolog", fields: [psikologId], references: [id])
+
+  @@index([psikologId])
+  @@map("laporan_hasil")
+}
+
+// ---------- Pengarsipan, audit, pengaturan ----------
+
+model ArsipData {
+  id            String          @id @default(cuid())
+  pendaftaranId String          @unique
+  klasifikasi   KlasifikasiData @default(ZONA_1)
+  lokasiBerkas  String?
+  folderDriveUrl String?
+  retensiSampai DateTime?
+  diarsipkanPada DateTime      @default(now())
+  catatan       String?
+
+  pendaftaran Pendaftaran @relation(fields: [pendaftaranId], references: [id], onDelete: Cascade)
+
+  @@map("arsip_data")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  aksi      String
+  entitas   String
+  entitasId String?
+  detail    String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_log")
+}
+
+model PengaturanSitus {
+  id        String   @id @default("utama")
+  namaBiro  String   @default("Tabula Rasa")
+  tagline   String?
+  deskripsi String?
+  telepon   String?
+  whatsapp  String?
+  email     String?
+  alamat    String?
+  jamOperasional String?
+  driveFolderId  String?
+  updatedAt DateTime @updatedAt
+
+  @@map("pengaturan_situs")
 }
