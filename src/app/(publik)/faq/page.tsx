@@ -36,7 +36,7 @@ const grup = [
     tanya: [
       {
         q: "Siapa yang bisa melihat data saya?",
-        a: "Data dibagi menjadi tiga zona. Data diri dan jadwal (Zona 1) hanya untuk admin; lembar tes dan skor mentah (Zona 2) hanya untuk asisten psikolog; laporan dan interpretasi (Zona 3) hanya untuk psikolog penanggung jawab. Tidak ada satu peran pun yang melihat semuanya.",
+        a: "Data diri dan jadwal dikelola oleh admin; dokumen tes dikelola oleh asisten psikolog; dan laporan hasil dikelola langsung oleh psikolog penanggung jawab. Privasi Anda dijaga dengan ketat.",
       },
       {
         q: "Apakah psikolog lain bisa melihat data saya?",

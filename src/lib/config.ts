@@ -18,7 +18,6 @@ export const navPublik = [
   { href: "/biaya", label: "Biaya" },
   { href: "/tim", label: "Tim Psikolog" },
   { href: "/alur", label: "Alur Layanan" },
-  { href: "/kerahasiaan", label: "Kerahasiaan" },
   { href: "/kontak", label: "Kontak" },
 ] as const;
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -33,15 +34,9 @@ export default async function HalamanMasuk() {
           {/* Logo mobile only */}
           <div className="mb-10 flex items-center gap-3 lg:hidden">
             <div
-              className="flex h-10 w-10 items-center justify-center rounded-xl"
-              style={{ background: "var(--color-brand-700)" }}
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-white p-1"
             >
-              <svg width="24" height="24" viewBox="0 0 40 40" fill="none" aria-hidden>
-                <path d="M20 36 C10 30 5 22 7 13 C9 6 14 4 20 4" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M20 36 C30 30 35 22 33 13 C31 6 26 4 20 4" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M11 16 C8 14 8 10 12 10 C10 8 14 7 15 10" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-                <path d="M29 16 C32 14 32 10 28 10 C30 8 26 7 25 10" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-              </svg>
+              <Image src="/logo-icon.png" alt="Logo" width={32} height={32} className="object-contain" />
             </div>
             <div>
               <p className="text-sm font-bold" style={{ color: "var(--color-ink)" }}>Tabula Rasa</p>

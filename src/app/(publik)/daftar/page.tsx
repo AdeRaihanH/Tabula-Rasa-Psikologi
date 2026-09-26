@@ -88,10 +88,9 @@ export default async function HalamanDaftar({
           <div className="kartu mt-4 bg-brand-50 p-6">
             <h2 className="text-sm font-bold text-brand-800">Privasi Anda</h2>
             <p className="mt-2 text-xs leading-relaxed text-brand-800/75">
-              Data diri Anda masuk ke Zona 1 dan hanya dapat diakses admin.
-              Hasil asesmen disimpan terpisah di Zona 2 dan Zona 3 yang hanya
-              dapat dibuka asisten psikolog dan psikolog yang Anda pilih.
-              Psikolog lain tidak dapat melihat data Anda.
+              Data diri Anda hanya dapat diakses oleh tim administrasi kami.
+              Hasil asesmen dan rekam psikologis disimpan terpisah dengan hak akses terbatas.
+              Psikolog lain tidak dapat melihat data Anda kecuali psikolog yang Anda pilih.
             </p>
           </div>
         </aside>

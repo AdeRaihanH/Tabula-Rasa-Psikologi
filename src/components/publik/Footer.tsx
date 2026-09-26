@@ -21,7 +21,6 @@ const kolom = [
       { href: "/tim", label: "Tim Psikolog" },
       { href: "/biaya", label: "Biaya Layanan" },
       { href: "/alur", label: "Alur Layanan" },
-      { href: "/kerahasiaan", label: "Sistem Kerahasiaan" },
       { href: "/faq", label: "FAQ" },
       { href: "/kontak", label: "Kontak" },
     ],

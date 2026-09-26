@@ -93,17 +93,11 @@ export function FormPendaftaran({
         </div>
       )}
 
-      {/* Data diri — Zona 1 */}
+      {/* Data diri */}
       <section className="kartu p-6">
-        <div className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--color-zona1)" }} />
-          <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-ink-soft">
-            Zona 1 — Data Diri
-          </h2>
-        </div>
-        <p className="mt-2 text-xs text-muted">
-          Hanya admin yang dapat melihat bagian ini.
-        </p>
+        <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-ink-soft">
+          Data Diri
+        </h2>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">

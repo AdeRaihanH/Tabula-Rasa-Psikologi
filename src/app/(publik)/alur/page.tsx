@@ -38,8 +38,8 @@ export default function HalamanAlur() {
             Proses yang terstruktur, dari pendaftaran hingga pengarsipan
           </h1>
           <p className="mt-5 max-w-2xl text-ink-soft">
-            Setiap tahap memiliki penanggung jawab dan zona data yang jelas,
-            sehingga informasi sensitif tidak berpindah tangan tanpa kendali.
+            Setiap tahap memiliki penanggung jawab yang jelas,
+            sehingga privasi Anda selalu terjaga.
           </p>
         </div>
       </section>
