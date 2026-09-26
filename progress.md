@@ -793,3 +793,40 @@ format `Rp 375.000` / `Rp 545.000`.
 > **Catatan:** setelah perubahan skema Prisma, dev server perlu di-restart agar
 > Prisma Client baru dipakai. Tanpa restart, `/layanan` dan `/biaya` sempat
 > mengembalikan 500.
+
+---
+
+## Catatan Operasional Penting
+
+### 50. Panic Turbopack saat Mengubah Skema Prisma
+
+Gejala yang pernah terjadi:
+
+```
+FATAL: An unexpected Turbopack error occurred.
+[Server HMR] Subscription error, resubscribing: Error [TurbopackInternalError]:
+  Cell CellId { ... } no longer exists in task TaskId { ... }
+```
+
+**Penyebab:** mengubah `prisma/schema.prisma` dan menjalankan `prisma generate`
+**sementara dev server sedang berjalan**. Prisma Client yang diregenerasi
+membuat cache HMR Turbopack tidak konsisten (cell hilang), sehingga HMR panic.
+
+**Bukan bug kode aplikasi** — hanya cache pengembangan yang rusak.
+
+**Solusi (urutan wajib):**
+
+```bash
+# 1. hentikan dev server (Ctrl+C, atau taskkill /PID <pid> /F)
+# 2. hapus cache Next.js
+rmdir /s /q .next        # Windows: rmdir /s /q .next
+# 3. jalankan ulang
+npm run dev
+```
+
+**Kebiasaan yang benar:** setiap kali mengubah `prisma/schema.prisma`:
+hentikan dev server → jalankan `npx prisma generate` → (bila perlu) migrasi →
+baru `npm run dev` kembali.
+
+Setelah dibersihkan, seluruh **31 halaman diuji dan mengembalikan 200**
+(14 publik, 13 admin, 5 asisten, 3 psikolog) tanpa panic baru.
