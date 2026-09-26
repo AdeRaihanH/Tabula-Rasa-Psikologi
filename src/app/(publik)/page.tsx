@@ -3,8 +3,10 @@ import Link from "next/link";
 import { KartuPsikolog } from "@/components/publik/KartuPsikolog";
 import { ambilIdentitas, ambilLayanan, ambilPsikologPublik } from "@/lib/data-publik";
 import {
+  alurLayanan,
   anchorKategori,
   faqSingkat,
+  jumlahLangkahKata,
   kategoriUrut,
   keunggulan,
   labelKategori,
@@ -313,10 +315,10 @@ export default async function Beranda() {
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="max-w-2xl">
               <span className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-sage-300">
-                Alur Pendaftaran
+                Alur Pendaftaran &amp; Layanan
               </span>
               <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-                Empat langkah untuk memulai
+                {jumlahLangkahKata} langkah untuk memulai
               </h2>
             </div>
             <Link href="/alur" className="tombol bg-white/15 text-white hover:bg-white/25">
@@ -324,17 +326,17 @@ export default async function Beranda() {
             </Link>
           </div>
 
-          <ol className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              ["01", "Daftar", "Isi formulir pendaftaran daring, dapatkan nomor pendaftaran."],
-              ["02", "Skrining", "Admin memverifikasi kebutuhan Anda dalam 1×24 jam kerja."],
-              ["03", "Jadwal & Asesmen", "Sesi dijadwalkan bersama psikolog yang sesuai."],
-              ["04", "Hasil", "Laporan diserahkan melalui sesi umpan balik."],
-            ].map(([nomor, judul, isi]) => (
-              <li key={nomor} className="border-t border-white/15 pt-5">
-                <span className="text-sm font-bold text-sage-300">{nomor}</span>
-                <h3 className="mt-2 font-semibold">{judul}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-white/60">{isi}</p>
+          <ol
+            className="mt-12 grid gap-8 sm:grid-cols-2"
+            style={{
+              gridTemplateColumns: `repeat(auto-fit, minmax(14rem, 1fr))`,
+            }}
+          >
+            {alurLayanan.map((a) => (
+              <li key={a.nomor} className="border-t border-white/15 pt-5">
+                <span className="text-sm font-bold text-sage-300">{a.nomor}</span>
+                <h3 className="mt-2 font-semibold">{a.judul}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-white/60">{a.isi}</p>
               </li>
             ))}
           </ol>

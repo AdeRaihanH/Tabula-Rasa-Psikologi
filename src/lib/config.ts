@@ -77,6 +77,26 @@ export const alurLayanan = [
   },
 ] as const;
 
+/**
+ * Jumlah langkah alur dalam kata (mis. "tiga"). Dipakai di judul agar teks
+ * selalu ikut bila jumlah langkah berubah — tidak perlu diedit manual.
+ */
+const ANGKA_KATA = [
+  "nol",
+  "satu",
+  "dua",
+  "tiga",
+  "empat",
+  "lima",
+  "enam",
+  "tujuh",
+  "delapan",
+  "sembilan",
+] as const;
+
+export const jumlahLangkahKata =
+  ANGKA_KATA[alurLayanan.length] ?? String(alurLayanan.length);
+
 /** Keunggulan yang ditampilkan di beranda. */
 export const keunggulan = [
   {

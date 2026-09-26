@@ -16,10 +16,25 @@ internal dengan **tiga zona kerahasiaan data**.
 
 **Katalog layanan**
 
-| Kategori | Layanan |
-| --- | --- |
-| A. Tes & Asesmen | Tes IQ · Tes Minat Bakat · Tes Kesiapan Sekolah |
-| B. Untuk Perusahaan (B2B) | Psikologi Industri & Organisasi (PIO) |
+| Kategori | Layanan | Harga |
+| --- | --- | --- |
+| A. Tes & Asesmen | Tes IQ | Rp375.000 daring / Rp545.000 tatap muka |
+| A. Tes & Asesmen | Tes Minat Bakat | Rp375.000 daring / Rp545.000 tatap muka |
+| A. Tes & Asesmen | Tes Kesiapan Sekolah | Rp545.000 tatap muka |
+| B. Untuk Perusahaan (B2B) | Psikologi Industri & Organisasi (PIO) | Sesuai proposal |
+
+Harga dikelola admin di `/dashboard/layanan` (per metode) dan otomatis menjadi
+tagihan saat klien mendaftar.
+
+**Alur pembayaran klien**
+
+1. Klien mendaftar → **tagihan otomatis** dibuat sesuai layanan + metode.
+2. Halaman sukses menampilkan total biaya, nomor rekening, dan langkah pembayaran.
+3. Klien mengirim bukti transfer via WhatsApp/email.
+4. Admin memverifikasi di detail pendaftaran (status naik ke *Terverifikasi*).
+5. Klien dapat memantau biaya & status pembayaran di `/cek-status`.
+
+Nomor rekening dan instruksi pembayaran diatur di `/dashboard/pengaturan`.
 
 **Tim psikolog**
 

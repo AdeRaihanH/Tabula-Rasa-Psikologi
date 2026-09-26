@@ -25,6 +25,8 @@ const layanan = [
     deskripsi:
       "Tes IQ dilakukan oleh psikolog berizin praktik menggunakan alat tes terstandar sesuai usia. Hasil disajikan dalam laporan resmi bertanda tangan, dilengkapi sesi konsultasi hasil agar dapat dipahami dan ditindaklanjuti.\n\nUmumnya diperlukan untuk pendaftaran sekolah, penjurusan, seleksi kerja, maupun pemetaan kemampuan individu.",
     durasiMenit: 180,
+    hargaOnline: 375000,
+    hargaOffline: 545000,
     metode: ["ONLINE", "OFFLINE"] as const,
     unggulan: true,
     urutan: 1,
@@ -38,6 +40,8 @@ const layanan = [
     deskripsi:
       "Asesmen minat dan bakat membantu mengenali kecenderungan seseorang sehingga pengambilan keputusan jurusan, studi lanjut, atau arah karier menjadi lebih terarah.\n\nCocok untuk siswa yang memilih jurusan, mahasiswa, maupun profesional yang sedang menata ulang karier. Disertai sesi konsultasi hasil.",
     durasiMenit: 150,
+    hargaOnline: 375000,
+    hargaOffline: 545000,
     metode: ["ONLINE", "OFFLINE"] as const,
     unggulan: true,
     urutan: 2,
@@ -51,6 +55,7 @@ const layanan = [
     deskripsi:
       "Asesmen kesiapan sekolah menilai aspek kognitif, motorik, bahasa, sosial, dan kemandirian anak sebagai pertimbangan masuk jenjang sekolah dasar.\n\nDilakukan secara tatap muka dengan observasi langsung, dan hasilnya dibahas bersama orang tua.",
     durasiMenit: 120,
+    hargaOffline: 545000,
     metode: ["OFFLINE"] as const,
     unggulan: true,
     urutan: 3,
@@ -110,6 +115,11 @@ async function main() {
       driveFolderId: FOLDER_UTAMA,
       driveClientFolderId: FOLDER_KLIEN,
       driveAdminFolderId: FOLDER_ADMIN,
+      bankNama: "Bank Contoh",
+      bankNomor: "1234567890",
+      bankAtasNama: "Tabula Rasa",
+      instruksiPembayaran:
+        "Transfer sesuai nominal, lalu kirim bukti transfer melalui WhatsApp atau email dengan menyebutkan nomor pendaftaran Anda.",
     },
   });
 
@@ -232,9 +242,13 @@ async function main() {
   }
 
   for (const l of layanan) {
+    const harga = {
+      hargaOnline: l.hargaOnline ?? null,
+      hargaOffline: l.hargaOffline ?? null,
+    };
     await prisma.layanan.upsert({
       where: { slug: l.slug },
-      update: {},
+      update: harga,
       create: {
         slug: l.slug,
         nama: l.nama,
@@ -245,6 +259,7 @@ async function main() {
         metode: [...l.metode],
         unggulan: l.unggulan ?? false,
         urutan: l.urutan,
+        ...harga,
       },
     });
   }

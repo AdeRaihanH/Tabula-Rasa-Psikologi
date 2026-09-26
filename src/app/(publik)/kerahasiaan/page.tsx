@@ -48,25 +48,6 @@ const grupKemampuan: Array<{ zona: Zona; kemampuan: Array<[Kemampuan, string]> }
   },
 ];
 
-const prinsip = [
-  {
-    judul: "Pemisahan tugas",
-    isi: "Admin mengurus administrasi, asisten mengurus instrumen dan skor, psikolog menyusun interpretasi. Tidak ada peran yang memegang seluruh rantai data.",
-  },
-  {
-    judul: "Isolasi antar-psikolog",
-    isi: "Psikolog hanya dapat membuka kasus yang ditugaskan kepadanya. Daftar pasien satu psikolog tidak terlihat oleh psikolog lain.",
-  },
-  {
-    judul: "Minimalisasi data",
-    isi: "Setiap layar hanya menampilkan data yang benar-benar diperlukan untuk tugas peran tersebut.",
-  },
-  {
-    judul: "Jejak audit",
-    isi: "Setiap tindakan penting dicatat pada log audit: siapa, kapan, dan apa yang diubah.",
-  },
-];
-
 export default function HalamanKerahasiaan() {
   return (
     <>
@@ -181,21 +162,9 @@ export default function HalamanKerahasiaan() {
         </div>
       </section>
 
-      {/* PRINSIP */}
+      {/* CTA */}
       <section className="wadah py-14">
-        <h2 className="text-2xl font-bold tracking-tight text-ink">
-          Empat prinsip yang kami pegang
-        </h2>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
-          {prinsip.map((p) => (
-            <div key={p.judul} className="kartu p-6">
-              <h3 className="font-bold text-ink">{p.judul}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-soft">{p.isi}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="kartu mt-10 flex flex-col items-center justify-between gap-5 bg-brand-800 p-8 text-white sm:flex-row">
+        <div className="kartu flex flex-col items-center justify-between gap-5 bg-brand-800 p-8 text-white sm:flex-row">
           <div>
             <h2 className="text-lg font-bold">Punya pertanyaan tentang data Anda?</h2>
             <p className="mt-1.5 text-sm text-white/70">

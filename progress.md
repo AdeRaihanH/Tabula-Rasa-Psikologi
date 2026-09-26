@@ -712,3 +712,84 @@ Kasus uji `TR-2026-00001` direset ke **Pendaftaran Baru** agar dapat dicoba
 ulang dari tahap 1.
 
 `tsc` ✅ · `eslint` ✅ · `next build` ✅
+
+---
+
+## Revisi Kedelapan: Alur Pembayaran Klien
+
+### 48. Masalah
+
+Setelah mengirim pendaftaran, klien tidak diberi tahu biaya maupun cara
+membayar. Harga juga masih dummy di halaman publik (sama untuk semua layanan),
+dan admin tidak punya tempat mengelola harga maupun nomor rekening.
+
+### 49. Harga per Metode
+
+`Layanan` kini punya `hargaOnline` dan `hargaOffline` (selain `harga` lama
+sebagai cadangan). Modul baru `src/lib/pembayaran.ts`:
+
+- `hitungBiaya(layanan, metode)` — memilih harga sesuai metode, fallback ke `harga`.
+- `hargaPerMetode(layanan)` — ringkasan harga daring & tatap muka.
+- `keAngka()` — konversi Decimal Prisma ke number.
+
+Harga seed: Tes IQ & Tes Minat Bakat Rp375.000 daring / Rp545.000 tatap muka;
+Tes Kesiapan Sekolah Rp545.000 (hanya tatap muka); PIO tanpa harga (sesuai proposal).
+
+### 50. Tagihan Otomatis + Instruksi Pembayaran
+
+Saat klien mendaftar:
+
+1. Biaya dihitung dari layanan + metode yang dipilih.
+2. Bila biaya tersedia, **tagihan otomatis dibuat** (`Pembayaran` MENUNGGU).
+3. Respons sukses membawa nama layanan, metode, biaya, data rekening, dan kontak.
+
+Tampilan sukses pendaftaran menampilkan kartu **Pembayaran**: rincian layanan,
+metode, total biaya, nomor rekening tujuan, 4 langkah pembayaran, instruksi dari
+pengaturan, serta tombol kirim bukti via WhatsApp/email. Bila layanan belum
+berharga, ditampilkan pesan menunggu konfirmasi admin.
+
+Data rekening baru pada `PengaturanSitus`: `bankNama`, `bankNomor`,
+`bankAtasNama`, `instruksiPembayaran`, dapat diubah admin di
+`/dashboard/pengaturan`.
+
+### 51. Cek Status Menampilkan Biaya
+
+`cekStatusPendaftaran` kini juga mengembalikan metode, biaya, status pembayaran,
+dan data rekening. Halaman `/cek-status` menampilkan biaya layanan, blok
+instruksi pembayaran (rekening + langkah + tombol kirim bukti), peringatan bila
+bukti ditolak, dan konfirmasi bila sudah terverifikasi.
+
+### 52. Admin Mengelola Harga
+
+Halaman `/dashboard/layanan` dirombak dari tabel baca menjadi **form per
+layanan** (`FormHargaLayanan`): input harga daring & tatap muka (dinonaktifkan
+bila metode tidak tersedia), toggle tampil di situs, dan ringkasan jumlah
+pendaftar. Peringatan muncul bila ada layanan tanpa harga. Aksi server baru
+`simpanLayanan` di `src/app/actions/layanan.ts` mencatat perubahan ke log audit.
+
+### 53. Harga Asli di Situs Publik
+
+Harga dummy diganti data database di `/layanan`, `/biaya`, dan
+`/layanan/[slug]`. Harga hanya tampil untuk metode yang benar-benar tersedia.
+Form pendaftaran menampilkan **perkiraan biaya** yang berubah mengikuti layanan
+& metode, dan metode yang tidak didukung layanan otomatis dinonaktifkan
+(dengan fallback ke metode pertama yang tersedia). Server tetap memvalidasi
+ulang dan menolak metode yang tidak didukung.
+
+### 54. Hasil Uji
+
+Skrip uji alur pembayaran — **17/17 lulus**:
+
+- Daftar daring → biaya 375000, tagihan otomatis dibuat, status MENUNGGU.
+- Cek status menampilkan biaya, metode, rekening, status pembayaran.
+- Metode daring pada layanan tatap muka **ditolak** dengan pesan jelas.
+- Layanan tanpa harga (PIO) → tanpa tagihan otomatis, pesan konfirmasi admin.
+
+Uji tampilan (7 halaman) — semua 200 dan penanda muncul; harga tampil dalam
+format `Rp 375.000` / `Rp 545.000`.
+
+`tsc` ✅ · `eslint` ✅ · `next build` ✅
+
+> **Catatan:** setelah perubahan skema Prisma, dev server perlu di-restart agar
+> Prisma Client baru dipakai. Tanpa restart, `/layanan` dan `/biaya` sempat
+> mengembalikan 500.

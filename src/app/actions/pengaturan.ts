@@ -18,6 +18,11 @@ export async function simpanPengaturan(formData: FormData) {
     alamat: String(formData.get("alamat") ?? "").trim() || null,
     jamOperasional: String(formData.get("jamOperasional") ?? "").trim() || null,
     driveFolderId: String(formData.get("driveFolderId") ?? "").trim() || null,
+    bankNama: String(formData.get("bankNama") ?? "").trim() || null,
+    bankNomor: String(formData.get("bankNomor") ?? "").trim() || null,
+    bankAtasNama: String(formData.get("bankAtasNama") ?? "").trim() || null,
+    instruksiPembayaran:
+      String(formData.get("instruksiPembayaran") ?? "").trim() || null,
   };
 
   await prisma.pengaturanSitus.upsert({

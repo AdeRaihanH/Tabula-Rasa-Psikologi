@@ -9,6 +9,8 @@ import {
   ringkasKategori,
   siteConfig,
 } from "@/lib/config";
+import { hargaPerMetode } from "@/lib/pembayaran";
+import { formatRupiah } from "@/lib/utils";
 
 export const revalidate = 300;
 
@@ -85,7 +87,9 @@ export default async function HalamanBiaya() {
                     </tr>
                   </thead>
                   <tbody>
-                    {item.map((l) => (
+                    {item.map((l) => {
+                      const harga = hargaPerMetode(l);
+                      return (
                       <tr key={l.id} className="hover:bg-paper-2/40">
                         <td className="border-b border-line px-4 py-3">
                           <Link
@@ -105,12 +109,27 @@ export default async function HalamanBiaya() {
                         </td>
                         <td className="border-b border-line px-4 py-3 text-right font-semibold text-ink">
                           <div className="flex flex-col items-end gap-1 text-[0.7rem]">
-                            <span className="text-muted">Daring: <span className="text-brand-700 font-semibold">Rp375.000</span></span>
-                            <span className="text-muted">Tatap muka: <span className="text-brand-700 font-semibold">Rp545.000</span></span>
+                            {l.metode.includes("ONLINE") && (
+                              <span className="text-muted">
+                                Daring:{" "}
+                                <span className="font-semibold text-brand-700">
+                                  {harga.online ? formatRupiah(harga.online) : "Hubungi kami"}
+                                </span>
+                              </span>
+                            )}
+                            {l.metode.includes("OFFLINE") && (
+                              <span className="text-muted">
+                                Tatap muka:{" "}
+                                <span className="font-semibold text-brand-700">
+                                  {harga.offline ? formatRupiah(harga.offline) : "Hubungi kami"}
+                                </span>
+                              </span>
+                            )}
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { ambilLayanan, ambilLayananSlug } from "@/lib/data-publik";
 import { anchorKategori, labelKategori, siteConfig } from "@/lib/config";
+import { hargaPerMetode } from "@/lib/pembayaran";
 import { formatRupiah } from "@/lib/utils";
 
 export const revalidate = 300;
@@ -33,6 +34,8 @@ export default async function DetailLayanan({
     .filter((l) => l.kategori === layanan.kategori && l.id !== layanan.id)
     .slice(0, 3);
 
+  const harga = hargaPerMetode(layanan);
+
   const poin = [
     { label: "Durasi", nilai: layanan.durasiMenit ? `${layanan.durasiMenit} menit` : "Menyesuaikan" },
     {
@@ -41,7 +44,22 @@ export default async function DetailLayanan({
         .map((m) => (m === "ONLINE" ? "Daring" : "Tatap muka"))
         .join(" / "),
     },
-    { label: "Investasi", nilai: layanan.harga ? formatRupiah(layanan.harga.toString()) : "Hubungi kami" },
+    {
+      label: "Biaya daring",
+      nilai: layanan.metode.includes("ONLINE")
+        ? harga.online
+          ? formatRupiah(harga.online)
+          : "Hubungi kami"
+        : "Tidak tersedia",
+    },
+    {
+      label: "Biaya tatap muka",
+      nilai: layanan.metode.includes("OFFLINE")
+        ? harga.offline
+          ? formatRupiah(harga.offline)
+          : "Hubungi kami"
+        : "Tidak tersedia",
+    },
   ];
 
   return (

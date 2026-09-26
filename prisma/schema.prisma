@@ -172,6 +172,8 @@ model Layanan {
   ringkasan    String
   deskripsi    String?
   harga        Decimal?        @db.Decimal(12, 2)
+  hargaOnline  Decimal?        @db.Decimal(12, 2)
+  hargaOffline Decimal?        @db.Decimal(12, 2)
   satuanHarga  String          @default("sesi")
   durasiMenit  Int?
   metode       MetodeLayanan[] @default([OFFLINE])
@@ -392,6 +394,10 @@ model PengaturanSitus {
   driveAdminFolderId  String?
   spreadsheetId  String?
   spreadsheetUrl String?
+  bankNama       String?
+  bankNomor      String?
+  bankAtasNama   String?
+  instruksiPembayaran String?
   updatedAt DateTime @updatedAt
 
   @@map("pengaturan_situs")

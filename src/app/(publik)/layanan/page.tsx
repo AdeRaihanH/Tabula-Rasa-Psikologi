@@ -9,6 +9,8 @@ import {
   ringkasKategori,
   siteConfig,
 } from "@/lib/config";
+import { hargaPerMetode } from "@/lib/pembayaran";
+import { formatRupiah } from "@/lib/utils";
 
 export const revalidate = 300;
 
@@ -128,7 +130,9 @@ export default async function HalamanLayanan() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:content-start">
-                  {item.map((l) => (
+                  {item.map((l) => {
+                    const harga = hargaPerMetode(l);
+                    return (
                     <Link
                       key={l.id}
                       href={`/layanan/${l.slug}`}
@@ -156,14 +160,26 @@ export default async function HalamanLayanan() {
 
                         <div className="mt-1 flex flex-col gap-3">
                           <div className="flex flex-col gap-1 text-[0.75rem] text-muted">
-                            <div className="flex justify-between border-b border-line/50 pb-1">
-                              <span>Daring</span>
-                              <span className="font-semibold text-brand-700">Rp375.000</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Tatap muka</span>
-                              <span className="font-semibold text-brand-700">Rp545.000</span>
-                            </div>
+                            {l.metode.includes("ONLINE") && (
+                              <div className="flex justify-between border-b border-line/50 pb-1">
+                                <span>Daring</span>
+                                <span className="font-semibold text-brand-700">
+                                  {harga.online
+                                    ? formatRupiah(harga.online)
+                                    : "Hubungi kami"}
+                                </span>
+                              </div>
+                            )}
+                            {l.metode.includes("OFFLINE") && (
+                              <div className="flex justify-between">
+                                <span>Tatap muka</span>
+                                <span className="font-semibold text-brand-700">
+                                  {harga.offline
+                                    ? formatRupiah(harga.offline)
+                                    : "Hubungi kami"}
+                                </span>
+                              </div>
+                            )}
                           </div>
                           <span className="w-full rounded-lg bg-brand-700 px-3 py-2 text-center font-semibold text-white transition hover:bg-brand-800">
                             Detail Layanan
@@ -171,7 +187,8 @@ export default async function HalamanLayanan() {
                         </div>
                       </div>
                     </Link>
-                  ))}
+                    );
+                  })}
 
                   {item.length === 0 && (
                     <div className="kartu p-6 text-sm text-muted">

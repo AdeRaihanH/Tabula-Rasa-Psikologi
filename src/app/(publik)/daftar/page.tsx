@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { FormPendaftaran } from "@/components/publik/FormPendaftaran";
 import { ambilLayanan, ambilPsikologPublik } from "@/lib/data-publik";
+import { hargaPerMetode } from "@/lib/pembayaran";
 
 export const metadata: Metadata = {
   title: "Pendaftaran",
@@ -44,7 +45,8 @@ export default async function HalamanDaftar({
             nama: l.nama,
             kategori: l.kategori,
             slug: l.slug,
-            harga: l.harga ? l.harga.toString() : null,
+            hargaOnline: hargaPerMetode(l).online,
+            hargaOffline: hargaPerMetode(l).offline,
             durasiMenit: l.durasiMenit,
             metode: l.metode,
           }))}

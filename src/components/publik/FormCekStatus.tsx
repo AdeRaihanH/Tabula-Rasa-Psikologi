@@ -8,7 +8,7 @@ import {
   type HasilCekStatus,
 } from "@/app/actions/pendaftaran";
 import { labelStatusPendaftaran } from "@/lib/config";
-import { formatTanggal, formatTanggalWaktu } from "@/lib/utils";
+import { formatRupiah, formatTanggal, formatTanggalWaktu } from "@/lib/utils";
 
 export function FormCekStatus() {
   const [hasil, aksi, pending] = useActionState<HasilCekStatus, FormData>(
@@ -92,15 +92,93 @@ export function FormCekStatus() {
                 <dd className="text-right font-medium text-ink">{hasil.psikolog}</dd>
               </div>
             )}
+            <div className="flex justify-between gap-4 border-b border-line pb-2.5">
+              <dt className="text-muted">Metode</dt>
+              <dd className="text-right font-medium text-ink">
+                {hasil.metode === "ONLINE" ? "Daring" : "Tatap muka"}
+              </dd>
+            </div>
             {hasil.jadwal && (
-              <div className="flex justify-between gap-4">
+              <div className="flex justify-between gap-4 border-b border-line pb-2.5">
                 <dt className="text-muted">Jadwal sesi</dt>
                 <dd className="text-right font-medium text-ink">
                   {formatTanggalWaktu(hasil.jadwal)}
                 </dd>
               </div>
             )}
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted">Biaya layanan</dt>
+              <dd className="text-right text-base font-bold text-brand-700">
+                {hasil.biaya ? formatRupiah(hasil.biaya) : "Menunggu konfirmasi admin"}
+              </dd>
+            </div>
           </dl>
+
+          {/* Instruksi pembayaran */}
+          {hasil.biaya && hasil.pembayaranStatus !== "TERVERIFIKASI" && (
+            <div className="mt-5 rounded-xl border border-brand-200 bg-brand-50/60 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-brand-700">
+                Pembayaran
+              </p>
+
+              {hasil.pembayaranStatus === "DITOLAK" && (
+                <p className="mt-2 text-sm font-medium text-red-700">
+                  Bukti pembayaran sebelumnya ditolak. Silakan kirim ulang bukti
+                  yang benar ke admin.
+                </p>
+              )}
+
+              {hasil.rekening.bank && hasil.rekening.nomor && (
+                <div className="mt-3 rounded-lg bg-white p-4">
+                  <p className="font-bold text-ink">{hasil.rekening.bank}</p>
+                  <p className="mt-1 font-mono text-lg font-bold tracking-wider text-brand-700">
+                    {hasil.rekening.nomor}
+                  </p>
+                  {hasil.rekening.atasNama && (
+                    <p className="mt-1 text-xs text-ink-soft">
+                      a.n. {hasil.rekening.atasNama}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <p className="mt-3 text-xs leading-relaxed text-ink-soft">
+                {hasil.rekening.instruksi ??
+                  "Transfer sesuai nominal, lalu kirim bukti transfer ke admin dengan menyebutkan nomor pendaftaran Anda."}
+              </p>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {hasil.whatsapp && (
+                  <a
+                    href={`https://wa.me/${hasil.whatsapp}?text=${encodeURIComponent(
+                      `Halo, saya ingin mengirim bukti pembayaran untuk pendaftaran ${hasil.nomor}.`,
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="tombol tombol-sage !py-2 !text-xs"
+                  >
+                    Kirim bukti via WhatsApp
+                  </a>
+                )}
+                {hasil.email && (
+                  <a
+                    href={`mailto:${hasil.email}?subject=${encodeURIComponent(
+                      `Bukti pembayaran ${hasil.nomor}`,
+                    )}`}
+                    className="tombol tombol-garis !py-2 !text-xs"
+                  >
+                    Kirim via Email
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
+          {hasil.pembayaranStatus === "TERVERIFIKASI" && (
+            <p className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+              Pembayaran sudah diverifikasi. Terima kasih.
+            </p>
+          )}
 
           <div className="mt-5">
             <AlurStatus status={hasil.status} />

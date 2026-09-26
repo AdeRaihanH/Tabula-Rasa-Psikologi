@@ -1,14 +1,12 @@
+import { JudulHalaman, Kosong } from "@/components/dashboard/ui";
 import {
-  JudulHalaman,
-  Kosong,
-  Tabel,
-  Td,
-  Th,
-} from "@/components/dashboard/ui";
+  FormHargaLayanan,
+  type DataLayanan,
+} from "@/components/dashboard/FormHargaLayanan";
 import { wajibKemampuan } from "@/lib/auth/dal";
 import { labelKategori } from "@/lib/config";
+import { keAngka } from "@/lib/pembayaran";
 import { prisma } from "@/lib/prisma";
-import { formatRupiah } from "@/lib/utils";
 
 export default async function HalamanLayanan() {
   await wajibKemampuan("layanan:kelola");
@@ -18,62 +16,54 @@ export default async function HalamanLayanan() {
     include: { _count: { select: { pendaftaran: true } } },
   });
 
+  const data: DataLayanan[] = daftar.map((l) => ({
+    id: l.id,
+    nama: l.nama,
+    slug: l.slug,
+    kategori: labelKategori[l.kategori] ?? l.kategori,
+    metode: l.metode,
+    durasiMenit: l.durasiMenit,
+    hargaOnline: keAngka(l.hargaOnline),
+    hargaOffline: keAngka(l.hargaOffline),
+    aktif: l.aktif,
+    jumlahPendaftar: l._count.pendaftaran,
+  }));
+
+  const tanpaHarga = data.filter(
+    (d) => d.hargaOnline === null && d.hargaOffline === null,
+  ).length;
+
   return (
     <>
       <JudulHalaman
-        judul="Katalog Layanan"
-        keterangan="Daftar layanan yang tampil di situs publik beserta jumlah pendaftar."
+        judul="Katalog & Harga Layanan"
+        keterangan="Harga yang diisi di sini otomatis menjadi tagihan saat klien mendaftar, dan tampil pada halaman layanan publik."
       />
 
+      {tanpaHarga > 0 && (
+        <div className="kartu mb-6 border-amber-200 bg-amber-50 p-5">
+          <p className="text-sm font-semibold text-amber-800">
+            {tanpaHarga} layanan belum memiliki harga
+          </p>
+          <p className="mt-1.5 text-xs leading-relaxed text-amber-800/80">
+            Klien yang memilih layanan tanpa harga tidak akan menerima tagihan
+            otomatis; admin perlu mencatat tagihan secara manual pada detail
+            pendaftaran.
+          </p>
+        </div>
+      )}
+
       {daftar.length === 0 ? (
-        <Kosong judul="Katalog kosong" keterangan="Jalankan seed untuk mengisi katalog awal." />
+        <Kosong
+          judul="Katalog kosong"
+          keterangan="Jalankan seed untuk mengisi katalog awal."
+        />
       ) : (
-        <Tabel>
-          <thead>
-            <tr>
-              <Th>Urutan</Th>
-              <Th>Layanan</Th>
-              <Th>Kategori</Th>
-              <Th>Metode</Th>
-              <Th>Durasi</Th>
-              <Th>Harga</Th>
-              <Th>Pendaftar</Th>
-              <Th>Status</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {daftar.map((l) => (
-              <tr key={l.id} className="hover:bg-paper-2/40">
-                <Td className="text-xs text-muted">{l.urutan}</Td>
-                <Td>
-                  <span className="font-medium text-ink">{l.nama}</span>
-                  <span className="block text-xs text-muted">/{l.slug}</span>
-                </Td>
-                <Td className="text-xs">{labelKategori[l.kategori] ?? l.kategori}</Td>
-                <Td className="text-xs">
-                  {l.metode.map((m) => (m === "ONLINE" ? "Daring" : "Tatap muka")).join(", ")}
-                </Td>
-                <Td className="text-xs">{l.durasiMenit ? `${l.durasiMenit} menit` : "—"}</Td>
-                <Td className="text-xs">
-                  {l.harga ? formatRupiah(l.harga.toString()) : "Hubungi kami"}
-                </Td>
-                <Td className="text-xs">{l._count.pendaftaran}×</Td>
-                <Td>
-                  <span
-                    className="pil"
-                    style={
-                      l.aktif
-                        ? { background: "#f0fdf4", color: "#15803d" }
-                        : { background: "#f8fafc", color: "#475569" }
-                    }
-                  >
-                    {l.aktif ? "Aktif" : "Nonaktif"}
-                  </span>
-                </Td>
-              </tr>
-            ))}
-          </tbody>
-        </Tabel>
+        <div className="grid gap-4 xl:grid-cols-2">
+          {data.map((d) => (
+            <FormHargaLayanan key={d.id} data={d} />
+          ))}
+        </div>
       )}
     </>
   );

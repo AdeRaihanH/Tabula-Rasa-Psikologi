@@ -30,6 +30,10 @@ export default async function HalamanPengaturan() {
     alamat: p?.alamat ?? "",
     jamOperasional: p?.jamOperasional ?? "",
     driveFolderId: p?.driveFolderId ?? folderIndukId() ?? "",
+    bankNama: p?.bankNama ?? "",
+    bankNomor: p?.bankNomor ?? "",
+    bankAtasNama: p?.bankAtasNama ?? "",
+    instruksiPembayaran: p?.instruksiPembayaran ?? "",
   };
 
   const status = statusGoogle();
@@ -74,6 +78,69 @@ export default async function HalamanPengaturan() {
             <p className="mt-1 text-[0.68rem] text-muted">
               Dipakai pada footer dan meta deskripsi situs.
             </p>
+          </div>
+        </div>
+
+        {/* Rekening pembayaran */}
+        <div className="mt-6 border-t border-line pt-5">
+          <h2 className="text-sm font-bold uppercase tracking-[0.08em] text-ink-soft">
+            Rekening Pembayaran
+          </h2>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted">
+            Data ini ditampilkan kepada klien setelah mendaftar dan pada halaman
+            Cek Status, supaya mereka tahu ke mana harus transfer.
+          </p>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label" htmlFor="bankNama">
+                Nama bank / e-wallet
+              </label>
+              <input
+                id="bankNama"
+                name="bankNama"
+                defaultValue={nilai.bankNama}
+                placeholder="mis. BCA / Mandiri / QRIS"
+                className="input"
+              />
+            </div>
+            <div>
+              <label className="label" htmlFor="bankNomor">
+                Nomor rekening
+              </label>
+              <input
+                id="bankNomor"
+                name="bankNomor"
+                defaultValue={nilai.bankNomor}
+                placeholder="1234567890"
+                className="input"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label" htmlFor="bankAtasNama">
+                Atas nama
+              </label>
+              <input
+                id="bankAtasNama"
+                name="bankAtasNama"
+                defaultValue={nilai.bankAtasNama}
+                placeholder="Nama pemilik rekening"
+                className="input"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label" htmlFor="instruksiPembayaran">
+                Instruksi pembayaran
+              </label>
+              <textarea
+                id="instruksiPembayaran"
+                name="instruksiPembayaran"
+                rows={3}
+                defaultValue={nilai.instruksiPembayaran}
+                placeholder="mis. Transfer sesuai nominal, lalu kirim bukti ke WhatsApp admin."
+                className="input"
+              />
+            </div>
           </div>
         </div>
 

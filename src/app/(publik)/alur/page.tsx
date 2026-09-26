@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { alurLayanan } from "@/lib/config";
+import { alurLayanan, jumlahLangkahKata } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "Alur Layanan",
-  description:
-    "Tiga tahap layanan utama: pendaftaran dan pembayaran, pelaksanaan tes, serta hasil tes.",
+  description: `Alur layanan dalam ${jumlahLangkahKata} tahap utama: pendaftaran dan pembayaran, pelaksanaan tes, serta hasil tes.`,
 };
 
+/**
+ * Hal-hal yang berlaku di sepanjang proses — bukan bagian dari urutan tahap,
+ * jadi ditampilkan terpisah di bawah daftar langkah.
+ */
 const catatan = [
   {
     judul: "Informed consent wajib",
@@ -35,7 +38,7 @@ export default function HalamanAlur() {
         <div className="wadah py-14 lg:py-16">
           <span className="label-kecil">Alur Pendaftaran & Layanan</span>
           <h1 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight text-ink sm:text-4xl lg:text-5xl">
-            Proses layanan praktis dalam tiga langkah
+            Proses layanan praktis dalam {jumlahLangkahKata} langkah
           </h1>
           <p className="mt-5 max-w-2xl text-ink-soft">
             Proses yang cepat, ringkas, dan jelas dari awal hingga Anda menerima laporan.
@@ -60,13 +63,25 @@ export default function HalamanAlur() {
           ))}
         </ol>
 
-        <div className="mt-14 grid gap-4 sm:grid-cols-2">
-          {catatan.map((c) => (
-            <div key={c.judul} className="kartu bg-paper-2 p-6">
-              <h2 className="font-bold text-ink">{c.judul}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-ink-soft">{c.isi}</p>
-            </div>
-          ))}
+        {/* Catatan penting — berlaku di sepanjang proses, bukan bagian urutan */}
+        <div className="mt-16">
+          <span className="label-kecil">Catatan Penting</span>
+          <h2 className="mt-3 text-2xl font-bold tracking-tight text-ink">
+            Yang berlaku di sepanjang proses
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft">
+            Empat hal berikut tidak termasuk dalam urutan langkah di atas, namun
+            berlaku pada setiap layanan yang Anda ambil.
+          </p>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            {catatan.map((c) => (
+              <div key={c.judul} className="kartu bg-paper-2 p-6">
+                <h3 className="font-bold text-ink">{c.judul}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-ink-soft">{c.isi}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="kartu mt-10 flex flex-col items-center justify-between gap-5 p-8 sm:flex-row">

@@ -2,10 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useState, useSyncExternalStore } from "react";
 
 import { kirimPendaftaran, type HasilPendaftaran } from "@/app/actions/pendaftaran";
 import { labelKategori } from "@/lib/config";
+import {
+  SLOT_WAKTU,
+  slotTerlewat,
+  tanggalHariIni,
+  validasiJadwal,
+} from "@/lib/jadwal";
 import { cn, formatRupiah } from "@/lib/utils";
 
 type LayananRingkas = {
@@ -13,7 +19,8 @@ type LayananRingkas = {
   nama: string;
   kategori: string;
   slug: string;
-  harga: string | null;
+  hargaOnline: number | null;
+  hargaOffline: number | null;
   durasiMenit: number | null;
   metode: string[];
 };
@@ -28,6 +35,32 @@ type PsikologRingkas = {
 function Galat({ pesan }: { pesan?: string }) {
   if (!pesan) return null;
   return <p className="mt-1 text-xs font-medium text-red-600">{pesan}</p>;
+}
+
+/**
+ * Sumber "waktu sekarang" untuk komponen. Nilai di-cache per menit supaya
+ * snapshot stabil (syarat useSyncExternalStore), dan null di server agar HTML
+ * server sama dengan render pertama klien.
+ */
+function langgananMenit(beriTahu: () => void) {
+  const timer = setInterval(beriTahu, 60_000);
+  return () => clearInterval(timer);
+}
+
+let menitCache = -1;
+let waktuCache: Date | null = null;
+
+function ambilWaktuKlien() {
+  const menit = Math.floor(Date.now() / 60_000);
+  if (waktuCache === null || menit !== menitCache) {
+    menitCache = menit;
+    waktuCache = new Date();
+  }
+  return waktuCache;
+}
+
+function ambilWaktuServer(): Date | null {
+  return null;
 }
 
 export function FormPendaftaran({
@@ -46,37 +79,208 @@ export function FormPendaftaran({
     undefined,
   );
   const [metode, setMetode] = useState("OFFLINE");
+  const [layananId, setLayananId] = useState(
+    slugAwal ? (layanan.find((l) => l.slug === slugAwal)?.id ?? "") : "",
+  );
+  const [tanggal, setTanggal] = useState("");
+  const [waktu, setWaktu] = useState("");
+
+  // Waktu sekarang hanya tersedia di klien (null saat render server).
+  const sekarang = useSyncExternalStore(
+    langgananMenit,
+    ambilWaktuKlien,
+    ambilWaktuServer,
+  );
+
+  const terlewat = sekarang && tanggal ? slotTerlewat(tanggal, sekarang) : [];
+
+  // Waktu yang sudah lewat otomatis dianggap tidak dipilih, sehingga tidak
+  // perlu efek pembersih dan tidak ikut terkirim (input-nya nonaktif).
+  const waktuEfektif = waktu && !terlewat.includes(waktu) ? waktu : "";
+
+  const jadwalGalat =
+    sekarang && (tanggal || waktuEfektif)
+      ? validasiJadwal(tanggal || null, waktuEfektif || null, sekarang)
+      : null;
+
+  // Perkiraan biaya layanan yang dipilih sesuai metode.
+  const layananTerpilih = layanan.find((l) => l.id === layananId) ?? null;
+
+  // Bila layanan terpilih tidak menyediakan metode yang sedang aktif, pakai
+  // metode pertama yang tersedia supaya pilihan tetap konsisten.
+  const metodeEfektif =
+    layananTerpilih && !layananTerpilih.metode.includes(metode)
+      ? layananTerpilih.metode[0]
+      : metode;
+
+  const biayaPerkiraan = layananTerpilih
+    ? metodeEfektif === "ONLINE"
+      ? layananTerpilih.hargaOnline
+      : layananTerpilih.hargaOffline
+    : null;
 
   if (hasil?.ok) {
+    const wa = hasil.whatsapp
+      ? `https://wa.me/${hasil.whatsapp}?text=${encodeURIComponent(
+          `Halo, saya sudah melakukan pendaftaran dengan nomor ${hasil.nomor}. Saya ingin mengirim bukti pembayaran.`,
+        )}`
+      : null;
+    const adaRekening = Boolean(hasil.rekening.bank && hasil.rekening.nomor);
+
     return (
-      <div className="kartu animasi-naik p-10 text-center">
-        <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-brand-100 text-brand-700">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M5 13l4 4L19 7"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </span>
-        <h2 className="mt-5 text-2xl font-bold text-ink">Pendaftaran terkirim</h2>
-        <p className="mt-3 text-ink-soft">
-          Simpan nomor pendaftaran Anda untuk ditanyakan kepada admin:
-        </p>
-        <p className="mt-4 inline-block rounded-xl bg-brand-600 px-6 py-3 text-lg font-bold tracking-wider text-white">
-          {hasil.nomor}
-        </p>
-        <p className="mt-6 text-sm text-ink-soft">
-          Tim admin akan memverifikasi kebutuhan Anda dalam 1×24 jam kerja
-          melalui email atau telepon yang Anda cantumkan.
-        </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
+      <div className="space-y-6">
+        {/* Konfirmasi pendaftaran */}
+        <div className="kartu animasi-naik p-8 text-center">
+          <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-brand-100 text-brand-700">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M5 13l4 4L19 7"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <h2 className="mt-5 text-2xl font-bold text-ink">Pendaftaran terkirim</h2>
+          <p className="mt-3 text-ink-soft">
+            Simpan nomor pendaftaran Anda untuk ditanyakan kepada admin:
+          </p>
+          <p className="mt-4 inline-block rounded-xl bg-brand-600 px-6 py-3 text-lg font-bold tracking-wider text-white">
+            {hasil.nomor}
+          </p>
+        </div>
+
+        {/* Instruksi pembayaran */}
+        <div className="kartu p-8">
+          <span className="label-kecil">Langkah Berikutnya</span>
+          <h3 className="mt-2 text-xl font-bold text-ink">
+            {hasil.biaya
+              ? "Pembayaran layanan"
+              : "Menunggu konfirmasi biaya"}
+          </h3>
+
+          <div className="mt-5 space-y-2.5 rounded-xl bg-paper-2 p-5 text-sm">
+            <div className="flex items-center justify-between gap-4 border-b border-line pb-2.5">
+              <span className="text-muted">Layanan</span>
+              <span className="text-right font-semibold text-ink">{hasil.layanan}</span>
+            </div>
+            <div className="flex items-center justify-between gap-4 border-b border-line pb-2.5">
+              <span className="text-muted">Metode</span>
+              <span className="font-semibold text-ink">
+                {hasil.metode === "ONLINE" ? "Daring" : "Tatap muka"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted">Total biaya</span>
+              <span className="text-lg font-bold text-brand-700">
+                {hasil.biaya ? formatRupiah(hasil.biaya) : "Menunggu konfirmasi admin"}
+              </span>
+            </div>
+          </div>
+
+          {hasil.biaya ? (
+            <>
+              {adaRekening && (
+                <div className="mt-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted">
+                    Transfer ke
+                  </p>
+                  <div className="mt-2 rounded-xl border border-brand-200 bg-brand-50/60 p-5">
+                    <p className="text-lg font-bold text-ink">
+                      {hasil.rekening.bank}
+                    </p>
+                    <p className="mt-1 font-mono text-xl font-bold tracking-wider text-brand-700">
+                      {hasil.rekening.nomor}
+                    </p>
+                    {hasil.rekening.atasNama && (
+                      <p className="mt-1 text-sm text-ink-soft">
+                        a.n. {hasil.rekening.atasNama}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <ol className="mt-5 space-y-2.5">
+                {[
+                  `Transfer tepat sebesar ${formatRupiah(hasil.biaya)} ke rekening di atas.`,
+                  "Simpan bukti transfer Anda.",
+                  "Kirim bukti transfer ke admin dengan menyebutkan nomor pendaftaran.",
+                  "Admin akan memverifikasi, lalu Anda menerima jadwal sesi.",
+                ].map((t, i) => (
+                  <li key={t} className="flex gap-3 text-sm text-ink-soft">
+                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-100 text-[0.65rem] font-bold text-brand-700">
+                      {i + 1}
+                    </span>
+                    {t}
+                  </li>
+                ))}
+              </ol>
+
+              {hasil.rekening.instruksi && (
+                <p className="mt-4 rounded-xl bg-paper-2 px-4 py-3 text-xs leading-relaxed text-ink-soft">
+                  {hasil.rekening.instruksi}
+                </p>
+              )}
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                {wa && (
+                  <a
+                    href={wa}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="tombol tombol-sage"
+                  >
+                    Kirim bukti via WhatsApp
+                  </a>
+                )}
+                {hasil.email && (
+                  <a
+                    href={`mailto:${hasil.email}?subject=${encodeURIComponent(
+                      `Bukti pembayaran ${hasil.nomor}`,
+                    )}`}
+                    className="tombol tombol-garis"
+                  >
+                    Kirim via Email
+                  </a>
+                )}
+                <Link href="/cek-status" className="tombol tombol-garis">
+                  Cek Status Pendaftaran
+                </Link>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="mt-5 text-sm leading-relaxed text-ink-soft">
+                Biaya layanan ini belum ditetapkan otomatis. Admin akan
+                menghubungi Anda dengan rincian biaya, lalu Anda dapat
+                melakukan pembayaran.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                {wa && (
+                  <a
+                    href={wa}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="tombol tombol-sage"
+                  >
+                    Tanya biaya via WhatsApp
+                  </a>
+                )}
+                <Link href="/cek-status" className="tombol tombol-garis">
+                  Cek Status Pendaftaran
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-3">
           <Link href="/" className="tombol tombol-garis">
             Kembali ke Beranda
           </Link>
-          <Link href="/alur" className="tombol tombol-utama">
+          <Link href="/alur" className="tombol tombol-garis">
             Lihat Alur Layanan
           </Link>
         </div>
@@ -181,17 +385,20 @@ export function FormPendaftaran({
               id="layananId"
               name="layananId"
               className="input"
-              defaultValue={
-                slugAwal ? (layanan.find((l) => l.slug === slugAwal)?.id ?? "") : ""
-              }
+              value={layananId}
+              onChange={(e) => setLayananId(e.target.value)}
             >
               <option value="">Pilih layanan…</option>
-              {layanan.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {labelKategori[l.kategori] ?? l.kategori} — {l.nama}
-                  {l.harga ? ` (${formatRupiah(l.harga)})` : ""}
-                </option>
-              ))}
+              {layanan.map((l) => {
+                const h =
+                  metode === "ONLINE" ? l.hargaOnline : l.hargaOffline;
+                return (
+                  <option key={l.id} value={l.id}>
+                    {labelKategori[l.kategori] ?? l.kategori} — {l.nama}
+                    {h ? ` (${formatRupiah(h)})` : ""}
+                  </option>
+                );
+              })}
             </select>
             <Galat pesan={galat?.layananId} />
           </div>
@@ -202,54 +409,121 @@ export function FormPendaftaran({
               {[
                 { v: "OFFLINE", t: "Tatap muka" },
                 { v: "ONLINE", t: "Daring" },
-              ].map((m) => (
-                <label
-                  key={m.v}
-                  className="flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm has-checked:border-brand-400 has-checked:bg-brand-50"
-                >
-                  <input
-                    type="radio"
-                    name="metode"
-                    value={m.v}
-                    checked={metode === m.v}
-                    onChange={(e) => setMetode(e.target.value)}
-                    className="accent-brand-600"
-                  />
-                  {m.t}
-                </label>
-              ))}
+              ].map((m) => {
+                // Metode yang tidak disediakan layanan terpilih dinonaktifkan.
+                const tersedia =
+                  !layananTerpilih || layananTerpilih.metode.includes(m.v);
+                return (
+                  <label
+                    key={m.v}
+                    className={cn(
+                      "flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm",
+                      tersedia
+                        ? "cursor-pointer has-checked:border-brand-400 has-checked:bg-brand-50"
+                        : "cursor-not-allowed opacity-45",
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="metode"
+                      value={m.v}
+                      checked={metodeEfektif === m.v}
+                      onChange={(e) => setMetode(e.target.value)}
+                      disabled={!tersedia}
+                      className="accent-brand-600"
+                    />
+                    {m.t}
+                  </label>
+                );
+              })}
             </div>
+            {layananTerpilih && !layananTerpilih.metode.includes(metode) && (
+              <p className="mt-2 text-[0.68rem] text-muted">
+                Layanan ini hanya tersedia untuk metode{" "}
+                {layananTerpilih.metode
+                  .map((m) => (m === "ONLINE" ? "daring" : "tatap muka"))
+                  .join(" atau ")}
+                .
+              </p>
+            )}
           </div>
+
+          {layananTerpilih && (
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-brand-200 bg-brand-50/60 px-4 py-3">
+              <div>
+                <p className="text-xs font-semibold text-brand-800">
+                  Biaya layanan yang dipilih
+                </p>
+                <p className="mt-0.5 text-[0.68rem] text-brand-800/70">
+                  {layananTerpilih.nama} ·{" "}
+                  {metodeEfektif === "ONLINE" ? "Daring" : "Tatap muka"}
+                </p>
+              </div>
+              <p className="text-lg font-bold text-brand-700">
+                {biayaPerkiraan ? formatRupiah(biayaPerkiraan) : "Konfirmasi admin"}
+              </p>
+            </div>
+          )}
 
           <div className="animate-in fade-in slide-in-from-top-2 flex flex-col gap-5 rounded-xl border border-brand-200 bg-brand-50/50 p-5 mt-2">
             <div>
               <label className="label" htmlFor="tanggalPertemuan">Pilih tanggal pertemuan</label>
-              <input 
-                type="date" 
-                id="tanggalPertemuan" 
-                name="tanggalPertemuan" 
-                className="input bg-white" 
+              <input
+                type="date"
+                id="tanggalPertemuan"
+                name="tanggalPertemuan"
+                className="input bg-white"
+                value={tanggal}
+                onChange={(e) => setTanggal(e.target.value)}
+                min={sekarang ? tanggalHariIni(sekarang) : undefined}
               />
+              <p className="mt-1.5 text-[0.68rem] text-muted">
+                Tanggal sebelum hari ini tidak dapat dipilih.
+              </p>
             </div>
             <div>
               <span className="label">Pilih waktu kedatangan</span>
               <div className="flex flex-wrap gap-3">
-                {["07.00 - 09.00", "12.00 - 14.00", "15.00 - 17.00"].map((jam) => (
-                  <label 
-                    key={jam} 
-                    className="flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-white px-3 py-2 text-xs has-checked:border-brand-400 has-checked:bg-brand-50 transition-colors"
-                  >
-                    <input 
-                      type="radio" 
-                      name="waktuPertemuan" 
-                      value={jam} 
-                      className="accent-brand-600" 
-                    />
-                    {jam}
-                  </label>
-                ))}
+                {SLOT_WAKTU.map((slot) => {
+                  const lewat = terlewat.includes(slot.label);
+                  return (
+                    <label
+                      key={slot.label}
+                      className={cn(
+                        "flex items-center gap-2 rounded-xl border border-line bg-white px-3 py-2 text-xs transition-colors",
+                        lewat
+                          ? "cursor-not-allowed opacity-45"
+                          : "cursor-pointer has-checked:border-brand-400 has-checked:bg-brand-50",
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="waktuPertemuan"
+                        value={slot.label}
+                        checked={waktuEfektif === slot.label}
+                        onChange={(e) => setWaktu(e.target.value)}
+                        disabled={lewat}
+                        className="accent-brand-600"
+                      />
+                      <span className={cn(lewat && "line-through")}>{slot.label}</span>
+                      {lewat && (
+                        <span className="pil bg-paper-2 text-muted">lewat</span>
+                      )}
+                    </label>
+                  );
+                })}
               </div>
+              <p className="mt-1.5 text-[0.68rem] text-muted">
+                Waktu yang sudah lewat otomatis dinonaktifkan.
+              </p>
             </div>
+
+            {jadwalGalat && !jadwalGalat.ok && (
+              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                {jadwalGalat.pesan}
+              </p>
+            )}
+            {galat?.jadwal && <Galat pesan={galat.jadwal} />}
           </div>
 
           <div>
