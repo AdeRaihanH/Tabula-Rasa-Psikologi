@@ -46,7 +46,7 @@ export async function Footer() {
     <footer className="mt-auto bg-brand-800 text-white/80">
       <div className="wadah grid gap-10 py-14 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
         <div>
-          <Logo terang nama={identitas.nama} />
+          <Logo terang kotakIkon nama={identitas.nama} />
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/65">
             {identitas.deskripsi}
           </p>

@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
+import { Logo } from "@/components/ui/Logo";
+
 /* ─────────────────────────────────────────
    Ikon SVG bergaya sketsa/stroke — tanpa emoji
 ───────────────────────────────────────── */
@@ -153,18 +155,8 @@ export function SlideshowMasuk() {
       ))}
 
       {/* Logo */}
-      <div className="relative z-10 flex items-center gap-3 px-10 pt-10">
-        <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white p-1"
-        >
-          <Image src="/logo-icon.png" alt="Logo" width={32} height={32} className="object-contain" />
-        </div>
-        <div>
-          <p className="text-sm font-bold text-white">Tabula Rasa</p>
-          <p className="text-[0.58rem] font-semibold uppercase tracking-[0.22em] text-white/45">
-            Biro Psikologi
-          </p>
-        </div>
+      <div className="relative z-10 px-10 pt-10">
+        <Logo terang kotakIkon />
       </div>
 
       {/* Konten slide — center */}

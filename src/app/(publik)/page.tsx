@@ -89,7 +89,7 @@ export default async function Beranda() {
           style={{ background: "radial-gradient(circle, var(--color-sage-100) 0%, transparent 70%)" }}
         />
 
-        <div className="wadah relative py-20 lg:py-28">
+        <div className="wadah relative py-12 lg:py-16">
           <div className="animasi-naik mx-auto max-w-3xl text-center flex flex-col items-center">
             
 
