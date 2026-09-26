@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { KartuPsikolog } from "@/components/publik/KartuPsikolog";
@@ -11,7 +12,6 @@ import {
   ringkasKategori,
   testimoni,
 } from "@/lib/config";
-import { infoZona } from "@/lib/rbac";
 
 export const revalidate = 300;
 
@@ -69,11 +69,8 @@ export default async function Beranda() {
     `Halo ${identitas.nama}, saya ingin bertanya tentang layanan psikologi.`,
   )}`;
 
-  const zona = [
-    { kode: "Privasi Level 1", pemegang: "Admin",            isi: "Data diri klien, kontak, dan jadwal sesi.",              warna: infoZona.ZONA_1.warna },
-    { kode: "Privasi Level 2", pemegang: "Asisten Psikolog", isi: "Lembar tes, skor mentah, dan catatan pelaksanaan.",        warna: infoZona.ZONA_2.warna },
-    { kode: "Privasi Level 3", pemegang: "Psikolog",         isi: "Laporan hasil, interpretasi, dan rekomendasi.",             warna: infoZona.ZONA_3.warna },
-  ];
+
+
 
 
   return (
@@ -93,7 +90,17 @@ export default async function Beranda() {
         />
 
         <div className="wadah relative py-20 lg:py-28">
-          <div className="animasi-naik mx-auto max-w-3xl text-center">
+          <div className="animasi-naik mx-auto max-w-3xl text-center flex flex-col items-center">
+            
+            {/* Logo */}
+            <Image 
+              src="/logo-tabula-rasa.jpg" 
+              alt="Logo Tabula Rasa" 
+              width={180} 
+              height={120} 
+              className="mb-8 mix-blend-multiply" 
+              priority
+            />
 
             {/* Badge baris */}
             <div className="flex flex-wrap items-center justify-center gap-2">
@@ -145,12 +152,11 @@ export default async function Beranda() {
             </div>
 
             {/* Statistik */}
-            <dl className="mx-auto mt-12 grid max-w-sm grid-cols-2 gap-x-8 gap-y-6 sm:max-w-lg sm:grid-cols-4">
+            <dl className="mx-auto mt-12 grid max-w-sm grid-cols-3 gap-x-8 gap-y-6 sm:max-w-md">
               {[
                 { a: `${psikolog.length || "—"}`, l: "Psikolog" },
                 { a: `${layanan.length}`, l: "Layanan" },
-                { a: "3", l: "Kerahasiaan" },
-                { a: "8", l: "Tahap layanan" },
+                { a: "2.000+", l: "Klien Terlayani" },
               ].map((s) => (
                 <div key={s.l} className="text-center">
                   <dt className="text-2xl font-bold text-brand-700">{s.a}</dt>
@@ -164,14 +170,13 @@ export default async function Beranda() {
 
       {/* ============ LAYANAN ============ */}
       <section className="wadah py-20">
-        <div className="max-w-2xl">
+        <div className="max-w-3xl">
           <span className="label-kecil">Layanan</span>
           <h2 className="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
             Dua lini layanan, satu standar profesional
           </h2>
           <p className="mt-4 text-ink-soft">
-            Untuk kebutuhan pribadi maupun perusahaan, semuanya ditangani
-            psikolog berizin praktik.
+            Untuk kebutuhan pribadi maupun perusahaan, semuanya ditangani psikolog berizin praktik.
           </p>
         </div>
 
@@ -343,46 +348,6 @@ export default async function Beranda() {
               </li>
             ))}
           </ol>
-        </div>
-      </section>
-
-      {/* ============ KERAHASIAAN ============ */}
-      <section className="wadah py-20">
-        <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
-          <div>
-            <span className="label-kecil">Kerahasiaan Data</span>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-              Data sensitif dijaga berlapis
-            </h2>
-            <p className="mt-4 text-ink-soft">
-              Kami membagi data ke dalam tiga zona dengan hak akses terpisah.
-              Tidak ada satu peran pun yang dapat melihat seluruh isi data
-              seorang klien.
-            </p>
-            <Link href="/kerahasiaan" className="tombol tombol-garis mt-7">
-              Pelajari sistem kerahasiaan
-            </Link>
-          </div>
-
-          <div className="grid gap-4">
-            {zona.map((z) => (
-              <div key={z.kode} className="kartu flex gap-4 p-5">
-                <span
-                  className="mt-0.5 w-1 shrink-0 rounded-full"
-                  style={{ background: z.warna, minHeight: "2.5rem" }}
-                />
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-bold text-ink">{z.kode}</h3>
-                    <span className="pil bg-paper-2 text-ink-soft">{z.pemegang}</span>
-                  </div>
-                  <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
-                    {z.isi}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 

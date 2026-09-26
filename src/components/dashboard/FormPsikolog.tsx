@@ -61,14 +61,15 @@ export function FormPsikolog({
     <div className="kartu p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-4">
-          <span className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full ring-4 ring-brand-50">
+          <span className="relative block h-20 w-20 shrink-0 overflow-hidden rounded-full ring-4 ring-brand-50">
             {data.fotoUrl ? (
               <Image
                 src={data.fotoUrl}
                 alt={data.nama}
-                fill
+                width={80}
+                height={80}
                 sizes="80px"
-                className="object-cover"
+                className="h-full w-full object-cover"
               />
             ) : (
               <span className="grid h-full w-full place-items-center bg-brand-100 text-lg font-bold text-brand-700">

@@ -267,14 +267,15 @@ export function FormPendaftaran({
                 className="sr-only"
                 required
               />
-              <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full ring-2 ring-line transition-shadow group-has-checked:ring-brand-400">
+              <span className="relative block h-16 w-16 shrink-0 overflow-hidden rounded-full ring-2 ring-line transition-shadow group-has-checked:ring-brand-400">
                 {p.fotoUrl ? (
                   <Image
                     src={p.fotoUrl}
                     alt={p.nama}
-                    fill
+                    width={64}
+                    height={64}
                     sizes="64px"
-                    className="object-cover"
+                    className="h-full w-full object-cover"
                   />
                 ) : (
                   <span className="grid h-full w-full place-items-center bg-brand-100 text-sm font-bold text-brand-700">

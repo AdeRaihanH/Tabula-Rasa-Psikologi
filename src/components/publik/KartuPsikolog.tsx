@@ -27,14 +27,15 @@ export function KartuPsikolog({
 }) {
   return (
     <article className="kartu flex flex-col items-center p-6 text-center">
-      <span className="relative h-32 w-32 shrink-0 overflow-hidden rounded-full ring-4 ring-brand-50">
+      <span className="relative block h-32 w-32 shrink-0 overflow-hidden rounded-full ring-4 ring-brand-50">
         {p.fotoUrl ? (
           <Image
             src={p.fotoUrl}
             alt={p.nama}
-            fill
+            width={128}
+            height={128}
             sizes="128px"
-            className="object-cover"
+            className="h-full w-full object-cover"
           />
         ) : (
           <span className="grid h-full w-full place-items-center bg-brand-100 text-2xl font-bold text-brand-700">
