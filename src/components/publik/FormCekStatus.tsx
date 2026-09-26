@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import { AlurStatus } from "@/components/dashboard/AlurStatus";
+import { JebakanBot } from "@/components/ui/JebakanBot";
 import {
   cekStatusPendaftaran,
   type HasilCekStatus,
@@ -19,6 +20,15 @@ export function FormCekStatus() {
   return (
     <div>
       <form action={aksi} className="kartu p-6">
+        <JebakanBot />
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          <span className="pil bg-sage-100 text-sage-600">
+            Tanpa login
+          </span>
+          <p className="text-xs text-muted">
+            Cukup nomor pendaftaran dan email — tidak perlu membuat akun.
+          </p>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="nomor">

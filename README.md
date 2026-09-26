@@ -1,7 +1,8 @@
 # Tabula Rasa — Web Biro Psikologi
 
-Aplikasi web biro psikologi: situs publik untuk klien/korporasi dan portal
-internal dengan **tiga zona kerahasiaan data**.
+Aplikasi web biro psikologi: situs publik untuk klien/korporasi, **portal klien**
+untuk memantau pendaftaran sendiri, dan portal internal dengan **tiga zona
+kerahasiaan data**.
 
 ## Fitur
 
@@ -10,8 +11,12 @@ internal dengan **tiga zona kerahasiaan data**.
 - Beranda (gaya Mindset Psychology), katalog layanan 2 kategori, detail layanan,
   biaya, tim psikolog, alur layanan, sistem kerahasiaan, FAQ, kontak, dan cek
   status pendaftaran.
+- **Pembuatan akun klien** (`/daftar-akun`) — satu akun untuk mendaftar layanan,
+  memantau status, mengunggah bukti pembayaran, dan mengakses riwayat.
 - Formulir pendaftaran daring (Zona 1) dengan informed consent dan **pemilihan
-  psikolog** (wajib).
+  psikolog** (wajib). Halaman `/daftar` **memerlukan login klien**; data diri
+  otomatis terisi dari akun dan dapat diubah di **Profil Saya**.
+- Header sadar sesi: menampilkan tombol *Masuk/Buat Akun* atau *Dashboard Saya*.
 - Palet warna *earth tone* (krem, terracotta, pasir, zaitun).
 
 **Katalog layanan**
@@ -30,9 +35,10 @@ tagihan saat klien mendaftar.
 
 1. Klien mendaftar → **tagihan otomatis** dibuat sesuai layanan + metode.
 2. Halaman sukses menampilkan total biaya, nomor rekening, dan langkah pembayaran.
-3. Klien mengirim bukti transfer via WhatsApp/email.
+3. Klien **mengunggah bukti transfer** langsung dari portal
+   (`/dashboard/riwayat/[id]`) — atau mengirimnya via WhatsApp/email.
 4. Admin memverifikasi di detail pendaftaran (status naik ke *Terverifikasi*).
-5. Klien dapat memantau biaya & status pembayaran di `/cek-status`.
+5. Klien dapat memantau biaya & status pembayaran di `/cek-status` atau portal.
 
 Nomor rekening dan instruksi pembayaran diatur di `/dashboard/pengaturan`.
 
@@ -68,9 +74,24 @@ di atas dan nama di bawahnya, serta tombol *Daftar dengan psikolog ini*.
 | Admin | Zona 1 | Data diri klien, pendaftaran, jadwal, verifikasi pembayaran, katalog layanan, **tim psikolog & arsip Drive**, pengarsipan, pengguna & peran, pengaturan situs, log audit |
 | Asisten Psikolog | Zona 2 | Lembar tes, skor mentah, master alat tes |
 | Psikolog | Zona 3 | Laporan hasil, interpretasi, rekomendasi — **hanya kasus miliknya** (Zona 2 hanya baca) |
+| Klien | — | **Hanya data miliknya sendiri**: riwayat pendaftaran, jadwal, dan unggah bukti pembayaran |
 
 Semua peran memiliki halaman **Profil Saya** untuk memperbarui data diri dan
 kata sandi. Psikolog juga mengelola profil publiknya.
+
+**Portal klien** (`/dashboard/riwayat`)
+
+- Akun dibuat sendiri melalui `/daftar-akun` (nama, email, telepon, kata sandi).
+  Bila sebelumnya klien pernah mendaftar tanpa akun dengan email yang sama,
+  **riwayat lamanya otomatis ditautkan** ke akun baru.
+- `/dashboard/riwayat` — daftar semua pendaftaran klien beserta status terkini,
+  biaya, dan ringkasan tahap (mis. *Tahap 3 dari 8*).
+- `/dashboard/riwayat/[id]` — detail: ringkasan layanan, jadwal sesi, penanda 8
+  tahap, total biaya + rekening, dan **form unggah bukti pembayaran**
+  (PDF/JPG/PNG, maks. 8 MB). Bila arsip Google belum dikonfigurasi, klien
+  diarahkan mengirim bukti via WhatsApp/email.
+- Hasil asesmen dan interpretasi psikolog **tidak** ditampilkan di portal —
+  diserahkan langsung melalui sesi umpan balik.
 
 Alur pendaftaran mengikuti 8 tahap yang **ditegakkan sistem** — status tidak
 dapat melompat dan setiap tahap punya syarat serta penanggung jawab:
@@ -95,8 +116,69 @@ Penanda tahap tampil di halaman detail pendaftaran (admin), detail asesmen
 - **Psikolog hanya dapat membuka kasus yang ditugaskan kepadanya.** Daftar
   pasien psikolog lain tidak terlihat dan URL kasus psikolog lain ditolak
   (dialihkan). Lihat `src/lib/auth/dal.ts` dan `src/app/(dalam)/dashboard/kasus/`.
+- **Klien hanya dapat membuka pendaftarannya sendiri.** Filter `where`
+  (`filterPendaftaranKlien`) membatasi query berdasarkan kepemilikan, dan aksi
+  unggah bukti memverifikasi ulang kepemilikan sebelum menyentuh berkas.
 - Setiap tindakan penting dicatat pada `audit_log`, termasuk percobaan akses
-  yang ditolak.
+  yang ditolak (`AKSES_DITOLAK`, `AKSES_BUKTI_DITOLAK`).
+
+## Keamanan
+
+Perlindungan berlapis; modulnya ada di `src/lib/keamanan/`.
+
+**Sesi & cookie**
+
+- Cookie sesi `httpOnly`, `SameSite=Lax`, dan `Secure` di produksi.
+- Di produksi namanya berawalan **`__Host-`** (`__Host-tr_session`) sehingga
+  hanya berlaku untuk origin itu sendiri — subdomain lain tidak bisa menimpa
+  atau menyuntik cookie sesi.
+- Sesi tidak hanya berupa JWT: setiap login membuat baris di `sesi_login`
+  (ID sesi baru setiap login), dan setiap permintaan divalidasi ulang ke
+  database. Sesi karenanya **dapat dicabut** dari server.
+- Sesi diikat ke perangkat (User-Agent). Cookie yang dicuri lalu dipakai di
+  peramban lain akan ditolak.
+- Mengubah/menyetel ulang kata sandi atau menonaktifkan akun **mencabut semua
+  sesi** akun tersebut. Saat pengguna mengganti sandinya sendiri, sesi di
+  perangkat lain dicabut sementara sesi berjalan tetap aktif.
+
+**Anti brute force login**
+
+- Maksimal 5 kegagalan per akun dan 25 per alamat IP dalam 15 menit; sesudahnya
+  login diblokir sementara. Hitungan disimpan di `audit_log` agar tetap benar
+  walau permintaan tersebar ke banyak instance.
+- Pesan galat selalu seragam (*"Email atau kata sandi salah"*) dan perbandingan
+  bcrypt tetap dijalankan walau akun tidak ada, sehingga email terdaftar tidak
+  dapat ditebak dari waktu atau isi respons.
+- Jebakan bot (honeypot) menolak pengiriman otomatis.
+
+**Anti-spam formulir publik**
+
+- Field jebakan (`situs_web`) dan penanda waktu isi (`_waktu`) menolak bot pada
+  formulir masuk, daftar akun, pendaftaran, dan cek status.
+- Pembatas laju per IP/akun: daftar akun 5/jam, pendaftaran 5/jam, cek status
+  20/15 menit, unggah bukti 15/jam.
+- Pencarian **Cek Status** memerlukan nomor **dan** email yang cocok, dan
+  percobaan gagal dicatat.
+
+**CSRF & header keamanan**
+
+- Server Actions Next.js sudah membandingkan `Origin` dengan `Host`; `proxy.ts`
+  menambah pemeriksaan serupa untuk semua permintaan yang mengubah data.
+- `next.config.ts` memasang **CSP**, **HSTS**, `X-Content-Type-Options`,
+  `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, dan
+  menyembunyikan header `X-Powered-By`.
+
+**Penyalahgunaan & DDoS**
+
+- `proxy.ts` membatasi ~300 permintaan/menit per IP dan menolak path pemindai
+  umum (`/.env`, `/.git`, `/wp-admin`, dll.).
+- Pembatas di proxy bersifat **per instance** (best-effort pada serverless).
+  Untuk perlindungan DDoS sungguhan, andalkan mitigasi platform Vercel dan
+  lengkapi dengan **Vercel WAF / Rate Limiting** pada domain produksi.
+
+> Ganti `SESSION_SECRET` sebelum produksi. Karena sesi kini divalidasi ke
+> database, mengubah `SESSION_SECRET` sekaligus membuat semua sesi lama tidak
+> berlaku.
 
 ## Teknologi
 
@@ -146,19 +228,12 @@ Penanda tahap tampil di halaman detail pendaftaran (admin), detail asesmen
 
 ### Akun demo (hasil seed)
 
-Kata sandi semuanya `TabulaRasa123!`
+Seed membuat satu akun Administrator, satu Asisten Psikolog, dan lima akun
+Psikolog. **Email dan kata sandi default ditetapkan di `prisma/seed.ts`** —
+nilainya tidak didokumentasikan di sini. Wajib diganti sebelum dipakai produksi.
 
-| Email | Peran |
-| --- | --- |
-| `admin@tabularasa.id` | Administrator |
-| `asisten@tabularasa.id` | Asisten Psikolog |
-| `anugrah@tabularasa.id` | Psikolog — Anugrah Mujaddidah Kadim |
-| `nadia@tabularasa.id` | Psikolog — Nadia Rafa Aziza |
-| `aprilia@tabularasa.id` | Psikolog — Aprilia Anggorowati |
-| `anissa@tabularasa.id` | Psikolog — Anissa Salsabila |
-| `amanda@tabularasa.id` | Psikolog — Amanda Fadhia Feriqhalisyah |
-
-> Ganti kata sandi dan `SESSION_SECRET` sebelum dipakai produksi.
+> Akun **klien tidak di-seed** — buat sendiri melalui `/daftar-akun`.
+> Ganti kata sandi seed dan `SESSION_SECRET` sebelum dipakai produksi.
 
 ## Perintah
 
@@ -204,18 +279,19 @@ prisma/
 public/
   psikolog/            # foto profil psikolog
 src/
-  app/(publik)/        # situs publik
-  app/(dalam)/dashboard/  # portal internal
-  app/masuk/           # login
-  app/actions/         # server actions
+   app/(publik)/        # situs publik (termasuk /daftar-akun)
+   app/(dalam)/dashboard/  # portal internal + portal klien (/riwayat)
+   app/masuk/           # login
+   app/actions/         # server actions (termasuk akun.ts untuk klien)
   lib/
     config.ts          # identitas, katalog, konten publik
     rbac.ts            # matriks hak akses & 3 zona
-    auth/              # session, password, DAL
+    auth/              # session (cookie, sesi DB), password, DAL
+    keamanan/          # rate limit, IP, jebakan bot
     prisma.ts          # Prisma Client + driver adapter
     gdrive.ts          # Google Drive (folder, unggah berkas)
     gsheets.ts         # Google Sheets (spreadsheet arsip)
     drive-arsip.ts     # orkestrasi arsip per pendaftaran
   components/          # UI publik, dashboard, ui
-  proxy.ts             # pemeriksaan optimistik rute /dashboard
+  proxy.ts             # throttle, CSRF, blokir pemindai, penjaga /dashboard
 ```

@@ -29,8 +29,8 @@ const kolom = [
     judul: "Akses",
     tautan: [
       { href: "/daftar", label: "Pendaftaran Klien" },
-      { href: "/cek-status", label: "Cek Status Pendaftaran" },
-      { href: "/masuk", label: "Portal Internal" },
+      { href: "/cek-status", label: "Cek Status (tanpa login)" },
+      { href: "/masuk", label: "Portal Akun" },
     ],
   },
 ];

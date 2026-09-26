@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { FormPendaftaran } from "@/components/publik/FormPendaftaran";
+import { sesiSaatIni } from "@/lib/auth/dal";
 import { ambilLayanan, ambilPsikologPublik } from "@/lib/data-publik";
 import { hargaPerMetode } from "@/lib/pembayaran";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "Pendaftaran",
@@ -13,10 +16,26 @@ export const metadata: Metadata = {
 export default async function HalamanDaftar({
   searchParams,
 }: PageProps<"/daftar">) {
-  const [layanan, psikolog, sp] = await Promise.all([
+  // Pendaftaran memerlukan akun agar status & hasil mudah dipantau klien.
+  const sesi = await sesiSaatIni();
+  if (!sesi?.userId) {
+    const sp = await searchParams;
+    const q = new URLSearchParams();
+    q.set("dari", "/daftar");
+    if (typeof sp?.layanan === "string") q.set("layanan", sp.layanan);
+    if (typeof sp?.psikolog === "string") q.set("psikolog", sp.psikolog);
+    redirect(`/masuk?${q.toString()}`);
+  }
+  if (sesi.role !== "KLIEN") redirect("/dashboard");
+
+  const [layanan, psikolog, sp, akun] = await Promise.all([
     ambilLayanan(),
     ambilPsikologPublik(),
     searchParams,
+    prisma.user.findUnique({
+      where: { id: sesi.userId },
+      select: { nama: true, email: true, telepon: true },
+    }),
   ]);
   const slugAwal = typeof sp?.layanan === "string" ? sp.layanan : undefined;
   const psikologAwal =
@@ -31,9 +50,9 @@ export default async function HalamanDaftar({
             Formulir Pendaftaran Layanan
           </h1>
           <p className="mt-4 max-w-2xl text-ink-soft">
-            Isi data berikut dengan lengkap, termasuk memilih psikolog yang
-            akan menangani Anda. Setelah dikirim, admin akan melakukan skrining
-            kebutuhan sebelum tahap persetujuan dan pembayaran.
+            Masuk sebagai <strong>{akun?.nama}</strong>. Data diri Anda sudah
+            terisi dari akun — cukup lengkapi kebutuhan layanan dan pilih
+            psikolog yang akan menangani Anda.
           </p>
         </div>
       </section>
@@ -56,6 +75,11 @@ export default async function HalamanDaftar({
             spesialisasi: p.spesialisasi,
             fotoUrl: p.fotoUrl,
           }))}
+          akun={{
+            nama: akun?.nama ?? sesi.nama,
+            email: akun?.email ?? "",
+            telepon: akun?.telepon ?? null,
+          }}
           slugAwal={slugAwal}
           psikologAwal={psikologAwal}
         />

@@ -4,7 +4,15 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 
 import { arsipkanPendaftaranBaru } from "@/lib/drive-arsip";
+import { klienMilikSaya, sesiSaatIni } from "@/lib/auth/dal";
 import { validasiJadwal } from "@/lib/jadwal";
+import { ambilIp } from "@/lib/keamanan/ip";
+import {
+  cekBatas,
+  jebakanTerisi,
+  pesanTerlaluSering,
+  terisiTerlaluCepat,
+} from "@/lib/keamanan/rate-limit";
 import { hitungBiaya } from "@/lib/pembayaran";
 import { prisma } from "@/lib/prisma";
 import { buatNomorPendaftaran } from "@/lib/utils";
@@ -73,7 +81,29 @@ export async function kirimPendaftaran(
   _sebelumnya: HasilPendaftaran | undefined,
   formData: FormData,
 ): Promise<HasilPendaftaran> {
-  const nama = bersih(formData.get("nama"));
+  // Pendaftaran hanya untuk klien yang sudah punya akun.
+  const sesi = await sesiSaatIni();
+  if (!sesi?.userId || sesi.role !== "KLIEN") {
+    return {
+      ok: false,
+      pesan:
+        "Silakan masuk atau buat akun terlebih dahulu sebelum mendaftar layanan.",
+    };
+  }
+
+  // Anti-spam: jebakan bot dan pembatas laju per akun.
+  if (jebakanTerisi(formData) || terisiTerlaluCepat(formData)) {
+    return {
+      ok: false,
+      pesan: "Pengiriman terdeteksi otomatis. Silakan coba lagi.",
+    };
+  }
+  const batas = cekBatas(`pendaftaran:${sesi.userId}`, 5, 3600);
+  if (!batas.ok) {
+    return { ok: false, pesan: pesanTerlaluSering(batas.cobaDalamDetik) };
+  }
+
+  const nama = bersih(formData.get("nama")) ?? sesi.nama;
   const email = bersih(formData.get("email"));
   const telepon = bersih(formData.get("telepon"));
   const layananId = bersih(formData.get("layananId"));
@@ -84,10 +114,6 @@ export async function kirimPendaftaran(
   const waktuPertemuan = bersih(formData.get("waktuPertemuan"));
 
   const galat: Record<string, string> = {};
-  if (!nama) galat.nama = "Nama wajib diisi.";
-  if (!email) galat.email = "Email wajib diisi.";
-  else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
-    galat.email = "Format email tidak valid.";
   if (!telepon) galat.telepon = "Nomor telepon wajib diisi.";
   if (!layananId) galat.layananId = "Pilih layanan yang diinginkan.";
   if (!psikologId) galat.psikologId = "Pilih psikolog yang Anda inginkan.";
@@ -134,18 +160,45 @@ export async function kirimPendaftaran(
     const tanggalLahirRaw = bersih(formData.get("tanggalLahir"));
     const nomor = await nomorBerikutnya();
 
-    const klien = await prisma.klien.create({
-      data: {
-        nama: nama!,
-        email: email!,
-        telepon: telepon!,
-        tanggalLahir: tanggalLahirRaw ? new Date(tanggalLahirRaw) : null,
-        jenisKelamin: bersih(formData.get("jenisKelamin")),
-        alamat: bersih(formData.get("alamat")),
-        pekerjaan: bersih(formData.get("pekerjaan")),
-        institusi: bersih(formData.get("institusi")),
-      },
+    const akun = await prisma.user.findUnique({
+      where: { id: sesi.userId },
+      select: { email: true },
     });
+    const emailAkun = akun?.email ?? email ?? "";
+
+    const dataDiri = {
+      nama: nama!,
+      email: emailAkun,
+      telepon: telepon!,
+      tanggalLahir: tanggalLahirRaw ? new Date(tanggalLahirRaw) : null,
+      jenisKelamin: bersih(formData.get("jenisKelamin")),
+      alamat: bersih(formData.get("alamat")),
+      pekerjaan: bersih(formData.get("pekerjaan")),
+      institusi: bersih(formData.get("institusi")),
+    };
+
+    // Pakai data klien milik akun (tidak membuat record baru setiap mendaftar).
+    const klienAkun = await klienMilikSaya(sesi);
+    const klien =
+      klienAkun.length > 0
+        ? await prisma.klien.update({
+            where: { id: klienAkun[0].id },
+            data: {
+              userId: sesi.userId,
+              nama: dataDiri.nama,
+              telepon: dataDiri.telepon,
+              email: dataDiri.email,
+              // Kolom opsional hanya ditimpa bila diisi, agar data lama tidak hilang.
+              tanggalLahir: dataDiri.tanggalLahir ?? klienAkun[0].tanggalLahir,
+              jenisKelamin: dataDiri.jenisKelamin ?? klienAkun[0].jenisKelamin,
+              alamat: dataDiri.alamat ?? klienAkun[0].alamat,
+              pekerjaan: dataDiri.pekerjaan ?? klienAkun[0].pekerjaan,
+              institusi: dataDiri.institusi ?? klienAkun[0].institusi,
+            },
+          })
+        : await prisma.klien.create({
+            data: { ...dataDiri, userId: sesi.userId },
+          });
 
     // Biaya ditentukan dari layanan + metode yang dipilih.
     const biaya = hitungBiaya(layanan, metodeDiminta);
@@ -269,6 +322,13 @@ export async function cekStatusPendaftaran(
     return { ok: false, pesan: "Nomor pendaftaran dan email wajib diisi." };
   }
 
+  // Pembatas laju: mencegah penebakan nomor pendaftaran secara massal.
+  const ip = await ambilIp();
+  const batas = cekBatas(`cek-status:${ip}`, 20, 900);
+  if (!batas.ok) {
+    return { ok: false, pesan: pesanTerlaluSering(batas.cobaDalamDetik) };
+  }
+
   try {
     const [p, set] = await Promise.all([
       prisma.pendaftaran.findFirst({
@@ -287,6 +347,15 @@ export async function cekStatusPendaftaran(
     ]);
 
     if (!p) {
+      await prisma.auditLog.create({
+        data: {
+          aksi: "CEK_STATUS_GAGAL",
+          entitas: "Pendaftaran",
+          entitasId: nomor,
+          ip,
+          detail: `Pencarian status gagal untuk nomor ${nomor}`,
+        },
+      });
       return {
         ok: false,
         pesan: "Data tidak ditemukan. Periksa kembali nomor pendaftaran dan email Anda.",

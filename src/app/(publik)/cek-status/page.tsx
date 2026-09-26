@@ -7,7 +7,7 @@ import { TAHAP } from "@/lib/alur";
 export const metadata: Metadata = {
   title: "Cek Status Pendaftaran",
   description:
-    "Periksa status pendaftaran layanan menggunakan nomor pendaftaran dan email terdaftar.",
+    "Periksa status pendaftaran layanan tanpa login, cukup dengan nomor pendaftaran dan email terdaftar.",
 };
 
 export default function HalamanCekStatus() {
@@ -20,8 +20,16 @@ export default function HalamanCekStatus() {
             Pantau status pendaftaran Anda
           </h1>
           <p className="mt-4 max-w-2xl text-ink-soft">
-            Masukkan nomor pendaftaran yang Anda terima beserta email yang
-            didaftarkan. Keduanya harus cocok untuk melindungi data Anda.
+            Cek status tanpa harus login. Masukkan nomor pendaftaran yang Anda
+            terima beserta email yang didaftarkan — keduanya harus cocok untuk
+            melindungi data Anda. Punya akun? Status lengkap juga tersedia di{" "}
+            <Link
+              href="/dashboard/riwayat"
+              className="font-semibold text-brand-700 underline"
+            >
+              Riwayat Pendaftaran
+            </Link>{" "}
+            pada portal Anda.
           </p>
         </div>
       </section>

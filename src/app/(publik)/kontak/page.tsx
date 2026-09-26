@@ -139,7 +139,8 @@ export default async function HalamanKontak() {
                 <div>
                   <h3 className="font-bold text-ink">Cek Status Pendaftaran</h3>
                   <p className="mt-1 text-sm text-ink-soft">
-                    Pantau posisi pendaftaran Anda dengan nomor dan email.
+                    Pantau posisi pendaftaran tanpa login, cukup nomor dan
+                    email.
                   </p>
                 </div>
                 <span className="text-brand-600">→</span>

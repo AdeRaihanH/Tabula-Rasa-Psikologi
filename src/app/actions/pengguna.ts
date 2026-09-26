@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 
 import { hashPassword } from "@/lib/auth/password";
+import { cabutSemuaSesi } from "@/lib/auth/session";
 import { wajibKemampuan } from "@/lib/auth/dal";
+import { ambilIp } from "@/lib/keamanan/ip";
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@/generated/prisma/enums";
 
@@ -15,7 +17,7 @@ async function catat(
   detail: string,
 ) {
   await prisma.auditLog.create({
-    data: { userId, aksi, entitas, entitasId, detail },
+    data: { userId, aksi, entitas, entitasId, detail, ip: await ambilIp() },
   });
 }
 
@@ -100,12 +102,15 @@ export async function perbaruiPengguna(formData: FormData) {
     data: { nama, role, telepon, aktif },
   });
 
+  // Akun yang dinonaktifkan langsung kehilangan semua sesinya.
+  if (!aktif) await cabutSemuaSesi(id);
+
   await catat(
     sesi.userId,
     "PERBARUI_PENGGUNA",
     "User",
     id,
-    `${user.nama} → peran ${role}, ${aktif ? "aktif" : "nonaktif"}`,
+    `${user.nama} → peran ${role}, ${aktif ? "aktif" : "nonaktif (sesi dicabut)"}`,
   );
 
   revalidatePath("/dashboard/pengguna");
@@ -122,12 +127,15 @@ export async function resetPassword(formData: FormData) {
     data: { passwordHash: await hashPassword(password) },
   });
 
+  // Kata sandi berubah → semua sesi lama pemilik akun tidak berlaku lagi.
+  await cabutSemuaSesi(id);
+
   await catat(
     sesi.userId,
     "RESET_PASSWORD",
     "User",
     id,
-    `Kata sandi ${user.nama} direset oleh admin`,
+    `Kata sandi ${user.nama} direset oleh admin; semua sesi dicabut`,
   );
 
   revalidatePath("/dashboard/pengguna");

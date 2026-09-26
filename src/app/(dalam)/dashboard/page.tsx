@@ -13,14 +13,14 @@ import {
 import { wajibMasuk } from "@/lib/auth/dal";
 import { labelStatusPendaftaran } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
-import { infoZona } from "@/lib/rbac";
+import { infoZona, rumahDashboard } from "@/lib/rbac";
 import { formatTanggal, formatTanggalWaktu } from "@/lib/utils";
 
 export default async function RingkasanDashboard() {
   const sesi = await wajibMasuk();
-  if (sesi.role !== "ADMIN") {
-    redirect(sesi.role === "ASISTEN" ? "/dashboard/asesmen" : "/dashboard/kasus");
-  }
+
+  // Klien punya portal sendiri; peran internal lain punya halaman utamanya.
+  if (sesi.role !== "ADMIN") redirect(rumahDashboard(sesi.role));
 
   const [totalKlien, totalPendaftaran, menungguBayar, terverifikasi, terbaru, logTerbaru] =
     await Promise.all([

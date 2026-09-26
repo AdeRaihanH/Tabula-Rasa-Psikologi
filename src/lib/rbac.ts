@@ -53,13 +53,17 @@ export const hakAkses = {
   "laporan:lihat": ["PSIKOLOG"],
   "laporan:kelola": ["PSIKOLOG"],
 
+  // Portal klien — hanya data milik sendiri (dijaga di DAL)
+  "pendaftaran:milik": ["KLIEN"],
+  "pembayaran:unggah": ["KLIEN"],
+
   // Lintas
   "audit:lihat": ["ADMIN"],
   "pengguna:kelola": ["ADMIN"],
   "layanan:kelola": ["ADMIN"],
   "pengaturan:kelola": ["ADMIN"],
   "arsip:kelola": ["ADMIN"],
-  "profil:kelola": ["PSIKOLOG", "ADMIN"],
+  "profil:kelola": ["PSIKOLOG", "ADMIN", "KLIEN"],
   "psikolog:kelola": ["ADMIN"],
 } as const satisfies Record<string, readonly Role[]>;
 
@@ -87,7 +91,14 @@ export function rumahDashboard(role: Role): string {
       return "/dashboard/asesmen";
     case "PSIKOLOG":
       return "/dashboard/kasus";
+    case "KLIEN":
+      return "/dashboard/riwayat";
     default:
       return "/dashboard";
   }
+}
+
+/** Apakah peran termasuk staf internal (punya akses zona data klien). */
+export function peranInternal(role: Role): boolean {
+  return role === "ADMIN" || role === "ASISTEN" || role === "PSIKOLOG";
 }

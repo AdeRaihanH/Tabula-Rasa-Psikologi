@@ -3,12 +3,14 @@
 import { useActionState } from "react";
 
 import { masuk, type HasilMasuk } from "@/app/actions/auth";
+import { JebakanBot } from "@/components/ui/JebakanBot";
 
 export function FormMasuk() {
   const [hasil, aksi, pending] = useActionState<HasilMasuk, FormData>(masuk, undefined);
 
   return (
     <form action={aksi} className="space-y-5">
+      <JebakanBot />
       {hasil && !hasil.ok && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {hasil.pesan}

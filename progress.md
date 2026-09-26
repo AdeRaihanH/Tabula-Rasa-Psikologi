@@ -9,7 +9,7 @@ Catatan kronologis pembangunan. Diperbarui setiap kali ada penambahan.
 | Area | Status |
 | --- | --- |
 | Setup Next.js 16 + Supabase + Prisma 7 | ✅ Selesai |
-| Skema data 3 zona kerahasiaan | ✅ Selesai |
+| Skema data 3 zona kerahasiaan | ✅ Selesai | 
 | Autentikasi & otorisasi (RBAC) | ✅ Selesai |
 | Situs publik | ✅ Selesai |
 | Portal internal (Admin / Asisten / Psikolog) | ✅ Selesai |
@@ -830,3 +830,106 @@ baru `npm run dev` kembali.
 
 Setelah dibersihkan, seluruh **31 halaman diuji dan mengembalikan 200**
 (14 publik, 13 admin, 5 asisten, 3 psikolog) tanpa panic baru.
+
+---
+
+## Revisi Kesembilan: Akun Klien & Portal Monitoring
+
+### 51. Latar Belakang
+
+Klien tidak punya tempat memantau status pendaftarannya sendiri, dan asisten
+kesulitan mengabarkan progres tes. Diputuskan: **klien wajib membuat akun**
+sebelum mendaftar, lalu mendapat portal sendiri.
+
+Keputusan yang disepakati:
+
+| Aspek | Pilihan |
+| --- | --- |
+| Wajib akun? | Ya, wajib sebelum mendaftar |
+| Verifikasi email | Tidak (langsung aktif) |
+| Laporan hasil (Zona 3) | Tidak ditampilkan di portal — tetap via sesi psikolog |
+| Lupa kata sandi | Reset oleh admin |
+
+### 52. Tanpa Migrasi Prisma
+
+Fondasi sudah tersedia sehingga **tidak ada perubahan skema**:
+`Role.KLIEN`, `Klien.userId` (unique, nullable), `Pembayaran.buktiUrl`,
+`navDashboard.KLIEN`, dan kemampuan `profil:kelola`.
+
+### 53. RBAC & Isolasi Data
+
+Kemampuan baru di `src/lib/rbac.ts`:
+
+- `pendaftaran:milik` → KLIEN (hanya data sendiri)
+- `pembayaran:unggah` → KLIEN
+- `profil:kelola` ditambah KLIEN
+- `rumahDashboard("KLIEN")` → `/dashboard/riwayat`
+- Helper baru `peranInternal(role)`
+
+`src/lib/auth/dal.ts` menambah:
+
+- `klienMilikSaya(sesi)` — record Klien milik akun, dicocokkan lewat `userId`
+  **atau** `email` agar riwayat lama (dibuat sebelum akun ada) tetap terbaca.
+- `wajibKlien()` — wajib login sebagai klien.
+- `filterPendaftaranKlien(sesi)` — filter `where` kepemilikan.
+- `milikKlien(sesi, id)` — cek kepemilikan satu pendaftaran.
+
+### 54. Halaman Baru
+
+| Rute | Isi |
+| --- | --- |
+| `/daftar-akun` | Registrasi klien (nama, email, telepon, kata sandi) + manfaat |
+| `/dashboard/riwayat` | Daftar pendaftaran milik klien, biaya, status, progres tahap |
+| `/dashboard/riwayat/[id]` | Detail: stepper 8 tahap, jadwal, biaya, rekening, **unggah bukti** |
+
+### 55. Perubahan Alur
+
+- `/daftar` kini **wajib login klien**; bila belum login dialihkan ke
+  `/masuk?dari=/daftar` (parameter layanan & psikolog ikut dibawa).
+- Form pendaftaran: nama & email **terisi otomatis dari akun dan dikunci**
+  (read-only), jadi pengisian lebih singkat.
+- `kirimPendaftaran` memakai `Klien` milik akun — **tidak** membuat record baru
+  setiap mendaftar, sehingga tidak ada duplikat.
+- Login `masuk()` kini mengizinkan KLIEN (sebelumnya sengaja diblokir).
+- **Bug loop diperbaiki:** `/dashboard` dulu mengalihkan KLIEN ke
+  `/dashboard/kasus` yang menolak non-psikolog → kembali ke `/dashboard` tanpa
+  henti. Sekarang memakai `rumahDashboard(role)`.
+- Header publik sadar status login: menampilkan **Dashboard Saya** bila sudah
+  masuk, atau **Masuk / Buat Akun** bila belum.
+
+### 56. Registrasi Menautkan Riwayat Lama
+
+`daftarAkunKlien()` mencari `Klien` dengan email sama yang belum punya akun,
+lalu menautkannya (`userId`) sehingga riwayat pendaftaran lama langsung muncul
+di portal. Bila belum ada riwayat sama sekali, dibuatkan record Klien kosong
+agar pendaftaran berikutnya ringkas. Duplikat email ditolak.
+
+### 57. Unggah Bukti Pembayaran oleh Klien
+
+`unggahBuktiKlien()` di `src/app/actions/akun.ts`: verifikasi kepemilikan lewat
+filter DAL, tolak bila sudah terverifikasi, unggah ke folder Drive kasus (bila
+Drive aktif), simpan ke `Pembayaran.buktiUrl`, catat audit. Percobaan mengunggah
+untuk pendaftaran klien lain dicatat sebagai `AKSES_BUKTI_DITOLAK`.
+
+### 58. Kerahasiaan Tetap Dijaga
+
+Portal klien **tidak** menampilkan laporan/interpretasi (Zona 3). Klien hanya
+melihat status alur, biaya, rekening, jadwal, dan arsip berkas — konsisten
+dengan janji di halaman `/kerahasiaan`. Setiap percobaan membuka pendaftaran
+milik klien lain dicatat sebagai `AKSES_DITOLAK` lalu dialihkan.
+
+### 59. Hasil Uji
+
+| Uji | Hasil |
+| --- | --- |
+| Isolasi & RBAC portal klien | **27/27 lulus** |
+| Registrasi akun lewat HTTP (e2e) | **12/12 lulus** |
+| Alur daftar → tagihan → unggah bukti | **30/30 lulus** |
+| Regresi 45 halaman (publik/admin/asisten/psikolog/klien) | **semua 200** |
+| Redirect `/dashboard` klien (cek loop) | benar ke `/dashboard/riwayat`, tanpa loop |
+
+Termasuk yang diuji: klien A **tidak bisa** membuka detail milik klien B
+(dialihkan + tercatat audit), klien tidak bisa masuk area internal, dan
+percobaan unggah bukti untuk kasus klien lain ditolak + tercatat.
+
+`tsc` ✅ · `eslint` ✅ · `next build` ✅

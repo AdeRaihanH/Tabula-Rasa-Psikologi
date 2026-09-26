@@ -16,7 +16,13 @@ type Identitas = {
   jamOperasional: string;
 };
 
-export function Header({ identitas }: { identitas: Identitas }) {
+export function Header({
+  identitas,
+  sesi,
+}: {
+  identitas: Identitas;
+  sesi: { nama: string; role: string } | null;
+}) {
   const [buka, setBuka] = useState(false);
   const pathname = usePathname();
 
@@ -85,12 +91,20 @@ export function Header({ identitas }: { identitas: Identitas }) {
             <Link href="/cek-status" className="tautan-nav">
               Cek Status
             </Link>
-            <Link href="/masuk" className="tombol tombol-garis">
-              Masuk
-            </Link>
-            <Link href="/daftar" className="tombol tombol-utama">
-              Daftar Sekarang
-            </Link>
+            {sesi ? (
+              <Link href="/dashboard" className="tombol tombol-utama">
+                Dashboard Saya
+              </Link>
+            ) : (
+              <>
+                <Link href="/masuk" className="tombol tombol-garis">
+                  Masuk
+                </Link>
+                <Link href="/daftar-akun" className="tombol tombol-utama">
+                  Buat Akun
+                </Link>
+              </>
+            )}
           </div>
 
           <button
@@ -151,20 +165,32 @@ export function Header({ identitas }: { identitas: Identitas }) {
                   Chat WhatsApp
                 </a>
                 <div className="flex gap-2">
-                  <Link
-                    href="/masuk"
-                    onClick={() => setBuka(false)}
-                    className="tombol tombol-garis flex-1"
-                  >
-                    Masuk
-                  </Link>
-                  <Link
-                    href="/daftar"
-                    onClick={() => setBuka(false)}
-                    className="tombol tombol-utama flex-1"
-                  >
-                    Daftar
-                  </Link>
+                  {sesi ? (
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setBuka(false)}
+                      className="tombol tombol-utama flex-1"
+                    >
+                      Dashboard Saya
+                    </Link>
+                  ) : (
+                    <>
+                      <Link
+                        href="/masuk"
+                        onClick={() => setBuka(false)}
+                        className="tombol tombol-garis flex-1"
+                      >
+                        Masuk
+                      </Link>
+                      <Link
+                        href="/daftar-akun"
+                        onClick={() => setBuka(false)}
+                        className="tombol tombol-utama flex-1"
+                      >
+                        Buat Akun
+                      </Link>
+                    </>
+                  )}
                 </div>
                 <p className="pt-1 text-center text-[0.7rem] text-muted">
                   {identitas.telepon} · {identitas.jamOperasional}

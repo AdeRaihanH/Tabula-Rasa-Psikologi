@@ -50,19 +50,38 @@ export default async function HalamanMasuk() {
               className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
               style={{ background: "var(--color-brand-100)", color: "var(--color-brand-700)" }}
             >
-              Portal Internal
+              Portal Akun
             </span>
             <h2 className="mt-4 text-2xl font-bold tracking-tight" style={{ color: "var(--color-ink)" }}>
               Masuk ke akun Anda
             </h2>
-            <p className="mt-1.5 text-sm" style={{ color: "var(--color-ink-soft)" }}>
-              Gunakan email dan kata sandi yang diberikan administrator.
-            </p>
           </div>
 
           {/* Form */}
           <div className="mt-8">
             <FormMasuk />
+          </div>
+
+          {/* Ajakan buat akun untuk klien */}
+          <div
+            className="mt-6 rounded-xl border p-4 text-center"
+            style={{
+              borderColor: "var(--color-brand-200)",
+              background: "var(--color-brand-50)",
+            }}
+          >
+            <p className="text-xs font-semibold" style={{ color: "var(--color-brand-800)" }}>
+              Klien baru?
+            </p>
+            <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--color-ink-soft)" }}>
+              Buat akun untuk mendaftar layanan dan memantau statusnya sendiri.
+            </p>
+            <a
+              href="/daftar-akun"
+              className="tombol tombol-utama mt-3 w-full !py-2 !text-xs"
+            >
+              Buat Akun Klien
+            </a>
           </div>
 
           {/* Demo account */}
@@ -79,7 +98,7 @@ export default async function HalamanMasuk() {
             <ul className="mt-2 space-y-1 text-xs" style={{ color: "var(--color-muted)" }}>
               <li>admin@tabularasa.id — Administrator</li>
               <li>asisten@tabularasa.id — Asisten Psikolog</li>
-              <li>psikolog1@tabularasa.id — Psikolog</li>
+              <li>anugrah@tabularasa.id — Psikolog</li>
             </ul>
             <p className="mt-2 text-xs" style={{ color: "var(--color-muted)" }}>
               Kata sandi:{" "}

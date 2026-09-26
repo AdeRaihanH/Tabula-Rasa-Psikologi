@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 
 import { hashPassword, verifikasiPassword } from "@/lib/auth/password";
+import { cabutSesiLain } from "@/lib/auth/session";
 import { wajibMasuk } from "@/lib/auth/dal";
+import { ambilIp } from "@/lib/keamanan/ip";
+import { cekBatas, pesanTerlaluSering } from "@/lib/keamanan/rate-limit";
 import { prisma } from "@/lib/prisma";
 
 export type HasilProfil = { ok: boolean; pesan: string } | undefined;
@@ -70,6 +73,12 @@ export async function ubahPasswordSendiri(
   const baru = String(formData.get("baru") ?? "");
   const ulang = String(formData.get("ulang") ?? "");
 
+  // Batasi percobaan verifikasi kata sandi lama (anti brute force).
+  const batas = cekBatas(`ubah-sandi:${sesi.userId}`, 10, 900);
+  if (!batas.ok) {
+    return { ok: false, pesan: pesanTerlaluSering(batas.cobaDalamDetik) };
+  }
+
   if (baru.length < 8) return { ok: false, pesan: "Kata sandi baru minimal 8 karakter." };
   if (baru !== ulang) return { ok: false, pesan: "Konfirmasi kata sandi tidak cocok." };
 
@@ -77,12 +86,27 @@ export async function ubahPasswordSendiri(
   if (!user) return { ok: false, pesan: "Akun tidak ditemukan." };
 
   const cocok = await verifikasiPassword(lama, user.passwordHash);
-  if (!cocok) return { ok: false, pesan: "Kata sandi lama salah." };
+  if (!cocok) {
+    await prisma.auditLog.create({
+      data: {
+        userId: sesi.userId,
+        aksi: "UBAH_PASSWORD_GAGAL",
+        entitas: "User",
+        entitasId: sesi.userId,
+        ip: await ambilIp(),
+        detail: `${user.nama} salah memasukkan kata sandi lama`,
+      },
+    });
+    return { ok: false, pesan: "Kata sandi lama salah." };
+  }
 
   await prisma.user.update({
     where: { id: sesi.userId },
     data: { passwordHash: await hashPassword(baru) },
   });
+
+  // Perangkat lain yang masih memakai sesi lama dipaksa masuk ulang.
+  await cabutSesiLain(sesi.userId, sesi.sid);
 
   await prisma.auditLog.create({
     data: {
@@ -90,7 +114,8 @@ export async function ubahPasswordSendiri(
       aksi: "UBAH_PASSWORD_SENDIRI",
       entitas: "User",
       entitasId: sesi.userId,
-      detail: `${user.nama} mengubah kata sandi sendiri`,
+      ip: await ambilIp(),
+      detail: `${user.nama} mengubah kata sandi sendiri; sesi lain dicabut`,
     },
   });
 

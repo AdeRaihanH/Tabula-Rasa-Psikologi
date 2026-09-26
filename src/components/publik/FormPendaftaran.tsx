@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useActionState, useState, useSyncExternalStore } from "react";
 
 import { kirimPendaftaran, type HasilPendaftaran } from "@/app/actions/pendaftaran";
+import { JebakanBot } from "@/components/ui/JebakanBot";
 import { labelKategori } from "@/lib/config";
 import {
   SLOT_WAKTU,
@@ -66,11 +67,13 @@ function ambilWaktuServer(): Date | null {
 export function FormPendaftaran({
   layanan,
   psikolog,
+  akun,
   slugAwal,
   psikologAwal,
 }: {
   layanan: LayananRingkas[];
   psikolog: PsikologRingkas[];
+  akun: { nama: string; email: string; telepon: string | null };
   slugAwal?: string;
   psikologAwal?: string;
 }) {
@@ -292,6 +295,7 @@ export function FormPendaftaran({
 
   return (
     <form action={aksi} className="space-y-8">
+      <JebakanBot />
       {hasil && !hasil.ok && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {hasil.pesan}
@@ -303,13 +307,29 @@ export function FormPendaftaran({
         <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-ink-soft">
           Data Diri
         </h2>
+        <p className="mt-2 text-xs text-muted">
+          Diambil dari akun Anda.{" "}
+          <Link
+            href="/dashboard/profil"
+            className="font-semibold text-brand-700 underline"
+          >
+            Ubah di Profil Saya
+          </Link>{" "}
+          bila perlu diperbarui.
+        </p>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className="label" htmlFor="nama">
               Nama lengkap *
             </label>
-            <input id="nama" name="nama" className="input" placeholder="Nama sesuai identitas" />
+            <input
+              id="nama"
+              name="nama"
+              className="input bg-paper-2"
+              defaultValue={akun.nama}
+              readOnly
+            />
             <Galat pesan={galat?.nama} />
           </div>
 
@@ -317,7 +337,14 @@ export function FormPendaftaran({
             <label className="label" htmlFor="email">
               Email *
             </label>
-            <input id="email" name="email" type="email" className="input" placeholder="nama@email.com" />
+            <input
+              id="email"
+              name="email"
+              type="email"
+              className="input bg-paper-2"
+              defaultValue={akun.email}
+              readOnly
+            />
             <Galat pesan={galat?.email} />
           </div>
 
@@ -325,7 +352,13 @@ export function FormPendaftaran({
             <label className="label" htmlFor="telepon">
               Nomor telepon / WhatsApp *
             </label>
-            <input id="telepon" name="telepon" className="input" placeholder="08xxxxxxxxxx" />
+            <input
+              id="telepon"
+              name="telepon"
+              className="input"
+              defaultValue={akun.telepon ?? ""}
+              placeholder="08xxxxxxxxxx"
+            />
             <Galat pesan={galat?.telepon} />
           </div>
 

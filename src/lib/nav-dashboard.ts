@@ -31,7 +31,11 @@ export const navDashboard: Record<Role, ItemNav[]> = {
     { href: "/dashboard/jadwal", label: "Jadwal Sesi", zona: "ZONA_1", ikon: "kalender" },
     { href: "/dashboard/profil", label: "Profil Saya", ikon: "orang" },
   ],
-  KLIEN: [{ href: "/dashboard", label: "Ringkasan", ikon: "ringkasan" }],
+  KLIEN: [
+    { href: "/dashboard/riwayat", label: "Riwayat Pendaftaran", ikon: "berkas" },
+    { href: "/dashboard/profil", label: "Profil Saya", ikon: "orang" },
+    { href: "/daftar", label: "Daftar Layanan Baru", ikon: "daftar" },
+  ],
 };
 
 export const warnaZona: Record<string, string> = {
