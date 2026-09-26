@@ -798,7 +798,7 @@ format `Rp 375.000` / `Rp 545.000`.
 
 ## Catatan Operasional Penting
 
-### 50. Panic Turbopack saat Mengubah Skema Prisma
+### 60. Panic Turbopack saat Mengubah Skema Prisma
 
 Gejala yang pernah terjadi:
 
@@ -835,7 +835,7 @@ Setelah dibersihkan, seluruh **31 halaman diuji dan mengembalikan 200**
 
 ## Revisi Kesembilan: Akun Klien & Portal Monitoring
 
-### 51. Latar Belakang
+### 61. Latar Belakang
 
 Klien tidak punya tempat memantau status pendaftarannya sendiri, dan asisten
 kesulitan mengabarkan progres tes. Diputuskan: **klien wajib membuat akun**
@@ -850,13 +850,13 @@ Keputusan yang disepakati:
 | Laporan hasil (Zona 3) | Tidak ditampilkan di portal — tetap via sesi psikolog |
 | Lupa kata sandi | Reset oleh admin |
 
-### 52. Tanpa Migrasi Prisma
+### 62. Tanpa Migrasi Prisma
 
 Fondasi sudah tersedia sehingga **tidak ada perubahan skema**:
 `Role.KLIEN`, `Klien.userId` (unique, nullable), `Pembayaran.buktiUrl`,
 `navDashboard.KLIEN`, dan kemampuan `profil:kelola`.
 
-### 53. RBAC & Isolasi Data
+### 63. RBAC & Isolasi Data
 
 Kemampuan baru di `src/lib/rbac.ts`:
 
@@ -874,7 +874,7 @@ Kemampuan baru di `src/lib/rbac.ts`:
 - `filterPendaftaranKlien(sesi)` — filter `where` kepemilikan.
 - `milikKlien(sesi, id)` — cek kepemilikan satu pendaftaran.
 
-### 54. Halaman Baru
+### 64. Halaman Baru
 
 | Rute | Isi |
 | --- | --- |
@@ -882,7 +882,7 @@ Kemampuan baru di `src/lib/rbac.ts`:
 | `/dashboard/riwayat` | Daftar pendaftaran milik klien, biaya, status, progres tahap |
 | `/dashboard/riwayat/[id]` | Detail: stepper 8 tahap, jadwal, biaya, rekening, **unggah bukti** |
 
-### 55. Perubahan Alur
+### 65. Perubahan Alur
 
 - `/daftar` kini **wajib login klien**; bila belum login dialihkan ke
   `/masuk?dari=/daftar` (parameter layanan & psikolog ikut dibawa).
@@ -897,28 +897,28 @@ Kemampuan baru di `src/lib/rbac.ts`:
 - Header publik sadar status login: menampilkan **Dashboard Saya** bila sudah
   masuk, atau **Masuk / Buat Akun** bila belum.
 
-### 56. Registrasi Menautkan Riwayat Lama
+### 66. Registrasi Menautkan Riwayat Lama
 
 `daftarAkunKlien()` mencari `Klien` dengan email sama yang belum punya akun,
 lalu menautkannya (`userId`) sehingga riwayat pendaftaran lama langsung muncul
 di portal. Bila belum ada riwayat sama sekali, dibuatkan record Klien kosong
 agar pendaftaran berikutnya ringkas. Duplikat email ditolak.
 
-### 57. Unggah Bukti Pembayaran oleh Klien
+### 67. Unggah Bukti Pembayaran oleh Klien
 
 `unggahBuktiKlien()` di `src/app/actions/akun.ts`: verifikasi kepemilikan lewat
 filter DAL, tolak bila sudah terverifikasi, unggah ke folder Drive kasus (bila
 Drive aktif), simpan ke `Pembayaran.buktiUrl`, catat audit. Percobaan mengunggah
 untuk pendaftaran klien lain dicatat sebagai `AKSES_BUKTI_DITOLAK`.
 
-### 58. Kerahasiaan Tetap Dijaga
+### 68. Kerahasiaan Tetap Dijaga
 
 Portal klien **tidak** menampilkan laporan/interpretasi (Zona 3). Klien hanya
 melihat status alur, biaya, rekening, jadwal, dan arsip berkas — konsisten
 dengan janji di halaman `/kerahasiaan`. Setiap percobaan membuka pendaftaran
 milik klien lain dicatat sebagai `AKSES_DITOLAK` lalu dialihkan.
 
-### 59. Hasil Uji
+### 69. Hasil Uji
 
 | Uji | Hasil |
 | --- | --- |
@@ -933,3 +933,86 @@ Termasuk yang diuji: klien A **tidak bisa** membuka detail milik klien B
 percobaan unggah bukti untuk kasus klien lain ditolak + tercatat.
 
 `tsc` ✅ · `eslint` ✅ · `next build` ✅
+
+---
+
+## Revisi Kesepuluh: Pengerasan Keamanan
+
+Dikerjakan bersamaan dengan portal klien. Seluruh lapisan berikut sudah aktif
+dan diuji.
+
+### 70. Sesi yang Dapat Dicabut
+
+Sesi tidak lagi sekadar JWT. Setiap login membuat baris di `sesi_login` dengan
+ID sesi acak baru (`sid`), dan setiap permintaan divalidasi ulang ke database
+lewat `sesiTercatat()` — sehingga sesi dapat dicabut dari server.
+
+- `buatSesi()` mencatat baris + mengirim cookie httpOnly; ID baru tiap login
+  (mencegah session fixation).
+- `hapusSesi()` mencabut baris database lalu menghapus cookie.
+- `cabutSemuaSesi(userId)` dipakai saat kata sandi direset atau akun
+  dinonaktifkan.
+- `cabutSesiLain(userId, sid)` mencabut sesi perangkat lain saat pengguna
+  mengganti kata sandinya sendiri.
+- Sesi diikat ke perangkat (User-Agent); cookie yang dipakai di peramban lain
+  ditolak.
+- Sesi kedaluwarsa dibersihkan berkala (probabilistik 20%) agar tabel tidak
+  menumpuk.
+
+`src/lib/auth/dal.ts` membedakan dua tingkat:
+
+| Fungsi | Verifikasi | Pemakaian |
+| --- | --- | --- |
+| `sesiRingkas()` | tanda tangan JWT saja | tampilan (mis. tombol header) |
+| `sesiSaatIni()` | JWT + baris `sesi_login` + perangkat | dasar otorisasi |
+
+### 71. Cookie `__Host-`
+
+`src/lib/auth/cookie-name.ts`: di produksi nama cookie menjadi
+`__Host-tr_session` sehingga peramban memaksa `Secure`, `Path=/`, tanpa
+`Domain` — subdomain lain tidak dapat menimpa atau menyuntik cookie sesi. Di
+pengembangan awalan itu tidak dipakai karena `Secure` tidak berlaku pada http.
+
+### 72. Anti Brute Force & Anti-Spam
+
+`src/lib/keamanan/rate-limit.ts`:
+
+- Login dibatasi per akun (5 gagal / 15 menit) dan per IP (25 gagal / 15 menit),
+  dihitung dari `audit_log` agar tetap benar lintas instance.
+- Pesan galat seragam dan bcrypt tetap dijalankan walau akun tidak ada
+  (mencegah user enumeration lewat waktu respons).
+- Pembatas laju dalam memori untuk aksi publik.
+- Honeypot (`JebakanBot`, field `situs_web`) + penanda waktu `_waktu` menolak
+  pengiriman otomatis pada formulir masuk, daftar akun, pendaftaran, dan cek
+  status.
+
+`src/lib/keamanan/ip.ts`: pembacaan IP dari header proxy tepercaya
+(`x-forwarded-for`, `x-real-ip`, `cf-connecting-ip`) dan sidik perangkat dari
+User-Agent.
+
+### 73. CSRF, CSP, dan Header Keamanan
+
+- `src/proxy.ts` menambah pemeriksaan `Origin` vs `Host` untuk semua permintaan
+  yang mengubah data, penolakan path pemindai (`.env`, `.git`, `wp-admin`,
+  `phpmyadmin`, dsb.), serta throttle kasar 300 permintaan/menit per IP.
+- `next.config.ts` memasang CSP, HSTS (`max-age=63072000; preload`),
+  `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+  `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`,
+  `Cross-Origin-Opener-Policy`, dan menyembunyikan `X-Powered-By`.
+- `unsafe-eval` pada CSP hanya diaktifkan di mode pengembangan.
+
+### 74. Integrasi dengan Portal Klien
+
+Pengerasan ini menyentuh lapisan yang sama dengan portal klien, jadi diuji
+ulang bersama. Hasil akhir:
+
+| Uji | Hasil |
+| --- | --- |
+| Sesi DB: token tanpa `sid` ditolak, sesi dicabut ditolak, perangkat berbeda ditolak | lulus |
+| Isolasi & RBAC portal klien (54 skenario) | **54/54 lulus** |
+| E2E: registrasi akun → sesi DB → daftar layanan → tagihan → keluar (22 skenario) | **22/22 lulus** |
+| Regresi 45 halaman (publik/admin/asisten/psikolog/klien) | semua 200 |
+
+Catatan penting untuk pengujian: karena sesi divalidasi ke database, skrip uji
+harus membuat baris `sesi_login` dan menyertakan `sid` di dalam JWT serta
+memakai User-Agent yang sama seperti saat pembuatan sesi.
