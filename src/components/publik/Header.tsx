@@ -31,7 +31,7 @@ export function Header({ identitas }: { identitas: Identitas }) {
         <div className="wadah flex h-9 items-center justify-between gap-4 text-[0.72rem]">
           <div className="flex items-center gap-5">
             <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-sand-300" />
+              <span className="h-1.5 w-1.5 rounded-full bg-sage-300" />
               {identitas.jamOperasional}
             </span>
             <a href={`mailto:${identitas.email}`} className="hover:text-white">
@@ -46,7 +46,7 @@ export function Header({ identitas }: { identitas: Identitas }) {
               href={wa}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-semibold text-sand-200 hover:text-white"
+              className="font-semibold text-sage-300 hover:text-white"
             >
               Chat Admin →
             </a>

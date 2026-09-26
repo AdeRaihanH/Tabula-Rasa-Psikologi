@@ -1,48 +1,64 @@
 @import "tailwindcss";
 
 @theme {
-  /* Palet earth tone: krem, terracotta, pasir, zaitun */
-  --color-paper: #fbf7f1;
-  --color-paper-2: #f4ece0;
-  --color-ink: #2b2622;
-  --color-ink-soft: #574e45;
-  --color-muted: #8c7f70;
-  --color-line: #e6daca;
+  /* ── Palet: Putih · Hijau · Abu · Cream ── */
 
-  --color-brand-50: #fbf1eb;
-  --color-brand-100: #f6dfd3;
-  --color-brand-200: #ebbda6;
-  --color-brand-300: #de9775;
-  --color-brand-400: #c97a55;
-  --color-brand-500: #b06342;
-  --color-brand-600: #945034;
-  --color-brand-700: #763f2a;
-  --color-brand-800: #5c3122;
-  --color-brand-900: #42231a;
+  /* Cream/warm white — background utama */
+  --color-paper:   #f7f5f0;
+  --color-paper-2: #edeae2;
 
-  --color-sand-100: #f7efdd;
-  --color-sand-200: #efdfbf;
-  --color-sand-300: #dfc48c;
-  --color-sand-400: #c9a458;
-  --color-sand-500: #a9863e;
+  /* Teks */
+  --color-ink:      #1a2319;
+  --color-ink-soft: #3b4f3a;
+  --color-muted:    #7a917a;
 
-  --color-sage-50: #f1f3ec;
-  --color-sage-100: #e0e5d4;
-  --color-sage-200: #c3cdae;
-  --color-sage-300: #a3b189;
-  --color-sage-400: #84956a;
-  --color-sage-500: #687a52;
-  --color-sage-600: #52613f;
+  /* Garis / border */
+  --color-line: #d6d9d0;
 
-  --color-zona1: #6b7f9e;
-  --color-zona2: #b07a3c;
-  --color-zona3: #6e7f55;
+  /* ── Hijau brand (forest green sesuai referensi) ── */
+  --color-brand-50:  #f0f7f1;
+  --color-brand-100: #d9eedb;
+  --color-brand-200: #b0d9b4;
+  --color-brand-300: #7cbd83;
+  --color-brand-400: #50a659;
+  --color-brand-500: #358c3e;
+  --color-brand-600: #2a7332;
+  --color-brand-700: #22612a;
+  --color-brand-800: #184d20;
+  --color-brand-900: #0f3615;
+
+  /* Abu netral (warm grey) */
+  --color-sand-100: #f0f0ec;
+  --color-sand-200: #dfe0d8;
+  --color-sand-300: #bcc0b5;
+  --color-sand-400: #909587;
+  --color-sand-500: #6b7062;
+
+  /* Sage / hijau muda lembut */
+  --color-sage-50:  #eef5ee;
+  --color-sage-100: #d4e8d6;
+  --color-sage-200: #a9d1ad;
+  --color-sage-300: #7ab880;
+  --color-sage-400: #52a05a;
+  --color-sage-500: #3e8a46;
+  --color-sage-600: #316e38;
+
+  /* Cream accent */
+  --color-cream-50:  #faf8f3;
+  --color-cream-100: #f2ede1;
+  --color-cream-200: #e4d9c4;
+  --color-cream-300: #cfc0a0;
+
+  /* Zona colors */
+  --color-zona1: #3a85a8;
+  --color-zona2: #52a05a;
+  --color-zona3: #7b6fa0;
 
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
 
-  --radius-card: 1rem;
-  --shadow-soft: 0 1px 2px rgb(43 38 34 / 0.04),
-    0 10px 30px -18px rgb(43 38 34 / 0.25);
+  --radius-card: 0.875rem;
+  --shadow-soft: 0 1px 3px rgb(26 35 25 / 0.05),
+    0 8px 24px -12px rgb(26 35 25 / 0.18);
 }
 
 html {
@@ -103,16 +119,18 @@ body {
     font-weight: 600;
     font-size: 0.9rem;
     padding: 0.7rem 1.35rem;
-    transition: all 0.16s ease;
+    transition: all 0.18s ease;
     cursor: pointer;
     border: 1px solid transparent;
   }
   .tombol-utama {
-    background: var(--color-brand-600);
+    background: var(--color-brand-700);
     color: #fff;
   }
   .tombol-utama:hover {
-    background: var(--color-brand-700);
+    background: var(--color-brand-800);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(34,97,42,0.3);
   }
   .tombol-garis {
     background: transparent;
@@ -136,6 +154,7 @@ body {
   }
   .tombol-sage:hover {
     background: var(--color-sage-600);
+    transform: translateY(-1px);
   }
 
   .input {
@@ -143,7 +162,7 @@ body {
     border-radius: 0.65rem;
     border: 1px solid var(--color-line);
     background: #fff;
-    padding: 0.6rem 0.8rem;
+    padding: 0.65rem 0.9rem;
     font-size: 0.9rem;
     color: var(--color-ink);
     outline: none;
@@ -173,7 +192,6 @@ body {
     white-space: nowrap;
   }
 
-  /* Ornamen lembar / kertas */
   .lembar {
     background-image: linear-gradient(
         to bottom,
@@ -185,19 +203,14 @@ body {
   }
 }
 
+/* ── Animasi masuk elemen ── */
 .animasi-naik {
-  animation: naik 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: naik 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes naik {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: none; }
 }
 
 .marquee {
@@ -205,10 +218,49 @@ body {
 }
 
 @keyframes geser {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ══════════════════════════════════════
+   Slideshow login — animasi profesional
+   (fade + slight scale, no bounce)
+══════════════════════════════════════ */
+
+@keyframes slideEnter {
+  0%   { opacity: 0; transform: translateY(18px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideLeave {
+  0%   { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-14px); }
+}
+
+.slide-masuk {
+  animation: slideEnter 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.slide-keluar {
+  animation: slideLeave 0.3s ease both;
+}
+
+/* Dot aktif slide */
+@keyframes dotExpand {
+  from { width: 0.5rem; }
+  to   { width: 1.75rem; }
+}
+
+/* Partikel background halus */
+@keyframes floatA {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50%       { transform: translateY(-18px) scale(1.04); }
+}
+@keyframes floatB {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50%       { transform: translateY(14px) scale(0.97); }
+}
+@keyframes floatC {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50%       { transform: translateY(-10px) rotate(6deg); }
 }

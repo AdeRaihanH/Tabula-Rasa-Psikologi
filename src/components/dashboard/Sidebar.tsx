@@ -115,8 +115,8 @@ export function Sidebar({
             className={cn(
               "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
               aktif
-                ? "bg-brand-600 text-white"
-                : "text-ink-soft hover:bg-paper-2 hover:text-ink",
+                ? "bg-brand-700 text-white shadow-sm"
+                : "text-ink-soft hover:bg-brand-50 hover:text-brand-700",
             )}
           >
             <Ikon nama={item.ikon} />
@@ -166,9 +166,9 @@ export function Sidebar({
           <Logo />
         </div>
 
-        <div className="mx-3 mb-4 rounded-xl border border-line bg-paper p-3">
+        <div className="mx-3 mb-4 rounded-xl border border-brand-100 bg-brand-50 p-3">
           <div className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-600 text-[0.7rem] font-bold text-white">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-700 text-[0.7rem] font-bold text-white">
               {inisial(nama)}
             </span>
             <div className="min-w-0">

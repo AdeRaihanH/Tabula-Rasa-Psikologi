@@ -23,13 +23,13 @@ export default async function LayoutDashboard({
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="hidden h-16 items-center justify-between border-b border-line bg-white px-8 lg:flex">
           <div className="flex items-center gap-2 text-xs text-muted">
-            <span className="pil bg-paper-2 text-ink-soft">{labelRole[sesi.role]}</span>
+            <span className="pil bg-brand-50 text-brand-700">{labelRole[sesi.role]}</span>
             <span>Sesi aktif 8 jam</span>
           </div>
 
           <div className="flex items-center gap-4">
             <span className="text-sm text-ink-soft">{sesi.nama}</span>
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-100 text-[0.7rem] font-bold text-brand-700">
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-700 text-[0.7rem] font-bold text-white">
               {inisial(sesi.nama)}
             </span>
             <form action={keluar}>

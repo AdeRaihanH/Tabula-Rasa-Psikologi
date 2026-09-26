@@ -76,7 +76,7 @@ export async function Footer() {
 
         {kolom.map((k) => (
           <div key={k.judul}>
-            <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-sand-300">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-sage-300">
               {k.judul}
             </h3>
             <ul className="mt-4 space-y-2.5">

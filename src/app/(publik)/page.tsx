@@ -70,72 +70,64 @@ export default async function Beranda() {
   )}`;
 
   const zona = [
-    {
-      kode: "Zona 1",
-      pemegang: "Admin",
-      isi: "Data diri klien, kontak, dan jadwal sesi.",
-      warna: infoZona.ZONA_1.warna,
-    },
-    {
-      kode: "Zona 2",
-      pemegang: "Asisten Psikolog",
-      isi: "Lembar tes, skor mentah, dan catatan pelaksanaan.",
-      warna: infoZona.ZONA_2.warna,
-    },
-    {
-      kode: "Zona 3",
-      pemegang: "Psikolog",
-      isi: "Laporan hasil, interpretasi, dan rekomendasi.",
-      warna: infoZona.ZONA_3.warna,
-    },
+    { kode: "Privasi Level 1", pemegang: "Admin",            isi: "Data diri klien, kontak, dan jadwal sesi.",              warna: infoZona.ZONA_1.warna },
+    { kode: "Privasi Level 2", pemegang: "Asisten Psikolog", isi: "Lembar tes, skor mentah, dan catatan pelaksanaan.",        warna: infoZona.ZONA_2.warna },
+    { kode: "Privasi Level 3", pemegang: "Psikolog",         isi: "Laporan hasil, interpretasi, dan rekomendasi.",             warna: infoZona.ZONA_3.warna },
   ];
+
 
   return (
     <>
       {/* ============ HERO ============ */}
       <section className="relative overflow-hidden border-b border-line bg-paper-2">
+        {/* Dekorasi latar */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-32 -top-32 h-[28rem] w-[28rem] rounded-full opacity-70"
-          style={{
-            background:
-              "radial-gradient(circle, var(--color-sand-200) 0%, transparent 70%)",
-          }}
+          className="pointer-events-none absolute -right-32 -top-32 h-[28rem] w-[28rem] rounded-full opacity-50"
+          style={{ background: "radial-gradient(circle, var(--color-brand-200) 0%, transparent 70%)" }}
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-40 -left-24 h-96 w-96 rounded-full opacity-50"
-          style={{
-            background:
-              "radial-gradient(circle, var(--color-sage-100) 0%, transparent 70%)",
-          }}
+          className="pointer-events-none absolute -bottom-40 -left-24 h-96 w-96 rounded-full opacity-40"
+          style={{ background: "radial-gradient(circle, var(--color-sage-100) 0%, transparent 70%)" }}
         />
 
-        <div className="wadah relative grid items-center gap-14 py-14 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
-          <div className="animasi-naik">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="pil bg-sand-100 text-sand-500">
-                ★ 5,0 · 2.000+ klien terlayani
+        <div className="wadah relative py-20 lg:py-28">
+          <div className="animasi-naik mx-auto max-w-3xl text-center">
+
+            {/* Badge baris */}
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <span className="pil bg-brand-100 text-brand-700">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+                5,0 &middot; 2.000+ klien terlayani
               </span>
               <span className="pil bg-sage-50 text-sage-600">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/>
+                  <path d="M9 12l2 2 4-4"/>
+                </svg>
                 Psikolog berizin praktik
               </span>
             </div>
 
-            <h1 className="mt-5 text-4xl font-bold leading-[1.08] tracking-tight text-ink sm:text-5xl lg:text-[3.5rem]">
+            {/* Judul utama */}
+            <h1 className="mt-6 text-4xl font-bold leading-[1.08] tracking-tight text-ink sm:text-5xl lg:text-[3.6rem]">
               Kenali diri,
               <br />
               <span className="text-brand-600">tumbuh dengan terarah.</span>
             </h1>
 
-            <p className="mt-6 max-w-xl text-[1.02rem] leading-relaxed text-ink-soft">
-              {identitas.nama} menyediakan tes dan asesmen psikologi untuk
-              individu, anak, dan sekolah, serta layanan Psikologi Industri &
-              Organisasi untuk perusahaan — dengan kerahasiaan yang dijaga
-              berlapis.
+            {/* Kalimat penjelas */}
+            <p className="mx-auto mt-6 max-w-xl text-[1.02rem] leading-relaxed text-ink-soft">
+              {identitas.nama} menyediakan tes dan asesmen psikologi untuk individu,
+              anak, dan sekolah, serta layanan Psikologi Industri &amp; Organisasi
+              untuk perusahaan — dengan kerahasiaan yang dijaga berlapis.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            {/* Tombol aksi */}
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
               <Link href="/daftar" className="tombol tombol-utama">
                 Daftar Sekarang
               </Link>
@@ -152,72 +144,20 @@ export default async function Beranda() {
               </Link>
             </div>
 
-            <dl className="mt-11 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
+            {/* Statistik */}
+            <dl className="mx-auto mt-12 grid max-w-sm grid-cols-2 gap-x-8 gap-y-6 sm:max-w-lg sm:grid-cols-4">
               {[
                 { a: `${psikolog.length || "—"}`, l: "Psikolog" },
                 { a: `${layanan.length}`, l: "Layanan" },
-                { a: "3", l: "Zona kerahasiaan" },
+                { a: "3", l: "Kerahasiaan" },
                 { a: "8", l: "Tahap layanan" },
               ].map((s) => (
-                <div key={s.l}>
+                <div key={s.l} className="text-center">
                   <dt className="text-2xl font-bold text-brand-700">{s.a}</dt>
                   <dd className="mt-0.5 text-xs font-medium text-muted">{s.l}</dd>
                 </div>
               ))}
             </dl>
-          </div>
-
-          {/* Panel visual */}
-          <div className="animasi-naik" style={{ animationDelay: "120ms" }}>
-            <div className="kartu overflow-hidden p-1.5">
-              <div className="rounded-[0.8rem] bg-brand-800 p-6 text-white">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-sand-300">
-                    Matriks Hak Akses
-                  </p>
-                  <span className="pil bg-white/10 text-white/80">Terisolasi</span>
-                </div>
-                <div className="mt-5 space-y-2.5">
-                  {zona.map((z) => (
-                    <div
-                      key={z.kode}
-                      className="rounded-xl border border-white/10 bg-white/[0.06] p-4"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="h-2 w-2 rounded-full"
-                          style={{ background: z.warna }}
-                        />
-                        <span className="text-sm font-semibold">{z.kode}</span>
-                        <span className="ml-auto text-[0.7rem] font-medium text-white/55">
-                          {z.pemegang}
-                        </span>
-                      </div>
-                      <p className="mt-1.5 text-xs leading-relaxed text-white/60">
-                        {z.isi}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 px-5 py-4">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-50 text-brand-700">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </span>
-                <p className="text-xs leading-relaxed text-ink-soft">
-                  Setiap psikolog hanya dapat mengakses data pasien yang
-                  ditugaskan kepadanya.
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -383,7 +323,7 @@ export default async function Beranda() {
         <div className="wadah">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="max-w-2xl">
-              <span className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-sand-300">
+              <span className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-sage-300">
                 Alur Pendaftaran
               </span>
               <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
@@ -403,7 +343,7 @@ export default async function Beranda() {
               ["04", "Hasil", "Laporan diserahkan melalui sesi umpan balik."],
             ].map(([nomor, judul, isi]) => (
               <li key={nomor} className="border-t border-white/15 pt-5">
-                <span className="text-sm font-bold text-sand-300">{nomor}</span>
+                <span className="text-sm font-bold text-sage-300">{nomor}</span>
                 <h3 className="mt-2 font-semibold">{judul}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-white/60">{isi}</p>
               </li>
