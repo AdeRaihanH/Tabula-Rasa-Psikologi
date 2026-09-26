@@ -12,28 +12,18 @@ import {
   buatJadwal,
   catatPembayaran,
   tetapkanPsikolog,
-  ubahStatusPendaftaran,
   verifikasiPembayaran,
 } from "@/app/actions/admin";
+import { cekSyaratTahap } from "@/app/actions/alur";
+import { PanelTahap } from "@/components/dashboard/PanelTahap";
 import { PanelDrive, UnggahBukti } from "@/components/dashboard/PanelDrive";
 import { wajibKemampuan } from "@/lib/auth/dal";
+import { tahapBerikutnya, tahapSebelumnya } from "@/lib/alur";
 import { driveAktif } from "@/lib/gdrive";
 import { labelKategori, labelStatusPendaftaran } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
-import { infoZona } from "@/lib/rbac";
+import { boleh, infoZona } from "@/lib/rbac";
 import { formatRupiah, formatTanggal, formatTanggalWaktu } from "@/lib/utils";
-
-const urutanStatus = [
-  "BARU",
-  "SKRINING",
-  "MENUNGGU_PEMBAYARAN",
-  "TERVERIFIKASI",
-  "TERJADWAL",
-  "PELAKSANAAN",
-  "PENGOLAHAN_DATA",
-  "SELESAI",
-  "DIBATALKAN",
-];
 
 function Baris({ label, nilai }: { label: string; nilai: React.ReactNode }) {
   return (
@@ -47,7 +37,7 @@ function Baris({ label, nilai }: { label: string; nilai: React.ReactNode }) {
 export default async function DetailPendaftaran({
   params,
 }: PageProps<"/dashboard/pendaftaran/[id]">) {
-  await wajibKemampuan("pendaftaran:lihat");
+  const sesi = await wajibKemampuan("pendaftaran:lihat");
   const { id } = await params;
 
   const p = await prisma.pendaftaran.findUnique({
@@ -77,6 +67,12 @@ export default async function DetailPendaftaran({
     .reduce((a, b) => a + Number(b.jumlah), 0);
 
   const driveSiap = driveAktif();
+
+  const tahapBerikut = tahapBerikutnya(p.status);
+  const syarat = tahapBerikut
+    ? await cekSyaratTahap(p.id, tahapBerikut.kode)
+    : { ok: true, pesan: "" };
+  const tahapSebelum = tahapSebelumnya(p.status);
 
   return (
     <>
@@ -345,22 +341,30 @@ export default async function DetailPendaftaran({
 
         {/* Kolom kanan */}
         <div className="space-y-6">
-          <section className="kartu p-6">
-            <h2 className="text-sm font-bold uppercase tracking-[0.08em] text-ink-soft">
-              Ubah Status
-            </h2>
-            <form action={ubahStatusPendaftaran} className="mt-4 space-y-3">
-              <input type="hidden" name="id" value={p.id} />
-              <select name="status" className="input" defaultValue={p.status}>
-                {urutanStatus.map((s) => (
-                  <option key={s} value={s}>
-                    {labelStatusPendaftaran[s]}
-                  </option>
-                ))}
-              </select>
-              <button className="tombol tombol-utama w-full">Simpan status</button>
-            </form>
-          </section>
+          <PanelTahap
+            pendaftaranId={p.id}
+            status={p.status}
+            berikut={
+              tahapBerikut
+                ? {
+                    nomor: tahapBerikut.nomor,
+                    judul: tahapBerikut.judul,
+                    aktor: tahapBerikut.aktor,
+                  }
+                : null
+            }
+            syarat={syarat}
+            sebelum={
+              tahapSebelum
+                ? { nomor: tahapSebelum.nomor, judul: tahapSebelum.judul }
+                : null
+            }
+            bolehNaik={
+              Boolean(tahapBerikut) &&
+              (tahapBerikut!.peran as readonly string[]).includes(sesi.role)
+            }
+            bolehBatalkan={boleh(sesi.role, "pendaftaran:kelola")}
+          />
 
           <section className="kartu p-6">
             <h2 className="text-sm font-bold uppercase tracking-[0.08em] text-ink-soft">

@@ -1,7 +1,7 @@
 import { JudulHalaman } from "@/components/dashboard/ui";
 import { simpanPengaturan } from "@/app/actions/pengaturan";
 import { wajibKemampuan } from "@/lib/auth/dal";
-import { driveAktif, folderIndukId } from "@/lib/gdrive";
+import { folderIndukId, statusGoogle } from "@/lib/gdrive";
 import { prisma } from "@/lib/prisma";
 
 const contoh = [
@@ -32,7 +32,7 @@ export default async function HalamanPengaturan() {
     driveFolderId: p?.driveFolderId ?? folderIndukId() ?? "",
   };
 
-  const driveSiap = driveAktif();
+  const status = statusGoogle();
 
   return (
     <>
@@ -88,48 +88,67 @@ export default async function HalamanPengaturan() {
       <div className="kartu mt-6 max-w-3xl p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-bold uppercase tracking-[0.08em] text-ink-soft">
-            Integrasi Google Drive
+            Integrasi Google (Drive &amp; Spreadsheet)
           </h2>
           <span
             className="pil"
             style={
-              driveSiap
+              status.aktif
                 ? { background: "#f0fdf4", color: "#15803d" }
-                : { background: "#fffbeb", color: "#b45309" }
+                : status.mode === "service-account"
+                  ? { background: "#fef2f2", color: "#b91c1c" }
+                  : { background: "#fffbeb", color: "#b45309" }
             }
           >
-            {driveSiap ? "Aktif" : "Belum aktif"}
+            {status.aktif ? "Aktif" : status.label}
           </span>
         </div>
 
-        <p className="mt-3 text-xs leading-relaxed text-ink-soft">
-          Arsip digital memakai Google Drive melalui <em>service account</em>.
-          Isi variabel lingkungan berikut pada berkas <code>.env</code> (lokal)
-          dan pada Environment Variables Vercel (produksi):
-        </p>
+        <p className="mt-3 text-xs leading-relaxed text-ink-soft">{status.pesan}</p>
 
-        <ul className="mt-3 space-y-1.5 font-mono text-[0.7rem] text-ink-soft">
+        <p className="mt-4 text-xs font-semibold text-ink-soft">
+          Variabel untuk mode yang disarankan (OAuth akun biro):
+        </p>
+        <ul className="mt-2 space-y-1.5 font-mono text-[0.7rem] text-ink-soft">
           <li>
-            GOOGLE_SERVICE_ACCOUNT_EMAIL{" "}
-            {process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ? "✅" : "— belum diisi"}
+            GOOGLE_OAUTH_CLIENT_ID{" "}
+            {process.env.GOOGLE_OAUTH_CLIENT_ID ? "✅" : "— belum diisi"}
           </li>
           <li>
-            GOOGLE_PRIVATE_KEY{" "}
-            {process.env.GOOGLE_PRIVATE_KEY ? "✅" : "— belum diisi"}
+            GOOGLE_OAUTH_CLIENT_SECRET{" "}
+            {process.env.GOOGLE_OAUTH_CLIENT_SECRET ? "✅" : "— belum diisi"}
           </li>
           <li>
-            GOOGLE_DRIVE_FOLDER_ID{" "}
-            {process.env.GOOGLE_DRIVE_FOLDER_ID ? "✅" : "— belum diisi"}
+            GOOGLE_OAUTH_REFRESH_TOKEN{" "}
+            {process.env.GOOGLE_OAUTH_REFRESH_TOKEN ? "✅" : "— belum diisi"}
           </li>
         </ul>
 
+        {status.mode === "service-account" && (
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
+            <p className="text-xs leading-relaxed text-red-800">
+              <span className="font-semibold">
+                Service account tidak dapat dipakai untuk menulis.
+              </span>{" "}
+              Google memberi service account kuota penyimpanan 0 byte, sehingga
+              pembuatan folder, berkas, dan spreadsheet selalu ditolak
+              (<code>storageQuotaExceeded</code>). Ganti ke OAuth akun biro:
+              buat <em>OAuth client ID</em> di Google Cloud, isi{" "}
+              <code>GOOGLE_OAUTH_CLIENT_ID</code> dan{" "}
+              <code>GOOGLE_OAUTH_CLIENT_SECRET</code>, lalu jalankan{" "}
+              <code>npx tsx scripts/oauth-consent.ts</code> satu kali.
+            </p>
+          </div>
+        )}
+
         <p className="mt-4 text-xs leading-relaxed text-ink-soft">
-          Bagikan folder tujuan ke email service account dengan akses{" "}
-          <span className="font-semibold text-ink">Editor</span>, lalu tempel ID
-          folder pada kolom di atas. ID folder adalah bagian akhir tautan:
-          <span className="ml-1 font-mono text-[0.7rem]">
-            drive.google.com/drive/folders/&lt;ID_FOLDER&gt;
-          </span>
+          Karena file dibuat atas nama akun biro sendiri, folder Drive{" "}
+          <span className="font-semibold text-ink">
+            tidak perlu dibagikan
+          </span>{" "}
+          ke akun lain, dan kuota penyimpanan yang terpakai adalah kuota akun
+          biro. Untuk produksi, isi variabel yang sama pada Environment
+          Variables Vercel.
         </p>
       </div>
     </>

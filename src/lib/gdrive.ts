@@ -5,29 +5,110 @@ import { Readable } from "node:stream";
 import { google } from "googleapis";
 
 /**
- * Integrasi Google Workspace (Drive & Sheets) memakai service account.
+ * Integrasi Google Workspace (Drive & Sheets).
  *
- * Variabel lingkungan yang dibutuhkan:
- *   GOOGLE_SERVICE_ACCOUNT_EMAIL  — email service account (...@...iam.gserviceaccount.com)
- *   GOOGLE_PRIVATE_KEY            — private key (boleh memakai \n literal)
- *   GOOGLE_DRIVE_FOLDER_ID        — ID folder Drive utama (opsional bila folder
- *                                   diatur per psikolog / di pengaturan situs)
+ * Dua mode koneksi, dipilih otomatis:
  *
- * Bila variabel belum diisi, fitur Google otomatis dinonaktifkan dan aplikasi
+ *  1. OAuth akun biro (DISARANKAN) — variabel:
+ *       GOOGLE_OAUTH_CLIENT_ID
+ *       GOOGLE_OAUTH_CLIENT_SECRET
+ *       GOOGLE_OAUTH_REFRESH_TOKEN
+ *     File dibuat atas nama akun biro sehingga kuota penyimpanan akun biro
+ *     yang dipakai dan folder tidak perlu dibagikan ke siapa pun.
+ *
+ *  2. Service account — variabel:
+ *       GOOGLE_SERVICE_ACCOUNT_EMAIL
+ *       GOOGLE_PRIVATE_KEY
+ *     CATATAN: service account tidak memiliki kuota penyimpanan, sehingga
+ *     hanya bisa MEMBACA. Untuk membuat folder/berkas/spreadsheet Google akan
+ *     menolak dengan `storageQuotaExceeded`. Mode ini hanya cadangan.
+ *
+ * Bila tidak ada kredensial, fitur Google otomatis dinonaktifkan dan aplikasi
  * tetap berjalan normal.
  */
 
 export type HasilDrive = { id: string; tautan: string };
 
-function kredensial() {
+const SCOPE = [
+  "https://www.googleapis.com/auth/drive",
+  "https://www.googleapis.com/auth/spreadsheets",
+];
+
+function kredensialSA() {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const key = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
   if (!email || !key) return null;
   return { email, key };
 }
 
+function kredensialOAuth() {
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
+  if (!clientId || !clientSecret || !refreshToken) return null;
+  return { clientId, clientSecret, refreshToken };
+}
+
+export type StatusGoogle = {
+  aktif: boolean;
+  mode: "oauth" | "service-account" | "nonaktif";
+  label: string;
+  pesan: string;
+};
+
+/** Status integrasi Google untuk ditampilkan di dashboard. */
+export function statusGoogle(): StatusGoogle {
+  if (kredensialOAuth()) {
+    return {
+      aktif: true,
+      mode: "oauth",
+      label: "OAuth akun biro",
+      pesan:
+        "Terhubung memakai akun Google biro. Berkas dan spreadsheet dibuat otomatis atas nama akun biro.",
+    };
+  }
+  if (kredensialSA()) {
+    return {
+      aktif: true,
+      mode: "service-account",
+      label: "Service account (mode terbatas)",
+      pesan:
+        "Terhubung dengan service account. Service account tidak punya kuota penyimpanan, jadi ia TIDAK dapat membuat folder/berkas/spreadsheet baru. Yang tetap berjalan: menambah baris ke spreadsheet yang sudah Anda buat dan bagikan. Buat spreadsheet manual lalu tempel tautannya di halaman ini dan di kartu tiap psikolog.",
+    };
+  }
+  return {
+    aktif: false,
+    mode: "nonaktif",
+    label: "Belum dikonfigurasi",
+    pesan:
+      "Kredensial Google belum diisi. Fitur arsip digital dinonaktifkan dan pendaftaran tetap berjalan normal.",
+  };
+}
+
+/** True bila salah satu mode kredensial tersedia (bisa membaca/mengubah). */
 export function driveAktif() {
-  return Boolean(kredensial());
+  return kredensialOAuth() !== null || kredensialSA() !== null;
+}
+
+export function modeGoogle(): "oauth" | "service-account" | "nonaktif" {
+  if (kredensialOAuth()) return "oauth";
+  if (kredensialSA()) return "service-account";
+  return "nonaktif";
+}
+
+/**
+ * Hanya mode OAuth (akun biro) yang boleh MEMBUAT berkas/folder/spreadsheet.
+ * Service account tidak punya kuota penyimpanan sehingga selalu ditolak.
+ */
+export function bisaMembuatBerkas() {
+  return kredensialOAuth() !== null;
+}
+
+/** Mengambil ID spreadsheet dari tautan Google Sheets. */
+export function idSpreadsheetDariTautan(tautan: string | null | undefined) {
+  if (!tautan) return null;
+  const cocok = tautan.match(/\/spreadsheets\/d\/([A-Za-z0-9_-]+)/);
+  return cocok?.[1] ?? null;
 }
 
 export function folderIndukId() {
@@ -35,16 +116,25 @@ export function folderIndukId() {
 }
 
 export function authGoogle() {
-  const kred = kredensial();
-  if (!kred) throw new Error("Kredensial Google belum diisi.");
-  return new google.auth.JWT({
-    email: kred.email,
-    key: kred.key,
-    scopes: [
-      "https://www.googleapis.com/auth/drive",
-      "https://www.googleapis.com/auth/spreadsheets",
-    ],
-  });
+  const oauth = kredensialOAuth();
+  if (oauth) {
+    const klien = new google.auth.OAuth2(oauth.clientId, oauth.clientSecret);
+    klien.setCredentials({ refresh_token: oauth.refreshToken });
+    return klien;
+  }
+
+  const sa = kredensialSA();
+  if (sa) {
+    return new google.auth.JWT({
+      email: sa.email,
+      key: sa.key,
+      scopes: SCOPE,
+    });
+  }
+
+  throw new Error(
+    "Kredensial Google belum diisi. Isi GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, dan GOOGLE_OAUTH_REFRESH_TOKEN.",
+  );
 }
 
 export function driveKlien() {
@@ -163,6 +253,19 @@ export async function buatShortcut(opsi: {
     fields: "id",
     supportsAllDrives: true,
   });
+}
+
+/** Mendaftar isi sebuah folder (id, nama, jenis). */
+export async function daftarIsiFolder(folderId: string) {
+  const drive = driveKlien();
+  const r = await drive.files.list({
+    q: `'${folderId}' in parents and trashed = false`,
+    fields: "files(id,name,mimeType,shortcutDetails(targetId))",
+    pageSize: 200,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+  });
+  return r.data.files ?? [];
 }
 
 export function tautanFolder(id: string) {

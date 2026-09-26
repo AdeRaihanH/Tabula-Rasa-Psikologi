@@ -4,8 +4,10 @@ import Image from "next/image";
 import { useActionState } from "react";
 
 import {
+  rapikanSpreadsheetPsikologAksi,
   siapkanSpreadsheetPsikolog,
   simpanPsikolog,
+  ujiSpreadsheetPsikolog,
   type HasilAksi,
 } from "@/app/actions/psikolog";
 
@@ -44,9 +46,11 @@ function Pesan({ hasil }: { hasil: HasilAksi }) {
 export function FormPsikolog({
   data,
   driveSiap,
+  bisaBuat,
 }: {
   data: DataPsikolog;
   driveSiap: boolean;
+  bisaBuat: boolean;
 }) {
   const [hasilSimpan, aksiSimpan, pendingSimpan] = useActionState<
     HasilAksi,
@@ -55,7 +59,11 @@ export function FormPsikolog({
   const [hasilSheet, aksiSheet, pendingSheet] = useActionState<
     HasilAksi,
     FormData
-  >(siapkanSpreadsheetPsikolog, undefined);
+  >(bisaBuat ? siapkanSpreadsheetPsikolog : ujiSpreadsheetPsikolog, undefined);
+  const [hasilRapi, aksiRapi, pendingRapi] = useActionState<HasilAksi, FormData>(
+    rapikanSpreadsheetPsikologAksi,
+    undefined,
+  );
 
   return (
     <div className="kartu p-6">
@@ -162,6 +170,24 @@ export function FormPsikolog({
               className="input"
             />
           </div>
+          <div className="sm:col-span-2">
+            <label className="label" htmlFor={`sheet-${data.profilId}`}>
+              Tautan spreadsheet arsip psikolog
+            </label>
+            <input
+              id={`sheet-${data.profilId}`}
+              name="spreadsheetUrl"
+              defaultValue={data.spreadsheetUrl ?? ""}
+              placeholder="https://docs.google.com/spreadsheets/d/..."
+              className="input"
+            />
+            <p className="mt-1 text-[0.68rem] text-muted">
+              Buat Google Spreadsheet di folder psikolog, lalu{" "}
+              <strong>Share → Editor</strong> ke email service account. Tempel
+              tautannya di sini. Setiap pendaftaran yang memilih psikolog ini
+              akan menambah satu baris ke spreadsheet tersebut.
+            </p>
+          </div>
           <div>
             <label className="label" htmlFor={`gelar-${data.profilId}`}>
               Gelar
@@ -243,20 +269,34 @@ export function FormPsikolog({
 
       <form action={aksiSheet} className="mt-4 border-t border-line pt-4">
         <input type="hidden" name="profilId" value={data.profilId} />
-        <button
-          disabled={pendingSheet || !driveSiap}
-          className="tombol tombol-garis w-full !py-2 !text-xs disabled:opacity-50"
-        >
-          {pendingSheet
-            ? "Menyiapkan…"
-            : data.spreadsheetUrl
-              ? "Buka ulang / perbarui spreadsheet arsip"
-              : "Siapkan spreadsheet arsip psikolog"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            disabled={pendingSheet || !driveSiap}
+            className="tombol tombol-garis flex-1 !py-2 !text-xs disabled:opacity-50"
+          >
+            {pendingSheet
+              ? "Memproses…"
+              : bisaBuat
+                ? data.spreadsheetUrl
+                  ? "Buat ulang spreadsheet otomatis"
+                  : "Buat spreadsheet otomatis"
+                : "Uji tulis ke spreadsheet"}
+          </button>
+          <button
+            formAction={aksiRapi}
+            disabled={pendingRapi || !data.spreadsheetUrl}
+            className="tombol tombol-utama flex-1 !py-2 !text-xs disabled:opacity-50"
+          >
+            {pendingRapi ? "Merapikan…" : "Rapikan tabel"}
+          </button>
+        </div>
         <p className="mt-2 text-[0.68rem] text-muted">
-          Spreadsheet ini menampung hasil pendaftaran yang memilih psikolog ini.
+          {bisaBuat
+            ? "Mode OAuth akun biro: spreadsheet dibuat otomatis di folder psikolog."
+            : "Mode service account: tombol uji menulis baris percobaan; tombol rapikan menyusun header, lebar kolom, warna, dan filter."}
         </p>
         <Pesan hasil={hasilSheet} />
+        <Pesan hasil={hasilRapi} />
       </form>
     </div>
   );

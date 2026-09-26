@@ -1,19 +1,30 @@
 import "server-only";
 
-import { buatShortcut, idFolderDariTautan, pastikanFolder, unggahTeks } from "@/lib/gdrive";
-import { buatSpreadsheet, KOLOM_PENDAFTARAN, tambahBaris } from "@/lib/gsheets";
+import {
+  bisaMembuatBerkas,
+  buatShortcut,
+  daftarIsiFolder,
+  idFolderDariTautan,
+  idSpreadsheetDariTautan,
+  pastikanFolder,
+  unggahTeks,
+} from "@/lib/gdrive";
+import { buatSpreadsheet, JUDUL_SHEET, rapikanSpreadsheet, tambahBaris } from "@/lib/gsheets";
 import { prisma } from "@/lib/prisma";
 
 /**
- * Orkestrasi arsip digital:
- *   - setiap pendaftaran punya satu folder di Drive milik psikolog terkait
- *   - folder itu juga dibuatkan tautan pintas di folder "Data Klien" (keseluruhan)
- *   - tiap psikolog punya satu spreadsheet arsip
- *   - ada satu spreadsheet master untuk seluruh klien
- *   - folder admin memuat tautan pintas ke semua folder psikolog
+ * Orkestrasi arsip digital.
+ *
+ * Ada dua mode kredensial Google:
+ *
+ *  - OAuth akun biro  → berkas/folder/spreadsheet dibuat otomatis.
+ *  - Service account  → TIDAK bisa membuat berkas (kuota 0), jadi:
+ *      · folder kasus memakai folder psikolog yang sudah ada, dan
+ *      · spreadsheet harus dibuat manual lalu dibagikan ke service account;
+ *        aplikasi hanya MENAMBAH BARIS (tidak butuh kuota).
  */
 
-function pastikanTidakKosong(v: string | null | undefined) {
+function bersih(v: string | null | undefined) {
   const t = v?.trim();
   return t && t.length > 0 ? t : null;
 }
@@ -22,7 +33,7 @@ async function pengaturan() {
   return prisma.pengaturanSitus.findUnique({ where: { id: "utama" } });
 }
 
-/** Menentukan folder induk arsip untuk sebuah pendaftaran. */
+/** Folder induk arsip untuk sebuah pendaftaran (hanya dipakai mode OAuth). */
 async function indukUntuk(pendaftaranId: string) {
   const p = await prisma.pendaftaran.findUnique({
     where: { id: pendaftaranId },
@@ -37,33 +48,53 @@ async function indukUntuk(pendaftaranId: string) {
       select: { driveFolderId: true },
     });
     folderPsikolog =
-      pastikanTidakKosong(profil?.driveFolderId) ??
-      idFolderDariTautan(profil?.driveFolderId ?? null);
+      bersih(profil?.driveFolderId) ?? idFolderDariTautan(profil?.driveFolderId ?? null);
   }
 
   return {
     parent:
       folderPsikolog ??
-      pastikanTidakKosong(set?.driveFolderId) ??
-      pastikanTidakKosong(process.env.GOOGLE_DRIVE_FOLDER_ID),
-    folderKlien: pastikanTidakKosong(set?.driveClientFolderId),
+      bersih(set?.driveFolderId) ??
+      bersih(process.env.GOOGLE_DRIVE_FOLDER_ID),
+    folderKlien: bersih(set?.driveClientFolderId),
   };
 }
 
-/** Memastikan folder arsip sebuah pendaftaran tersedia (sekali buat, dipakai ulang). */
+/**
+ * Folder arsip sebuah pendaftaran.
+ * Mode OAuth: folder dibuat otomatis di folder psikolog.
+ * Mode service account: memakai folder psikolog yang sudah ada.
+ */
 export async function folderPendaftaran(pendaftaranId: string) {
   const p = await prisma.pendaftaran.findUnique({
     where: { id: pendaftaranId },
     include: {
       klien: { select: { nama: true } },
       layanan: { select: { nama: true } },
-      psikolog: { select: { nama: true } },
+      psikolog: {
+        select: { nama: true, profilPsikolog: { select: { driveFolderUrl: true } } },
+      },
     },
   });
   if (!p) throw new Error("Pendaftaran tidak ditemukan.");
 
   const idLama = idFolderDariTautan(p.folderDriveUrl);
   if (idLama) return { id: idLama, tautan: p.folderDriveUrl! };
+
+  // Mode service account: tidak membuat apa pun, cukup menautkan folder psikolog.
+  if (!bisaMembuatBerkas()) {
+    const tautan = p.psikolog?.profilPsikolog?.driveFolderUrl ?? null;
+    if (tautan) {
+      await prisma.pendaftaran.update({
+        where: { id: p.id },
+        data: { folderDriveUrl: tautan },
+      });
+      return { id: idFolderDariTautan(tautan) ?? "", tautan };
+    }
+    throw new Error(
+      "Mode service account tidak dapat membuat folder. Isi tautan folder Drive pada profil psikolog.",
+    );
+  }
 
   const { parent, folderKlien } = await indukUntuk(pendaftaranId);
   if (!parent) {
@@ -75,13 +106,12 @@ export async function folderPendaftaran(pendaftaranId: string) {
   const nama = `${p.nomor} — ${p.klien.nama}`.slice(0, 100);
   const folder = await pastikanFolder(nama, parent);
 
-  // Tautan pintas di folder "Data Klien" agar keseluruhan klien terlihat.
   if (folderKlien && folderKlien !== parent) {
     try {
       await buatShortcut({
         targetId: folder.id,
         parentId: folderKlien,
-        nama: `${p.nomor} — ${p.klien.nama}`.slice(0, 100),
+        nama,
       });
     } catch {
       // Shortcut opsional.
@@ -119,33 +149,66 @@ export async function folderPendaftaran(pendaftaranId: string) {
   return folder;
 }
 
-/** Spreadsheet arsip milik seorang psikolog (dibuat sekali). */
+/** Spreadsheet arsip milik seorang psikolog (tautan diisi admin). */
 export async function spreadsheetPsikolog(profilPsikologId: string) {
+  const profil = await prisma.profilPsikolog.findUnique({
+    where: { id: profilPsikologId },
+    select: { spreadsheetId: true, spreadsheetUrl: true },
+  });
+  if (!profil) throw new Error("Profil psikolog tidak ditemukan.");
+
+  const id =
+    bersih(profil.spreadsheetId) ?? idSpreadsheetDariTautan(profil.spreadsheetUrl);
+  if (!id) {
+    throw new Error(
+      "Spreadsheet arsip psikolog belum diatur. Buat Google Spreadsheet lalu tempel tautannya pada kartu psikolog.",
+    );
+  }
+
+  return {
+    id,
+    tautan: profil.spreadsheetUrl ?? `https://docs.google.com/spreadsheets/d/${id}`,
+  };
+}
+
+/** Spreadsheet master berisi seluruh klien (tautan diisi admin). */
+export async function spreadsheetKlien() {
+  const set = await pengaturan();
+  const id = bersih(set?.spreadsheetId) ?? idSpreadsheetDariTautan(set?.spreadsheetUrl);
+  if (!id) {
+    throw new Error(
+      "Spreadsheet master belum diatur. Buat Google Spreadsheet lalu tempel tautannya pada Pengaturan Situs.",
+    );
+  }
+  return {
+    id,
+    tautan: set?.spreadsheetUrl ?? `https://docs.google.com/spreadsheets/d/${id}`,
+  };
+}
+
+/**
+ * Membuat spreadsheet otomatis — hanya berhasil pada mode OAuth.
+ * Pada mode service account, admin harus membuatnya manual.
+ */
+export async function buatSpreadsheetPsikolog(profilPsikologId: string) {
+  if (!bisaMembuatBerkas()) {
+    throw new Error(
+      "Service account tidak dapat membuat spreadsheet (kuota penyimpanan 0). Buat Google Spreadsheet manual lalu tempel tautannya.",
+    );
+  }
+
   const profil = await prisma.profilPsikolog.findUnique({
     where: { id: profilPsikologId },
     include: { user: { select: { nama: true } } },
   });
   if (!profil) throw new Error("Profil psikolog tidak ditemukan.");
 
-  if (profil.spreadsheetId) {
-    return {
-      id: profil.spreadsheetId,
-      tautan:
-        profil.spreadsheetUrl ??
-        `https://docs.google.com/spreadsheets/d/${profil.spreadsheetId}`,
-    };
-  }
-
   const set = await pengaturan();
   const folderId =
-    pastikanTidakKosong(profil.driveFolderId) ??
-    pastikanTidakKosong(set?.driveFolderId) ??
-    pastikanTidakKosong(process.env.GOOGLE_DRIVE_FOLDER_ID);
-  if (!folderId) {
-    throw new Error(
-      "Folder Drive psikolog belum diatur sehingga spreadsheet tidak dapat dibuat.",
-    );
-  }
+    bersih(profil.driveFolderId) ??
+    bersih(set?.driveFolderId) ??
+    bersih(process.env.GOOGLE_DRIVE_FOLDER_ID);
+  if (!folderId) throw new Error("Folder Drive psikolog belum diatur.");
 
   const sheet = await buatSpreadsheet({
     nama: `Arsip Pendaftaran — ${profil.user.nama}`,
@@ -160,20 +223,20 @@ export async function spreadsheetPsikolog(profilPsikologId: string) {
   return sheet;
 }
 
-/** Spreadsheet master berisi seluruh klien. */
-export async function spreadsheetKlien() {
-  const set = await pengaturan();
-  if (set?.spreadsheetId && set.spreadsheetUrl) {
-    return { id: set.spreadsheetId, tautan: set.spreadsheetUrl };
+/** Membuat spreadsheet master otomatis — hanya mode OAuth. */
+export async function buatSpreadsheetKlien() {
+  if (!bisaMembuatBerkas()) {
+    throw new Error(
+      "Service account tidak dapat membuat spreadsheet (kuota penyimpanan 0). Buat Google Spreadsheet manual lalu tempel tautannya pada Pengaturan Situs.",
+    );
   }
 
+  const set = await pengaturan();
   const folderId =
-    pastikanTidakKosong(set?.driveClientFolderId) ??
-    pastikanTidakKosong(set?.driveFolderId) ??
-    pastikanTidakKosong(process.env.GOOGLE_DRIVE_FOLDER_ID);
-  if (!folderId) {
-    throw new Error("Folder Data Klien belum diatur.");
-  }
+    bersih(set?.driveClientFolderId) ??
+    bersih(set?.driveFolderId) ??
+    bersih(process.env.GOOGLE_DRIVE_FOLDER_ID);
+  if (!folderId) throw new Error("Folder Data Klien belum diatur.");
 
   const sheet = await buatSpreadsheet({
     nama: "Data Keseluruhan Klien — Tabula Rasa",
@@ -189,50 +252,83 @@ export async function spreadsheetKlien() {
   return sheet;
 }
 
-/** Membuat tautan pintas ke seluruh folder psikolog di dalam folder admin. */
+/**
+ * Tautan pintas ke folder tiap psikolog di folder admin (hanya mode OAuth).
+ *
+ * Penting: bila folder psikolog SUDAH berada langsung di dalam folder admin,
+ * tautan pintas tidak dibuat — supaya tidak muncul berkas kembar.
+ */
 export async function sinkronFolderAdmin() {
+  if (!bisaMembuatBerkas()) {
+    throw new Error(
+      "Service account tidak dapat membuat tautan pintas (kuota penyimpanan 0).",
+    );
+  }
+
   const set = await pengaturan();
   const adminFolder =
-    pastikanTidakKosong(set?.driveAdminFolderId) ??
-    pastikanTidakKosong(set?.driveFolderId) ??
-    pastikanTidakKosong(process.env.GOOGLE_DRIVE_FOLDER_ID);
+    bersih(set?.driveAdminFolderId) ??
+    bersih(set?.driveFolderId) ??
+    bersih(process.env.GOOGLE_DRIVE_FOLDER_ID);
   if (!adminFolder) throw new Error("Folder admin belum diatur.");
+
+  // Isi folder admin saat ini, untuk mencegah duplikasi.
+  const isi = await daftarIsiFolder(adminFolder);
+  const idSudahAda = new Set<string>();
+  const namaSudahAda = new Set<string>();
+  for (const f of isi) {
+    if (f.id) idSudahAda.add(f.id);
+    if (f.name) namaSudahAda.add(f.name);
+    const target = f.shortcutDetails?.targetId;
+    if (target) idSudahAda.add(target);
+  }
 
   const daftar = await prisma.profilPsikolog.findMany({
     include: { user: { select: { nama: true } } },
   });
 
   let jumlah = 0;
+  let dilewati = 0;
+
   for (const p of daftar) {
-    const target = pastikanTidakKosong(p.driveFolderId);
+    const target = bersih(p.driveFolderId);
     if (!target) continue;
+
+    const nama = `Arsip — ${p.user.nama}`;
+    if (idSudahAda.has(target) || namaSudahAda.has(nama)) {
+      dilewati++;
+      continue;
+    }
+
     try {
-      await buatShortcut({
-        targetId: target,
-        parentId: adminFolder,
-        nama: `Arsip — ${p.user.nama}`,
-      });
+      await buatShortcut({ targetId: target, parentId: adminFolder, nama });
       jumlah++;
     } catch {
-      // Lewati bila sudah ada atau gagal.
+      // Lewati bila gagal.
     }
   }
 
-  // Tautan ke folder data keseluruhan klien.
   if (set?.driveClientFolderId) {
-    try {
-      await buatShortcut({
-        targetId: set.driveClientFolderId,
-        parentId: adminFolder,
-        nama: "Data Keseluruhan Klien",
-      });
-      jumlah++;
-    } catch {
-      // Lewati.
+    const nama = "Data Keseluruhan Klien";
+    const sudahAda =
+      idSudahAda.has(set.driveClientFolderId) || namaSudahAda.has(nama);
+    if (!sudahAda) {
+      try {
+        await buatShortcut({
+          targetId: set.driveClientFolderId,
+          parentId: adminFolder,
+          nama,
+        });
+        jumlah++;
+      } catch {
+        // Lewati.
+      }
+    } else {
+      dilewati++;
     }
   }
 
-  return jumlah;
+  return { dibuat: jumlah, dilewati };
 }
 
 /** Menulis satu baris pendaftaran ke spreadsheet psikolog & spreadsheet klien. */
@@ -245,7 +341,7 @@ export async function catatPendaftaranKeSheet(pendaftaranId: string) {
       psikolog: { select: { nama: true, profilPsikolog: { select: { id: true } } } },
     },
   });
-  if (!p) return { psikolog: false, klien: false };
+  if (!p) return { psikolog: false, klien: false, pesan: ["Pendaftaran tidak ditemukan."] };
 
   const baris = [
     new Date(p.createdAt).toLocaleString("id-ID"),
@@ -270,7 +366,7 @@ export async function catatPendaftaranKeSheet(pendaftaranId: string) {
     p.folderDriveUrl ?? "",
   ];
 
-  const hasil = { psikolog: false, klien: false };
+  const hasil = { psikolog: false, klien: false, pesan: [] as string[] };
 
   const profilId = p.psikolog?.profilPsikolog?.id;
   if (profilId) {
@@ -278,8 +374,8 @@ export async function catatPendaftaranKeSheet(pendaftaranId: string) {
       const sheet = await spreadsheetPsikolog(profilId);
       await tambahBaris(sheet.id, baris);
       hasil.psikolog = true;
-    } catch {
-      // Diabaikan — pendaftaran tetap tersimpan di database.
+    } catch (e) {
+      hasil.pesan.push(e instanceof Error ? e.message : "Gagal menulis spreadsheet psikolog.");
     }
   }
 
@@ -287,19 +383,16 @@ export async function catatPendaftaranKeSheet(pendaftaranId: string) {
     const sheet = await spreadsheetKlien();
     await tambahBaris(sheet.id, baris);
     hasil.klien = true;
-  } catch {
-    // Diabaikan.
+  } catch (e) {
+    hasil.pesan.push(e instanceof Error ? e.message : "Gagal menulis spreadsheet master.");
   }
 
   return hasil;
 }
 
-export { KOLOM_PENDAFTARAN };
-
 /**
- * Rangkaian lengkap untuk pendaftaran baru: siapkan folder arsip lalu catat
- * barisnya ke spreadsheet. Dipanggil setelah respons dikirim (after()) dan
- * tidak pernah melempar error ke pemanggil.
+ * Rangkaian lengkap untuk pendaftaran baru. Dipanggil setelah respons dikirim
+ * dan tidak pernah melempar error ke pemanggil.
  */
 export async function arsipkanPendaftaranBaru(pendaftaranId: string) {
   let folder: { id: string; tautan: string } | null = null;
@@ -317,3 +410,70 @@ export async function arsipkanPendaftaranBaru(pendaftaranId: string) {
 
   return folder;
 }
+
+/** Menambahkan baris judul + baris uji ke spreadsheet (untuk verifikasi). */
+export async function ujiSpreadsheet(spreadsheetId: string) {
+  await tambahBaris(spreadsheetId, [
+    new Date().toLocaleString("id-ID"),
+    "UJI-KONEKSI",
+    "Baris uji dari Tabula Rasa",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Baris ini dibuat untuk memastikan spreadsheet dapat ditulis.",
+    "",
+  ]);
+}
+
+/** Merapikan tampilan tabel spreadsheet arsip milik seorang psikolog. */
+export async function rapikanSpreadsheetPsikolog(profilPsikologId: string) {
+  const sheet = await spreadsheetPsikolog(profilPsikologId);
+  await rapikanSpreadsheet(sheet.id);
+  return sheet;
+}
+
+/** Merapikan tampilan tabel spreadsheet master klien. */
+export async function rapikanSpreadsheetKlien() {
+  const sheet = await spreadsheetKlien();
+  await rapikanSpreadsheet(sheet.id);
+  return sheet;
+}
+
+/** Merapikan seluruh spreadsheet (5 psikolog + master klien). */
+export async function rapikanSemuaSpreadsheet() {
+  const hasil = { berhasil: 0, gagal: [] as string[] };
+
+  const daftar = await prisma.profilPsikolog.findMany({
+    include: { user: { select: { nama: true } } },
+  });
+
+  for (const p of daftar) {
+    try {
+      await rapikanSpreadsheetPsikolog(p.id);
+      hasil.berhasil++;
+    } catch (e) {
+      hasil.gagal.push(
+        `${p.user.nama}: ${e instanceof Error ? e.message : "gagal"}`,
+      );
+    }
+  }
+
+  try {
+    await rapikanSpreadsheetKlien();
+    hasil.berhasil++;
+  } catch (e) {
+    hasil.gagal.push(
+      `Master klien: ${e instanceof Error ? e.message : "gagal"}`,
+    );
+  }
+
+  return hasil;
+}
+
+export { JUDUL_SHEET };

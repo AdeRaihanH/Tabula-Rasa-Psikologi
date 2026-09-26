@@ -17,17 +17,23 @@ import { formatTanggalWaktu } from "@/lib/utils";
 export default async function HalamanKasus() {
   const sesi = await wajibPeran("PSIKOLOG");
 
-  const daftar = await prisma.pendaftaran.findMany({
-    where: { psikologId: sesi.userId },
-    orderBy: { updatedAt: "desc" },
-    include: {
-      klien: { select: { nama: true } },
-      layanan: { select: { nama: true } },
-      laporan: { select: { status: true } },
-      lembarTes: { select: { id: true, status: true } },
-      jadwal: { orderBy: { mulai: "desc" }, take: 1, select: { mulai: true } },
-    },
-  });
+  const [daftar, profil] = await Promise.all([
+    prisma.pendaftaran.findMany({
+      where: { psikologId: sesi.userId },
+      orderBy: { updatedAt: "desc" },
+      include: {
+        klien: { select: { nama: true } },
+        layanan: { select: { nama: true } },
+        laporan: { select: { status: true } },
+        lembarTes: { select: { id: true, status: true } },
+        jadwal: { orderBy: { mulai: "desc" }, take: 1, select: { mulai: true } },
+      },
+    }),
+    prisma.profilPsikolog.findUnique({
+      where: { userId: sesi.userId },
+      select: { spreadsheetUrl: true, driveFolderUrl: true },
+    }),
+  ]);
 
   const belumLaporan = daftar.filter((p) => !p.laporan).length;
   const draft = daftar.filter((p) => p.laporan?.status === "DRAFT").length;
@@ -40,6 +46,49 @@ export default async function HalamanKasus() {
         keterangan="Zona 3 — hanya kasus yang ditugaskan kepada Anda. Kasus psikolog lain tidak dapat diakses."
         aksi={<BadgeZona zona="ZONA_3" />}
       />
+
+      {/* Arsip digital milik psikolog */}
+      <section className="kartu mb-6 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-[0.08em] text-ink-soft">
+              Arsip Digital Saya
+            </h2>
+            <p className="mt-1 text-xs text-muted">
+              Spreadsheet dan folder Drive ini hanya milik Anda — psikolog lain
+              tidak dapat mengaksesnya.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {profil?.spreadsheetUrl ? (
+              <a
+                href={profil.spreadsheetUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tombol tombol-utama !py-2 !text-xs"
+              >
+                Buka spreadsheet arsip ↗
+              </a>
+            ) : (
+              <span className="pil bg-paper-2 text-muted">
+                Spreadsheet belum diatur
+              </span>
+            )}
+
+            {profil?.driveFolderUrl && (
+              <a
+                href={profil.driveFolderUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tombol tombol-garis !py-2 !text-xs"
+              >
+                Buka folder Drive ↗
+              </a>
+            )}
+          </div>
+        </div>
+      </section>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         {[

@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
+import { majuOtomatis } from "@/lib/alur-otomatis";
 import { wajibKemampuan } from "@/lib/auth/dal";
 import { prisma } from "@/lib/prisma";
-import type { StatusPendaftaran } from "@/generated/prisma/enums";
 
 async function catat(
   userId: string,
@@ -16,31 +16,6 @@ async function catat(
   await prisma.auditLog.create({
     data: { userId, aksi, entitas, entitasId, detail },
   });
-}
-
-export async function ubahStatusPendaftaran(formData: FormData) {
-  const sesi = await wajibKemampuan("pendaftaran:kelola");
-  const id = String(formData.get("id") ?? "");
-  const status = String(formData.get("status") ?? "") as StatusPendaftaran;
-  if (!id || !status) return;
-
-  const p = await prisma.pendaftaran.update({
-    where: { id },
-    data: { status },
-    include: { klien: { select: { nama: true } } },
-  });
-
-  await catat(
-    sesi.userId,
-    "UBAH_STATUS_PENDAFTARAN",
-    "Pendaftaran",
-    id,
-    `${p.nomor} (${p.klien.nama}) → ${status}`,
-  );
-
-  revalidatePath("/dashboard/pendaftaran");
-  revalidatePath(`/dashboard/pendaftaran/${id}`);
-  revalidatePath("/dashboard");
 }
 
 export async function tetapkanPsikolog(formData: FormData) {
@@ -88,10 +63,8 @@ export async function verifikasiPembayaran(formData: FormData) {
   });
 
   if (keputusan === "TERIMA") {
-    await prisma.pendaftaran.update({
-      where: { id: bayar.pendaftaranId },
-      data: { status: "TERVERIFIKASI" },
-    });
+    // Tahap 4 — pembayaran sah.
+    await majuOtomatis(bayar.pendaftaranId, "TERVERIFIKASI");
   }
 
   await catat(
@@ -127,10 +100,8 @@ export async function catatPembayaran(formData: FormData) {
     },
   });
 
-  await prisma.pendaftaran.update({
-    where: { id: pendaftaranId },
-    data: { status: "MENUNGGU_PEMBAYARAN" },
-  });
+  // Tahap 3 — tagihan diterbitkan.
+  await majuOtomatis(pendaftaranId, "MENUNGGU_PEMBAYARAN");
 
   await catat(
     sesi.userId,
@@ -142,6 +113,7 @@ export async function catatPembayaran(formData: FormData) {
 
   revalidatePath(`/dashboard/pendaftaran/${pendaftaranId}`);
   revalidatePath("/dashboard/pendaftaran");
+  revalidatePath("/dashboard");
 }
 
 export async function buatJadwal(formData: FormData) {
@@ -170,8 +142,11 @@ export async function buatJadwal(formData: FormData) {
 
   await prisma.pendaftaran.update({
     where: { id: pendaftaranId },
-    data: { status: "TERJADWAL", psikologId },
+    data: { psikologId },
   });
+
+  // Tahap 5 — sesi sudah dijadwalkan.
+  await majuOtomatis(pendaftaranId, "TERJADWAL");
 
   await catat(
     sesi.userId,
@@ -183,6 +158,8 @@ export async function buatJadwal(formData: FormData) {
 
   revalidatePath(`/dashboard/pendaftaran/${pendaftaranId}`);
   revalidatePath("/dashboard/jadwal");
+  revalidatePath("/dashboard/asesmen");
+  revalidatePath("/dashboard/kasus");
   revalidatePath("/dashboard");
 }
 

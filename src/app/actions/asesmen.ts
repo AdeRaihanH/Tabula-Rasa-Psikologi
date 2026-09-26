@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { majuOtomatis } from "@/lib/alur-otomatis";
 import { wajibKemampuan } from "@/lib/auth/dal";
 import { prisma } from "@/lib/prisma";
 
@@ -45,8 +46,14 @@ export async function tambahLembarTes(formData: FormData) {
     `Lembar tes ${lembar.alatTes.nama} ditambahkan (Zona 2)`,
   );
 
+  // Tahap 6 — asesmen mulai dilaksanakan.
+  await majuOtomatis(pendaftaranId, "PELAKSANAAN");
+
   revalidatePath("/dashboard/asesmen");
   revalidatePath(`/dashboard/asesmen/${pendaftaranId}`);
+  revalidatePath(`/dashboard/pendaftaran/${pendaftaranId}`);
+  revalidatePath("/dashboard/pendaftaran");
+  revalidatePath("/dashboard");
 }
 
 export async function ubahStatusLembarTes(formData: FormData) {
@@ -109,6 +116,21 @@ export async function simpanSkor(formData: FormData) {
     `${baris.length} baris skor mentah disimpan (Zona 2)`,
   );
 
-  revalidatePath(`/dashboard/asesmen/${lembar?.pendaftaranId ?? ""}`);
+  // Tahap 7 — seluruh lembar tes sudah punya skor.
+  const idPendaftaran = lembar?.pendaftaranId;
+  if (idPendaftaran) {
+    const semua = await prisma.lembarTes.findMany({
+      where: { pendaftaranId: idPendaftaran },
+      select: { skor: { select: { id: true } } },
+    });
+    const lengkap = semua.length > 0 && semua.every((l) => l.skor.length > 0);
+    if (lengkap) await majuOtomatis(idPendaftaran, "PENGOLAHAN_DATA");
+  }
+
+  revalidatePath(`/dashboard/asesmen/${idPendaftaran ?? ""}`);
   revalidatePath("/dashboard/asesmen");
+  revalidatePath(`/dashboard/pendaftaran/${idPendaftaran ?? ""}`);
+  revalidatePath("/dashboard/pendaftaran");
+  revalidatePath("/dashboard/kasus");
+  revalidatePath("/dashboard");
 }

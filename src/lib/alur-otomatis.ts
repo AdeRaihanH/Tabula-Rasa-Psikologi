@@ -1,0 +1,190 @@
+import "server-only";
+
+import { nomorTahap, tahapKe, type StatusAlur } from "@/lib/alur";
+import { prisma } from "@/lib/prisma";
+
+export type HasilSyarat = { ok: boolean; pesan: string };
+
+/** Memastikan seluruh syarat sebuah tahap sudah terpenuhi. */
+export async function cekSyaratTahap(
+  pendaftaranId: string,
+  target: StatusAlur,
+): Promise<HasilSyarat> {
+  const p = await prisma.pendaftaran.findUnique({
+    where: { id: pendaftaranId },
+    include: {
+      pembayaran: { select: { status: true } },
+      jadwal: { select: { id: true } },
+      lembarTes: { select: { id: true, skor: { select: { id: true } } } },
+      laporan: { select: { status: true } },
+    },
+  });
+  if (!p) return { ok: false, pesan: "Pendaftaran tidak ditemukan." };
+
+  switch (target) {
+    case "SKRINING":
+      return { ok: true, pesan: "" };
+
+    case "MENUNGGU_PEMBAYARAN":
+      if (p.pembayaran.length === 0) {
+        return {
+          ok: false,
+          pesan:
+            "Belum ada tagihan. Catat tagihan pembayaran terlebih dahulu pada bagian Pembayaran.",
+        };
+      }
+      return { ok: true, pesan: "" };
+
+    case "TERVERIFIKASI":
+      if (!p.pembayaran.some((b) => b.status === "TERVERIFIKASI")) {
+        return {
+          ok: false,
+          pesan:
+            "Belum ada pembayaran yang diverifikasi. Verifikasi pembayaran terlebih dahulu.",
+        };
+      }
+      return { ok: true, pesan: "" };
+
+    case "TERJADWAL":
+      if (p.jadwal.length === 0) {
+        return {
+          ok: false,
+          pesan:
+            "Belum ada jadwal. Buat jadwal sesi bersama psikolog terlebih dahulu.",
+        };
+      }
+      return { ok: true, pesan: "" };
+
+    case "PELAKSANAAN":
+      if (p.lembarTes.length === 0) {
+        return {
+          ok: false,
+          pesan:
+            "Belum ada lembar tes. Asisten psikolog perlu menambahkan lembar tes terlebih dahulu.",
+        };
+      }
+      return { ok: true, pesan: "" };
+
+    case "PENGOLAHAN_DATA": {
+      if (p.lembarTes.length === 0) {
+        return { ok: false, pesan: "Belum ada lembar tes yang dikerjakan." };
+      }
+      const belumAdaSkor = p.lembarTes.filter((l) => l.skor.length === 0);
+      if (belumAdaSkor.length > 0) {
+        return {
+          ok: false,
+          pesan: `${belumAdaSkor.length} lembar tes belum memiliki skor mentah. Isi skor terlebih dahulu.`,
+        };
+      }
+      return { ok: true, pesan: "" };
+    }
+
+    case "SELESAI":
+      if (p.laporan?.status !== "FINAL") {
+        return {
+          ok: false,
+          pesan:
+            "Laporan belum difinalkan. Psikolog perlu menyusun dan memfinalkan laporan terlebih dahulu.",
+        };
+      }
+      return { ok: true, pesan: "" };
+
+    default:
+      return { ok: false, pesan: "Tahap tidak dikenali." };
+  }
+}
+
+/**
+ * Syarat finalisasi laporan Zona 3: asesmen harus benar-benar sudah dikerjakan.
+ * Minimal ada satu lembar tes dan seluruhnya memiliki skor mentah.
+ */
+export async function syaratFinalkan(
+  pendaftaranId: string,
+): Promise<{ ok: boolean; pesan: string; jumlahLembar: number; tanpaSkor: number }> {
+  const lembar = await prisma.lembarTes.findMany({
+    where: { pendaftaranId },
+    select: { id: true, skor: { select: { id: true } } },
+  });
+
+  const tanpaSkor = lembar.filter((l) => l.skor.length === 0).length;
+
+  if (lembar.length === 0) {
+    return {
+      ok: false,
+      pesan:
+        "Belum ada lembar tes. Asisten psikolog perlu menambahkan lembar tes dan mengisi skor mentah terlebih dahulu.",
+      jumlahLembar: 0,
+      tanpaSkor: 0,
+    };
+  }
+
+  if (tanpaSkor > 0) {
+    return {
+      ok: false,
+      pesan: `${tanpaSkor} lembar tes belum memiliki skor mentah.`,
+      jumlahLembar: lembar.length,
+      tanpaSkor,
+    };
+  }
+
+  return {
+    ok: true,
+    pesan: "",
+    jumlahLembar: lembar.length,
+    tanpaSkor: 0,
+  };
+}
+
+/**
+ * Menaikkan status secara otomatis setelah sebuah tindakan berhasil.
+ *
+ * Aturan penting: status hanya naik SATU TAHAP demi satu dan setiap tahap
+ * diperiksa syaratnya. Jadi kasus tidak mungkin melompat (mis. dari
+ * "Pendaftaran Baru" langsung ke "Selesai"). Bila syarat tahap berikutnya
+ * belum terpenuhi, kenaikan berhenti di tahap terakhir yang sah.
+ *
+ * Mengembalikan status akhir setelah proses.
+ */
+export async function majuOtomatis(
+  pendaftaranId: string,
+  target: StatusAlur,
+): Promise<string> {
+  const p = await prisma.pendaftaran.findUnique({
+    where: { id: pendaftaranId },
+    select: { status: true },
+  });
+  if (!p) return "";
+  if (p.status === "DIBATALKAN") return p.status;
+
+  let sekarang = p.status as StatusAlur;
+  let nomorSekarang = nomorTahap(sekarang);
+  const nomorTarget = nomorTahap(target);
+  if (nomorSekarang === 0 || nomorTarget === 0) return p.status;
+
+  while (nomorSekarang < nomorTarget) {
+    const berikut = tahapKe(nomorSekarang + 1);
+    if (!berikut) break;
+
+    const syarat = await cekSyaratTahap(pendaftaranId, berikut.kode);
+    if (!syarat.ok) break;
+
+    await prisma.pendaftaran.update({
+      where: { id: pendaftaranId },
+      data: { status: berikut.kode },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        aksi: "NAIK_TAHAP_OTOMATIS",
+        entitas: "Pendaftaran",
+        entitasId: pendaftaranId,
+        detail: `${sekarang} → ${berikut.kode} (otomatis, tahap ${berikut.nomor})`,
+      },
+    });
+
+    sekarang = berikut.kode;
+    nomorSekarang = berikut.nomor;
+  }
+
+  return sekarang;
+}

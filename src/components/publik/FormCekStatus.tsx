@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 
+import { AlurStatus } from "@/components/dashboard/AlurStatus";
 import {
   cekStatusPendaftaran,
   type HasilCekStatus,
@@ -100,6 +101,10 @@ export function FormCekStatus() {
               </div>
             )}
           </dl>
+
+          <div className="mt-5">
+            <AlurStatus status={hasil.status} />
+          </div>
 
           <p className="mt-5 rounded-xl bg-paper-2 px-4 py-3 text-xs leading-relaxed text-ink-soft">
             Halaman ini hanya menampilkan status administratif. Hasil asesmen

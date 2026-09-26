@@ -424,3 +424,291 @@ Kolom database baru:
   dengan psikolog menghasilkan `TR-2026-00005` dengan `psikolog` terisi benar.
 - Foto psikolog tersedia (HTTP 200) dan tampil sebagai `<img>` di `/tim`.
 - Data uji dibersihkan; database berisi 5 psikolog, 4 layanan, 0 pendaftaran.
+
+---
+
+## Revisi Ketiga: Perbaikan Integrasi Google (Kuota Service Account)
+
+### 28. Temuan: Service Account Tidak Bisa Menulis
+
+Diagnosa langsung terhadap kredensial service account milik klien:
+
+```
+[1] AUTH                    : OK
+[2] BACA folder             : OK (folder "Data Klien" & folder psikolog)
+[3] BUAT spreadsheet        : 403 storageQuotaExceeded
+[4] BUAT di folder          : 403 storageQuotaExceeded
+[5] UNGGAH berkas           : 403 "Service Accounts do not have storage quota.
+                                   Leverage shared drives, or use OAuth delegation instead."
+[6] Jenis folder            : MY DRIVE (akun biasa)
+```
+
+Penyebab: Google memberi service account **kuota penyimpanan 0 byte**. Ia hanya
+bisa membaca folder yang dibagikan, tetapi tidak dapat membuat folder, berkas,
+maupun spreadsheet. Jadi error tersebut bukan disebabkan oleh kode aplikasi.
+
+### 29. Solusi: Mode OAuth Akun Biro
+
+`src/lib/gdrive.ts` kini mendukung dua mode koneksi dan memilih otomatis:
+
+| Mode | Variabel | Dapat menulis? |
+| --- | --- | --- |
+| **OAuth akun biro** (dipakai) | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN` | ✅ Ya |
+| Service account (cadangan) | `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY` | ❌ Tidak (baca saja) |
+
+Keuntungan mode OAuth: berkas dibuat atas nama akun biro sendiri, sehingga
+**folder tidak perlu dibagikan** ke akun lain dan kuota yang terpakai adalah
+kuota akun biro (15 GB gratis).
+
+Fungsi baru `statusGoogle()` melaporkan mode aktif beserta penjelasan, dan
+halaman **Pengaturan Situs** menampilkan peringatan merah bila masih memakai
+service account.
+
+### 30. Skrip Otorisasi Sekali Jalan
+
+`scripts/oauth-consent.ts` (dijalankan via `npm run google:consent`):
+
+1. Membaca `GOOGLE_OAUTH_CLIENT_ID` & `GOOGLE_OAUTH_CLIENT_SECRET` dari `.env`.
+2. Menjalankan server lokal `http://localhost:4567/oauth2callback`.
+3. Membuka browser ke halaman izin Google.
+4. Menukar kode otorisasi menjadi token.
+5. **Menyimpan refresh token ke `.env` secara otomatis**.
+
+Skrip ini tidak dihapus karena merupakan alat setup permanen.
+
+### 31. Verifikasi
+
+`tsc` ✅ · `eslint` ✅ · `next build` ✅ · `statusGoogle()` melaporkan mode
+`service-account` dengan penjelasan yang benar.
+
+---
+
+## Revisi Keempat: Mode Service Account Terbatas + Spreadsheet Manual
+
+### 32. Akar Masalah
+
+Google memberi service account kuota penyimpanan **0 byte**. Diagnosa membuktikan:
+
+- Membaca folder yang dibagikan → berhasil.
+- Membuat folder/berkas/spreadsheet → selalu `403 storageQuotaExceeded`.
+- Pesan resmi Google: *"Service Accounts do not have storage quota. Leverage
+  shared drives, or use OAuth delegation instead."*
+
+### 33. Solusi yang Dipakai
+
+Karena menambah baris ke spreadsheet yang **sudah ada** tidak memerlukan kuota
+penyimpanan, arsitektur diubah:
+
+| Operasi | Mode service account | Mode OAuth |
+| --- | --- | --- |
+| Menambah baris ke spreadsheet | ✅ (spreadsheet dibuat manual lalu di-share) | ✅ |
+| Membuat folder/berkas/spreadsheet | ❌ | ✅ |
+| Tautan pintas folder | ❌ | ✅ |
+
+Admin membuat spreadsheet manual (5 spreadsheet psikolog + 1 master), membagikan
+ke email service account sebagai **Editor**, lalu menempelkan tautannya:
+
+- Spreadsheet master → halaman **Pengaturan Situs** / panel *Arsip Digital
+  Keseluruhan* di `/dashboard/psikolog`.
+- Spreadsheet per psikolog → kolom *Tautan spreadsheet arsip psikolog* pada
+  kartu masing-masing psikolog.
+
+Aplikasi menyimpan `spreadsheetId` hasil penguraian tautan, lalu otomatis
+menambah baris setiap ada pendaftaran baru.
+
+### 34. Penyesuaian Teknis
+
+- `src/lib/gsheets.ts` kini **mendeteksi nama sheet** yang tersedia (memakai
+  sheet bernama `Pendaftaran` bila ada, jika tidak memakai sheet pertama) dan
+  **menulis baris judul otomatis** bila baris pertama masih kosong. Ini penting
+  karena spreadsheet buatan manual umumnya bernama `Sheet1`.
+- `src/lib/gdrive.ts`: fungsi baru `modeGoogle()`, `bisaMembuatBerkas()`,
+  `idSpreadsheetDariTautan()`; `driveAktif()` kini benar untuk kedua mode;
+  `statusGoogle()` menjelaskan batasan tiap mode.
+- `src/lib/drive-arsip.ts`: pemisahan `buatSpreadsheet*` (khusus OAuth) dan
+  `spreadsheet*` (baca tautan dari database); `folderPendaftaran()` memakai
+  folder psikolog yang ada saat mode service account; fungsi `ujiSpreadsheet()`
+  untuk menulis baris uji.
+- Aksi baru: `simpanSpreadsheetKlien`, `ujiSpreadsheetPsikolog`,
+  `ujiSpreadsheetKlien`. Tombol *Uji tulis baris* memudahkan verifikasi.
+- `scripts/oauth-consent.ts` + `npm run google:consent` tetap disediakan sebagai
+  jalur opsional menuju mode OAuth penuh.
+
+### 35. Verifikasi
+
+`tsc` ✅ · `eslint` ✅ · `next build` ✅ · `statusGoogle()` melaporkan mode
+`service-account` beserta batasannya.
+
+---
+
+## Revisi Kelima: Pemformatan Tabel Spreadsheet
+
+### 36. Format Tabel Otomatis
+
+Sesuai permintaan klien, spreadsheet arsip kini otomatis dirapikan agar nyaman
+dilihat. Fungsi baru `rapikanSpreadsheet()` di `src/lib/gsheets.ts` menerapkan:
+
+| Elemen | Perlakuan |
+| --- | --- |
+| Baris judul | Dibekukan (freeze) + tinggi 42 px |
+| Header | Bold, font 10, latar terracotta `#945034`, teks putih, rata tengah, wrap |
+| Garis header | Garis bawah tebal `#763F2A` |
+| Lebar kolom | Disesuaikan per kolom (135–260 px) |
+| Kolom tengah | Tanggal Lahir, Jenis Kelamin, Metode, Status |
+| Kolom wrap | Kebutuhan, Folder Drive (rata atas) |
+| Kolom teks | Telepon diformat `TEXT` agar `08…` tidak berubah menjadi angka |
+| Warna baris | Selang-seling putih `#FFFFFF` dan krem `#FBF7F1` (banding) |
+| Filter | Filter otomatis pada baris judul |
+
+Lebar kolom: 135, 145, 185, 205, 120, 110, 105, 165, 205, 185, 95, 135, 260, 235 px.
+
+### 37. Deteksi Sheet & Header Otomatis
+
+Spreadsheet buatan manual umumnya bernama `Sheet1`, bukan `Pendaftaran`.
+`judulSheetTujuan()` mencari sheet bernama `Pendaftaran` terlebih dahulu; bila
+tidak ada, memakai sheet pertama. `pastikanHeader()` menulis baris judul 14
+kolom bila baris pertama masih kosong, lalu **langsung merapikan tabel**.
+
+### 38. Tombol di Dashboard
+
+- **Rapikan semua tabel** (panel Arsip Digital) — merapikan 5 spreadsheet
+  psikolog + master sekaligus.
+- **Rapikan tabel** per psikolog dan pada panel master.
+- **Uji tulis baris** untuk memverifikasi koneksi tulis.
+
+### 39. Hasil Uji Nyata
+
+Diuji langsung terhadap 6 spreadsheet milik klien:
+
+- `rapikanSemuaSpreadsheet()` → **6/6 berhasil**, 0 gagal.
+- Verifikasi metadata: freeze baris = 1, banding = 1 blok, header bold,
+  warna header `rgb(148,80,52)`, lebar kolom 14 kolom sesuai rencana.
+- Uji tulis end-to-end: pendaftaran uji menghasilkan satu baris lengkap di
+  spreadsheet psikolog **dan** master, dengan telepon tetap `081200007777`.
+- Baris uji dibersihkan kembali sehingga spreadsheet hanya berisi baris judul.
+
+`tsc` ✅ · `eslint` ✅ · `next build` ✅
+
+---
+
+## Revisi Keenam: Link Arsip di Halaman Kasus Psikolog
+
+### 40. Kartu "Arsip Digital Saya"
+
+Pada halaman **Kasus Saya** (`/dashboard/kasus`) ditambahkan kartu di bagian atas
+berisi tautan arsip milik psikolog yang sedang login:
+
+- **Buka spreadsheet arsip ↗** — menuju `ProfilPsikolog.spreadsheetUrl`.
+- **Buka folder Drive ↗** — menuju `ProfilPsikolog.driveFolderUrl` (bila ada).
+- Bila spreadsheet belum diatur, ditampilkan label "Spreadsheet belum diatur".
+
+Data diambil dari `ProfilPsikolog` milik `sesi.userId` (query paralel dengan
+daftar kasus). Karena tautan berasal dari profil sendiri, **psikolog hanya
+melihat arsipnya sendiri** — tidak ada tautan ke arsip psikolog lain.
+
+### 41. Verifikasi
+
+Diuji dengan token dua psikolog berbeda (Anugrah & Nadia):
+
+- status 200 untuk keduanya,
+- kartu "Arsip Digital Saya" tampil,
+- kedua tombol tautan tampil,
+- URL spreadsheet di HTML sama dengan nilai di database.
+
+`tsc` ✅ · `eslint` ✅ · `next build` ✅
+
+---
+
+## Revisi Ketujuh: Alur 8 Tahap Benar-benar Terhubung
+
+### 42. Masalah yang Ditemukan
+
+Kasus uji `TR-2026-00001` berstatus **SELESAI** padahal belum ada pembayaran,
+jadwal, maupun lembar tes. Penyebabnya: psikolog dapat langsung menekan
+"Finalkan laporan" tanpa syarat apa pun, dan `majuOtomatis()` bisa **melompat**
+langsung ke tahap mana pun (mis. BARU → SELESAI).
+
+### 43. Alur 8 Tahap Dijadikan Sumber Kebenaran
+
+Modul baru `src/lib/alur.ts` (murni, tanpa database) memuat definisi resmi 8
+tahap beserta penanggung jawabnya:
+
+| # | Tahap | Aktor |
+| --- | --- | --- |
+| 1 | Pendaftaran Baru | Klien |
+| 2 | Skrining Kebutuhan | Admin |
+| 3 | Menunggu Pembayaran | Klien & Admin |
+| 4 | Terverifikasi | Admin |
+| 5 | Terjadwal | Admin |
+| 6 | Pelaksanaan | Asisten Psikolog |
+| 7 | Pengolahan Data | Asisten & Psikolog |
+| 8 | Selesai | Psikolog |
+
+### 44. Syarat Setiap Tahap Ditegakkan
+
+`src/lib/alur-otomatis.ts` menambahkan:
+
+- `cekSyaratTahap()` — memeriksa kelengkapan sebelum sebuah tahap dicapai:
+  - Tahap 3 butuh minimal satu tagihan pembayaran.
+  - Tahap 4 butuh pembayaran berstatus TERVERIFIKASI.
+  - Tahap 5 butuh minimal satu jadwal sesi.
+  - Tahap 6 butuh minimal satu lembar tes.
+  - Tahap 7 butuh **seluruh** lembar tes memiliki skor mentah.
+  - Tahap 8 butuh laporan berstatus FINAL.
+- `syaratFinalkan()` — syarat khusus finalisasi laporan.
+- `majuOtomatis()` — **diperbaiki**: kini naik satu tahap demi satu dan
+  memeriksa syarat setiap tahap, sehingga kasus tidak dapat melompat.
+
+### 45. Kenaikan Tahap Otomatis dari Tindakan Nyata
+
+| Tindakan | Tahap yang dicapai |
+| --- | --- |
+| Admin catat tagihan | 3 — Menunggu Pembayaran |
+| Admin verifikasi pembayaran | 4 — Terverifikasi |
+| Admin buat jadwal | 5 — Terjadwal |
+| Asisten tambah lembar tes | 6 — Pelaksanaan |
+| Asisten simpan skor (semua lembar lengkap) | 7 — Pengolahan Data |
+| Psikolog simpan draft laporan | 7 — Pengolahan Data |
+| Psikolog finalkan laporan | 8 — Selesai |
+
+### 46. Tampilan Alur di Semua Halaman
+
+Komponen baru `AlurStatus` menampilkan penanda 8 tahap (centang untuk tahap
+lewat, sorot untuk tahap aktif, judul + deskripsi + penanggung jawab).
+`PanelTahap` menampilkan tahap berikutnya, syarat yang belum lengkap, tombol
+"Selesaikan tahap ini", serta bagian Koreksi (kembalikan tahap / batalkan).
+
+Dipasang di:
+
+- `/dashboard/pendaftaran/[id]` (admin)
+- `/dashboard/asesmen/[id]` (asisten, stepper ringkas)
+- `/dashboard/kasus/[id]` (psikolog, stepper ringkas)
+- `/cek-status` (publik, memakai data `TAHAP` yang sama)
+
+Dropdown "Ubah Status" yang bebas diganti tombol bertahap yang tervalidasi.
+Form laporan menjadi komponen klien `FormLaporan` yang menampilkan pesan galat
+dan **menonaktifkan tombol Finalkan** bila syarat belum lengkap.
+
+### 47. Hasil Uji
+
+Skrip uji alur (27 skenario) — **27/27 lulus**:
+
+- Semua syarat tahap terkunci saat belum lengkap (6 pemeriksaan).
+- Finalisasi ditolak tanpa lembar tes dan tanpa skor.
+- **Tidak bisa melompat**: permintaan maju ke SELESAI dari BARU berhenti di
+  SKRINING karena tagihan belum ada.
+- Alur penuh 8 tahap berjalan berurutan dengan status benar di setiap tahap.
+
+Uji tampilan (4 halaman) — semua penanda muncul:
+
+```
+200 admin detail pendaftaran | Alur Layanan | Tahap Berikutnya | Sedang di sini | Selesaikan tahap ini | Koreksi
+200 asisten detail asesmen   | Alur Layanan | Tahap Berikutnya | dijalankan oleh
+200 psikolog detail kasus    | Alur Layanan | Laporan Hasil | Belum bisa difinalkan | Finalkan laporan
+200 publik cek-status        | Pendaftaran Baru | Penanggung jawab
+```
+
+Kasus uji `TR-2026-00001` direset ke **Pendaftaran Baru** agar dapat dicoba
+ulang dari tahap 1.
+
+`tsc` ✅ · `eslint` ✅ · `next build` ✅

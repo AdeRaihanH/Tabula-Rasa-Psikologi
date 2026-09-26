@@ -33,9 +33,18 @@ di atas dan nama di bawahnya, serta tombol *Daftar dengan psikolog ini*.
   berisi ringkasan pendaftaran, plus tautan pintas di folder *Data Keseluruhan Klien*.
 - Baris pendaftaran otomatis tercatat di spreadsheet arsip psikolog **dan**
   spreadsheet master seluruh klien.
-- Unggah bukti pembayaran dan dokumen kasus langsung dari dashboard.
+- Tabel spreadsheet **otomatis dirapikan**: header terwarnai, baris judul
+  dibekukan, lebar kolom disesuaikan, warna baris selang-seling, filter aktif,
+  dan kolom telepon diformat teks agar angka `0` di depan tidak hilang.
+- Tombol **Rapikan semua tabel** tersedia di `/dashboard/psikolog`.
 - Bila kredensial Drive belum diisi, seluruh fitur Google nonaktif dan aplikasi
   tetap berjalan normal (pendaftaran tetap tersimpan).
+
+> **Penting:** service account Google **tidak punya kuota penyimpanan**, jadi
+> ia tidak bisa membuat folder/berkas/spreadsheet baru. Karena itu spreadsheet
+> dibuat manual lalu di-*share* sebagai **Editor** ke email service account;
+> aplikasi hanya menambah baris ke spreadsheet tersebut. Untuk pembuatan
+> otomatis penuh, gunakan mode OAuth (`npm run google:consent`).
 
 **Portal internal** (login email + kata sandi, sesi JWT httpOnly 8 jam)
 
@@ -48,9 +57,22 @@ di atas dan nama di bawahnya, serta tombol *Daftar dengan psikolog ini*.
 Semua peran memiliki halaman **Profil Saya** untuk memperbarui data diri dan
 kata sandi. Psikolog juga mengelola profil publiknya.
 
-Alur pendaftaran mengikuti 8 tahap: pendaftaran → skrining → persetujuan &
-pembayaran → penjadwalan → pelaksanaan → pengolahan data → penyerahan hasil →
-evaluasi & pengarsipan.
+Alur pendaftaran mengikuti 8 tahap yang **ditegakkan sistem** — status tidak
+dapat melompat dan setiap tahap punya syarat serta penanggung jawab:
+
+| # | Tahap | Aktor | Syarat untuk dicapai |
+| --- | --- | --- | --- |
+| 1 | Pendaftaran Baru | Klien | — |
+| 2 | Skrining Kebutuhan | Admin | — |
+| 3 | Menunggu Pembayaran | Klien & Admin | Ada tagihan pembayaran |
+| 4 | Terverifikasi | Admin | Pembayaran diverifikasi |
+| 5 | Terjadwal | Admin | Ada jadwal sesi |
+| 6 | Pelaksanaan | Asisten Psikolog | Ada lembar tes |
+| 7 | Pengolahan Data | Asisten & Psikolog | Semua lembar tes punya skor |
+| 8 | Selesai | Psikolog | Laporan berstatus FINAL |
+
+Penanda tahap tampil di halaman detail pendaftaran (admin), detail asesmen
+(asisten), detail kasus (psikolog), dan halaman publik **Cek Status**.
 
 ## Isolasi data
 

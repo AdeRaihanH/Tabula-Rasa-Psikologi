@@ -9,7 +9,6 @@ import {
   ringkasKategori,
   siteConfig,
 } from "@/lib/config";
-import { formatRupiah } from "@/lib/utils";
 
 export const revalidate = 300;
 

@@ -33,6 +33,11 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# kredensial Google service account (JANGAN pernah di-commit)
+service-account*.json
+google-credentials*.json
+*-credentials.json
+
 # vercel
 .vercel
 

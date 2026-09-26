@@ -6,7 +6,8 @@ import {
   BadgeZona,
   JudulHalaman,
 } from "@/components/dashboard/ui";
-import { simpanLaporan } from "@/app/actions/laporan";
+import { AlurStatus } from "@/components/dashboard/AlurStatus";
+import { FormLaporan } from "@/components/dashboard/FormLaporan";
 import { wajibPeran } from "@/lib/auth/dal";
 import { labelStatusPendaftaran } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
@@ -61,6 +62,10 @@ export default async function DetailKasus({
           </div>
         }
       />
+
+      <div className="mb-6">
+        <AlurStatus status={p.status} ringkas />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.5fr]">
         <div className="space-y-6">
@@ -157,7 +162,7 @@ export default async function DetailKasus({
         <section className="kartu p-6">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-sm font-bold uppercase tracking-[0.08em] text-ink-soft">
-              Laporan Hasil & Interpretasi
+              Laporan Hasil &amp; Interpretasi
             </h2>
             {l && <BadgeStatus status={l.status} label={l.status} />}
           </div>
@@ -168,79 +173,19 @@ export default async function DetailKasus({
             </p>
           )}
 
-          <form action={simpanLaporan} className="mt-5 space-y-4">
-            <input type="hidden" name="pendaftaranId" value={p.id} />
-
-            <div>
-              <label className="label" htmlFor="ringkasan">
-                Ringkasan hasil
-              </label>
-              <textarea
-                id="ringkasan"
-                name="ringkasan"
-                rows={3}
-                className="input"
-                defaultValue={l?.ringkasan ?? ""}
-                placeholder="Gambaran umum hasil asesmen."
-              />
-            </div>
-
-            <div>
-              <label className="label" htmlFor="interpretasi">
-                Interpretasi psikologis
-              </label>
-              <textarea
-                id="interpretasi"
-                name="interpretasi"
-                rows={6}
-                className="input"
-                defaultValue={l?.interpretasi ?? ""}
-                placeholder="Analisis dan interpretasi berdasarkan skor mentah serta observasi."
-              />
-            </div>
-
-            <div>
-              <label className="label" htmlFor="kesimpulan">
-                Kesimpulan
-              </label>
-              <textarea
-                id="kesimpulan"
-                name="kesimpulan"
-                rows={3}
-                className="input"
-                defaultValue={l?.kesimpulan ?? ""}
-                placeholder="Kesimpulan akhir asesmen."
-              />
-            </div>
-
-            <div>
-              <label className="label" htmlFor="rekomendasi">
-                Rekomendasi
-              </label>
-              <textarea
-                id="rekomendasi"
-                name="rekomendasi"
-                rows={4}
-                className="input"
-                defaultValue={l?.rekomendasi ?? ""}
-                placeholder="Saran tindak lanjut untuk klien atau institusi."
-              />
-            </div>
-
-            <div className="flex flex-wrap gap-3 border-t border-line pt-4">
-              <button name="finalkan" value="0" className="tombol tombol-garis flex-1">
-                Simpan sebagai draft
-              </button>
-              <button name="finalkan" value="1" className="tombol tombol-utama flex-1">
-                Finalkan laporan
-              </button>
-            </div>
-            <p className="text-[0.68rem] leading-relaxed text-muted">
-              Finalisasi akan menandai kasus sebagai selesai dan mencatat
-              tindakan pada log audit. Hanya Anda, psikolog penanggung jawab,
-              yang dapat membuka dan mengubah laporan ini.
-            </p>
-          </form>
+          <FormLaporan
+            pendaftaranId={p.id}
+            jumlahLembar={p.lembarTes.length}
+            jumlahLembarTanpaSkor={
+              p.lembarTes.filter((t) => t.skor.length === 0).length
+            }
+            awal={{
+              ringkasan: l?.ringkasan ?? "",
+              interpretasi: l?.interpretasi ?? "",
+              kesimpulan: l?.kesimpulan ?? "",
+              rekomendasi: l?.rekomendasi ?? "",
+            }}
+          />
         </section>
       </div>
     </>

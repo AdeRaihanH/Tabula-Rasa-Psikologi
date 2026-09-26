@@ -7,7 +7,10 @@ import {
   JudulHalaman,
 } from "@/components/dashboard/ui";
 import { simpanSkor, tambahLembarTes, ubahStatusLembarTes } from "@/app/actions/asesmen";
+import { cekSyaratTahap } from "@/app/actions/alur";
+import { PanelTahap } from "@/components/dashboard/PanelTahap";
 import { wajibKemampuan } from "@/lib/auth/dal";
+import { tahapBerikutnya, tahapSebelumnya } from "@/lib/alur";
 import { boleh } from "@/lib/rbac";
 import { labelStatusPendaftaran } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
@@ -46,6 +49,12 @@ export default async function DetailAsesmen({
     orderBy: { nama: "asc" },
   });
 
+  const tahapBerikut = tahapBerikutnya(p.status);
+  const syarat = tahapBerikut
+    ? await cekSyaratTahap(p.id, tahapBerikut.kode)
+    : { ok: true, pesan: "" };
+  const tahapSebelum = tahapSebelumnya(p.status);
+
   return (
     <>
       <div className="mb-5">
@@ -64,6 +73,34 @@ export default async function DetailAsesmen({
           </div>
         }
       />
+
+      <div className="mb-6">
+        <PanelTahap
+          pendaftaranId={p.id}
+          status={p.status}
+          berikut={
+            tahapBerikut
+              ? {
+                  nomor: tahapBerikut.nomor,
+                  judul: tahapBerikut.judul,
+                  aktor: tahapBerikut.aktor,
+                }
+              : null
+          }
+          syarat={syarat}
+          sebelum={
+            tahapSebelum
+              ? { nomor: tahapSebelum.nomor, judul: tahapSebelum.judul }
+              : null
+          }
+          bolehNaik={
+            Boolean(tahapBerikut) &&
+            (tahapBerikut!.peran as readonly string[]).includes(sesi.role)
+          }
+          bolehBatalkan={false}
+          stepperRingkas
+        />
+      </div>
 
       {/* Jadwal */}
       {p.jadwal.length > 0 && (

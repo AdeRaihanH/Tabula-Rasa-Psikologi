@@ -2,23 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { FormCekStatus } from "@/components/publik/FormCekStatus";
+import { TAHAP } from "@/lib/alur";
 
 export const metadata: Metadata = {
   title: "Cek Status Pendaftaran",
   description:
     "Periksa status pendaftaran layanan menggunakan nomor pendaftaran dan email terdaftar.",
 };
-
-const langkah = [
-  ["Pendaftaran Baru", "Formulir Anda sudah masuk dan menunggu diperiksa admin."],
-  ["Skrining Kebutuhan", "Admin sedang memverifikasi kebutuhan Anda."],
-  ["Menunggu Pembayaran", "Tagihan sudah diterbitkan, menunggu pembayaran dan verifikasi."],
-  ["Terverifikasi", "Pembayaran sah. Menunggu penjadwalan sesi."],
-  ["Terjadwal", "Sesi sudah dijadwalkan bersama psikolog."],
-  ["Pelaksanaan", "Sesi atau asesmen sedang berlangsung."],
-  ["Pengolahan Data", "Hasil sedang diolah dan disusun laporannya."],
-  ["Selesai", "Laporan sudah diserahkan. Kasus memasuki tahap pengarsipan."],
-];
 
 export default function HalamanCekStatus() {
   return (
@@ -45,15 +35,18 @@ export default function HalamanCekStatus() {
               Arti setiap status
             </h2>
             <ol className="mt-4 space-y-3">
-              {langkah.map(([judul, isi], i) => (
-                <li key={judul} className="flex gap-3">
+              {TAHAP.map((t) => (
+                <li key={t.kode} className="flex gap-3">
                   <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-100 text-[0.7rem] font-bold text-brand-700">
-                    {i + 1}
+                    {t.nomor}
                   </span>
                   <div>
-                    <p className="text-sm font-semibold text-ink">{judul}</p>
+                    <p className="text-sm font-semibold text-ink">{t.judul}</p>
                     <p className="mt-0.5 text-xs leading-relaxed text-ink-soft">
-                      {isi}
+                      {t.isi}
+                    </p>
+                    <p className="mt-0.5 text-[0.68rem] text-muted">
+                      Penanggung jawab: {t.aktor}
                     </p>
                   </div>
                 </li>
