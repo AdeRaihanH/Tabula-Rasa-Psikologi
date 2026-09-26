@@ -62,43 +62,18 @@ export const labelRole: Record<string, string> = {
 export const alurLayanan = [
   {
     nomor: "01",
-    judul: "Pendaftaran & Registrasi",
-    isi: "Klien atau perusahaan mengisi formulir pendaftaran daring. Data masuk ke Zona 1 (administratif).",
+    judul: "Pendaftaran dan pembayaran",
+    isi: "Isi data diri dan selesaikan pembayaran untuk konfirmasi pendaftaran.",
   },
   {
     nomor: "02",
-    judul: "Skrining Kebutuhan",
-    isi: "Admin memverifikasi kebutuhan, termasuk proposal pengajuan dari perusahaan atau institusi.",
+    judul: "Pelaksanaan tes",
+    isi: "Sesi asesmen atau tes psikologi dilaksanakan sesuai jadwal yang dipilih.",
   },
   {
     nomor: "03",
-    judul: "Persetujuan & Pembayaran",
-    isi: "Penandatanganan informed consent dan kesepakatan (MOU), lalu pembayaran diverifikasi admin.",
-  },
-  {
-    nomor: "04",
-    judul: "Penjadwalan",
-    isi: "Sesi dijadwalkan bersama psikolog yang sesuai dengan kebutuhan klien.",
-  },
-  {
-    nomor: "05",
-    judul: "Pelaksanaan",
-    isi: "Asesmen berlangsung. Asisten psikolog mengelola lembar tes dan skor mentah (Zona 2).",
-  },
-  {
-    nomor: "06",
-    judul: "Pengolahan Data",
-    isi: "Skor mentah diolah, lalu psikolog menyusun interpretasi pada Zona 3 yang terisolasi.",
-  },
-  {
-    nomor: "07",
-    judul: "Penyerahan Hasil & Feedback",
-    isi: "Laporan final diserahkan kepada klien melalui tautan arsip digital, disertai sesi umpan balik.",
-  },
-  {
-    nomor: "08",
-    judul: "Evaluasi & Pengarsipan",
-    isi: "Evaluasi layanan, lalu data diarsipkan dengan klasifikasi kerahasiaan dan masa retensi.",
+    judul: "Hasil tes",
+    isi: "Laporan hasil tes diserahkan beserta sesi konsultasi umpan balik.",
   },
 ] as const;
 

@@ -65,10 +65,9 @@ export default async function HalamanDaftar({
             </h2>
             <ol className="mt-4 space-y-4">
               {[
-                ["Skrining kebutuhan", "Admin memverifikasi kebutuhan Anda, termasuk proposal institusi bila ada."],
-                ["Persetujuan & pembayaran", "Informed consent dan kesepakatan, lalu pembayaran diverifikasi admin."],
-                ["Penjadwalan", "Sesi dijadwalkan bersama psikolog yang Anda pilih."],
-                ["Pelaksanaan & hasil", "Asesmen berjalan, lalu laporan diserahkan beserta umpan balik."],
+                ["Pendaftaran dan pembayaran", "Isi data diri dan selesaikan pembayaran untuk konfirmasi pendaftaran."],
+                ["Pelaksanaan tes", "Sesi asesmen atau tes psikologi dilaksanakan sesuai jadwal yang dipilih."],
+                ["Hasil tes", "Laporan hasil tes diserahkan beserta sesi konsultasi umpan balik."],
               ].map(([judul, isi], i) => (
                 <li key={judul} className="flex gap-3">
                   <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-100 text-[0.7rem] font-bold text-brand-700">

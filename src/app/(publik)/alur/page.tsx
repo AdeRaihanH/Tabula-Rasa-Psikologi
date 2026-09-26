@@ -6,7 +6,7 @@ import { alurLayanan } from "@/lib/config";
 export const metadata: Metadata = {
   title: "Alur Layanan",
   description:
-    "Delapan tahap layanan: pendaftaran, skrining, persetujuan, penjadwalan, pelaksanaan, pengolahan data, penyerahan hasil, evaluasi, dan pengarsipan.",
+    "Tiga tahap layanan utama: pendaftaran dan pembayaran, pelaksanaan tes, serta hasil tes.",
 };
 
 const catatan = [
@@ -35,11 +35,10 @@ export default function HalamanAlur() {
         <div className="wadah py-14 lg:py-16">
           <span className="label-kecil">Alur Pendaftaran & Layanan</span>
           <h1 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight text-ink sm:text-4xl lg:text-5xl">
-            Proses yang terstruktur, dari pendaftaran hingga pengarsipan
+            Proses layanan praktis dalam tiga langkah
           </h1>
           <p className="mt-5 max-w-2xl text-ink-soft">
-            Setiap tahap memiliki penanggung jawab yang jelas,
-            sehingga privasi Anda selalu terjaga.
+            Proses yang cepat, ringkas, dan jelas dari awal hingga Anda menerima laporan.
           </p>
         </div>
       </section>

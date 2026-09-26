@@ -167,7 +167,7 @@ export default async function HalamanLayanan() {
                             </div>
                           </div>
                           <span className="w-full rounded-lg bg-brand-700 px-3 py-2 text-center font-semibold text-white transition hover:bg-brand-800">
-                            Daftar Sekarang
+                            Detail Layanan
                           </span>
                         </div>
                       </div>

@@ -120,12 +120,10 @@ export async function kirimPendaftaran(
         metode: metode === "ONLINE" ? "ONLINE" : "OFFLINE",
         kebutuhan: (() => {
           let keb = bersih(formData.get("kebutuhan")) ?? "";
-          if (metode !== "ONLINE") {
-            const tgl = bersih(formData.get("tanggalPertemuan"));
-            const wkt = bersih(formData.get("waktuPertemuan"));
-            if (tgl || wkt) {
-              keb += `\n\n[Preferensi Jadwal]\nTanggal: ${tgl || "-"}\nWaktu: ${wkt || "-"}`;
-            }
+          const tgl = bersih(formData.get("tanggalPertemuan"));
+          const wkt = bersih(formData.get("waktuPertemuan"));
+          if (tgl || wkt) {
+            keb += `\n\n[Preferensi Jadwal]\nTanggal: ${tgl || "-"}\nWaktu: ${wkt || "-"}`;
           }
           return keb.trim() || null;
         })(),
