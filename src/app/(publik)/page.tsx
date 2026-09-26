@@ -92,15 +92,6 @@ export default async function Beranda() {
         <div className="wadah relative py-20 lg:py-28">
           <div className="animasi-naik mx-auto max-w-3xl text-center flex flex-col items-center">
             
-            {/* Logo */}
-            <Image 
-              src="/logo-tabula-rasa.jpg" 
-              alt="Logo Tabula Rasa" 
-              width={180} 
-              height={120} 
-              className="mb-8 mix-blend-multiply" 
-              priority
-            />
 
             {/* Badge baris */}
             <div className="flex flex-wrap items-center justify-center gap-2">

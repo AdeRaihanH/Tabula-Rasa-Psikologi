@@ -7,7 +7,7 @@ function IkonLogo({ terang }: { terang: boolean }) {
   const c = terang ? "#ffffff" : "#22612a"; // warna garis
   const c2 = terang ? "rgba(255,255,255,0.55)" : "#5da464"; // aksen
   return (
-    <svg width="26" height="26" viewBox="0 0 40 40" fill="none" aria-hidden>
+    <svg width="34" height="34" viewBox="0 0 40 40" fill="none" aria-hidden>
       {/* Leaf kiri */}
       <path
         d="M20 36 C10 30 5 22 7 13 C9 6 14 4 20 4"
@@ -59,17 +59,7 @@ export function Logo({
 }) {
   return (
     <Link href="/" className="group flex items-center gap-3">
-      <span
-        className="grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-all duration-200 group-hover:scale-105"
-        style={{
-          background: terang
-            ? "rgba(255,255,255,0.15)"
-            : "var(--color-brand-700)",
-          boxShadow: terang
-            ? "0 1px 8px rgba(0,0,0,0.18)"
-            : "0 2px 8px rgba(34,97,42,0.25)",
-        }}
-      >
+      <span className="shrink-0 transition-transform duration-200 group-hover:scale-105">
         <IkonLogo terang={terang} />
       </span>
       <span className="flex flex-col leading-none">
