@@ -32,7 +32,7 @@ export const ambilPsikologPublik = cache(async () => {
     return await prisma.profilPsikolog.findMany({
       where: { publik: true, user: { aktif: true } },
       include: {
-        user: { select: { nama: true, fotoUrl: true } },
+        user: { select: { nama: true } },
       },
       orderBy: { pengalaman: "desc" },
     });

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useActionState } from "react";
 
@@ -17,6 +18,13 @@ type LayananRingkas = {
   metode: string[];
 };
 
+type PsikologRingkas = {
+  id: string;
+  nama: string;
+  spesialisasi: string;
+  fotoUrl: string | null;
+};
+
 function Galat({ pesan }: { pesan?: string }) {
   if (!pesan) return null;
   return <p className="mt-1 text-xs font-medium text-red-600">{pesan}</p>;
@@ -24,10 +32,14 @@ function Galat({ pesan }: { pesan?: string }) {
 
 export function FormPendaftaran({
   layanan,
+  psikolog,
   slugAwal,
+  psikologAwal,
 }: {
   layanan: LayananRingkas[];
+  psikolog: PsikologRingkas[];
   slugAwal?: string;
+  psikologAwal?: string;
 }) {
   const [hasil, aksi, pending] = useActionState<HasilPendaftaran | undefined, FormData>(
     kirimPendaftaran,
@@ -226,6 +238,64 @@ export function FormPendaftaran({
             />
           </div>
         </div>
+      </section>
+
+      {/* Pilih psikolog */}
+      <section className="kartu p-6">
+        <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-ink-soft">
+          Pilih Psikolog *
+        </h2>
+        <p className="mt-2 text-xs text-muted">
+          Pilih psikolog yang akan menangani Anda. Hasil asesmen akan diarsipkan
+          pada folder psikolog yang dipilih dan hanya dapat diakses olehnya.
+        </p>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          {psikolog.map((p) => (
+            <label
+              key={p.id}
+              className={cn(
+                "group flex cursor-pointer items-center gap-4 rounded-2xl border border-line bg-white p-4 transition-colors",
+                "has-checked:border-brand-400 has-checked:bg-brand-50/50",
+              )}
+            >
+              <input
+                type="radio"
+                name="psikologId"
+                value={p.id}
+                defaultChecked={psikologAwal === p.id}
+                className="sr-only"
+                required
+              />
+              <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full ring-2 ring-line transition-shadow group-has-checked:ring-brand-400">
+                {p.fotoUrl ? (
+                  <Image
+                    src={p.fotoUrl}
+                    alt={p.nama}
+                    fill
+                    sizes="64px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <span className="grid h-full w-full place-items-center bg-brand-100 text-sm font-bold text-brand-700">
+                    {p.nama.slice(0, 1)}
+                  </span>
+                )}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-bold text-ink">{p.nama}</span>
+                <span className="block text-xs text-muted">{p.spesialisasi}</span>
+              </span>
+            </label>
+          ))}
+
+          {psikolog.length === 0 && (
+            <p className="rounded-xl bg-paper-2 px-4 py-3 text-xs text-muted sm:col-span-2">
+              Data psikolog belum tersedia. Silakan hubungi admin.
+            </p>
+          )}
+        </div>
+        <Galat pesan={galat?.psikologId} />
       </section>
 
       {/* Persetujuan */}

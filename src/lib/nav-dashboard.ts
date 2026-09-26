@@ -13,6 +13,7 @@ export const navDashboard: Record<Role, ItemNav[]> = {
     { href: "/dashboard/pendaftaran", label: "Pendaftaran", zona: "ZONA_1", ikon: "berkas" },
     { href: "/dashboard/klien", label: "Data Klien", zona: "ZONA_1", ikon: "orang" },
     { href: "/dashboard/jadwal", label: "Jadwal Sesi", zona: "ZONA_1", ikon: "kalender" },
+    { href: "/dashboard/psikolog", label: "Tim Psikolog", ikon: "orang" },
     { href: "/dashboard/layanan", label: "Katalog Layanan", ikon: "daftar" },
     { href: "/dashboard/arsip", label: "Pengarsipan", ikon: "arsip" },
     { href: "/dashboard/pengguna", label: "Pengguna & Peran", ikon: "orang" },

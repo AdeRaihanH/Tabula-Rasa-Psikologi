@@ -1,19 +1,25 @@
 import type { Metadata } from "next";
 
 import { FormPendaftaran } from "@/components/publik/FormPendaftaran";
-import { ambilLayanan } from "@/lib/data-publik";
+import { ambilLayanan, ambilPsikologPublik } from "@/lib/data-publik";
 
 export const metadata: Metadata = {
   title: "Pendaftaran",
   description:
-    "Formulir pendaftaran layanan biro psikologi untuk individu, sekolah, dan korporasi.",
+    "Formulir pendaftaran layanan biro psikologi untuk individu, sekolah, dan perusahaan.",
 };
 
 export default async function HalamanDaftar({
   searchParams,
 }: PageProps<"/daftar">) {
-  const [layanan, sp] = await Promise.all([ambilLayanan(), searchParams]);
+  const [layanan, psikolog, sp] = await Promise.all([
+    ambilLayanan(),
+    ambilPsikologPublik(),
+    searchParams,
+  ]);
   const slugAwal = typeof sp?.layanan === "string" ? sp.layanan : undefined;
+  const psikologAwal =
+    typeof sp?.psikolog === "string" ? sp.psikolog : undefined;
 
   return (
     <>
@@ -24,9 +30,9 @@ export default async function HalamanDaftar({
             Formulir Pendaftaran Layanan
           </h1>
           <p className="mt-4 max-w-2xl text-ink-soft">
-            Isi data berikut dengan lengkap. Setelah dikirim, admin akan
-            melakukan skrining kebutuhan sebelum tahap persetujuan dan
-            pembayaran.
+            Isi data berikut dengan lengkap, termasuk memilih psikolog yang
+            akan menangani Anda. Setelah dikirim, admin akan melakukan skrining
+            kebutuhan sebelum tahap persetujuan dan pembayaran.
           </p>
         </div>
       </section>
@@ -42,7 +48,14 @@ export default async function HalamanDaftar({
             durasiMenit: l.durasiMenit,
             metode: l.metode,
           }))}
+          psikolog={psikolog.map((p) => ({
+            id: p.userId,
+            nama: p.user.nama,
+            spesialisasi: p.spesialisasi,
+            fotoUrl: p.fotoUrl,
+          }))}
           slugAwal={slugAwal}
+          psikologAwal={psikologAwal}
         />
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
@@ -54,7 +67,7 @@ export default async function HalamanDaftar({
               {[
                 ["Skrining kebutuhan", "Admin memverifikasi kebutuhan Anda, termasuk proposal institusi bila ada."],
                 ["Persetujuan & pembayaran", "Informed consent dan kesepakatan, lalu pembayaran diverifikasi admin."],
-                ["Penjadwalan", "Sesi dijadwalkan bersama psikolog yang sesuai."],
+                ["Penjadwalan", "Sesi dijadwalkan bersama psikolog yang Anda pilih."],
                 ["Pelaksanaan & hasil", "Asesmen berjalan, lalu laporan diserahkan beserta umpan balik."],
               ].map(([judul, isi], i) => (
                 <li key={judul} className="flex gap-3">
@@ -77,7 +90,8 @@ export default async function HalamanDaftar({
             <p className="mt-2 text-xs leading-relaxed text-brand-800/75">
               Data diri Anda masuk ke Zona 1 dan hanya dapat diakses admin.
               Hasil asesmen disimpan terpisah di Zona 2 dan Zona 3 yang hanya
-              dapat dibuka asisten psikolog dan psikolog penanggung jawab.
+              dapat dibuka asisten psikolog dan psikolog yang Anda pilih.
+              Psikolog lain tidak dapat melihat data Anda.
             </p>
           </div>
         </aside>

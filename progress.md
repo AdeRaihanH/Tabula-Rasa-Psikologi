@@ -332,3 +332,95 @@ termasuk isolasi antar-psikolog (psikolog1 tidak dapat membuka kasus
 psikolog2, sedangkan psikolog2 dapat membuka kasusnya sendiri).
 
 Skrip uji sementara dihapus setelah verifikasi.
+
+---
+
+## Revisi Kedua: Psikolog & Arsip Google
+
+### 22. Data 5 Psikolog
+
+Katalog psikolog placeholder diganti dengan 5 psikolog sesuai data klien:
+
+| Psikolog | Spesialisasi | Folder Google Drive |
+| --- | --- | --- |
+| Anugrah Mujaddidah Kadim | Psikolog Klinis | `11IYflposUKrD6wyoWMaTKebk_oz7jTt6` |
+| Nadia Rafa Aziza | Psikolog Klinis | `15V5N-NjOe6lbouNkMCqDHl30zxccXrzp` |
+| Aprilia Anggorowati | Psikolog Pendidikan | `1sdnX6Oc98OhOB1mrevt96p1hAwWH1TkG` |
+| Anissa Salsabila | Psikolog Klinis | `1trCNA2wcUwevp_daQoqkSNzIv2yknkt5` |
+| Amanda Fadhia Feriqhalisyah | Psikolog Industri & Organisasi | `16S35pkY4WS0TGn7nsVXRMyKkP7dklWRf` |
+
+- Email login: `anugrah@`, `nadia@`, `aprilia@`, `anissa@`, `amanda@tabularasa.id`
+  (kata sandi tetap `TabulaRasa123!`).
+- Foto masing-masing psikolog diletakkan di `public/psikolog/` dengan nama
+  berbasis slug, lalu dipetakan melalui kolom `ProfilPsikolog.fotoUrl`.
+- Psikolog lama (`psikolog1-3@`) beserta kasus ujinya dibersihkan oleh seed.
+
+### 23. Pemilihan Psikolog pada Pendaftaran
+
+- Formulir pendaftaran publik kini **mewajibkan memilih psikolog**. Pilihan
+  ditampilkan sebagai kartu berisi foto bulat, nama, dan spesialisasi.
+- Validasi di server: `psikologId` wajib, dan psikolog harus berperan
+  `PSIKOLOG` serta aktif.
+- `psikologId` langsung tersimpan pada pendaftaran sehingga kasus otomatis
+  masuk ke isolasi milik psikolog tersebut.
+- Halaman `/tim` menyediakan tombol *Daftar dengan psikolog ini* yang membawa
+  `?psikolog=<id>` ke formulir (pilihan otomatis tercentang).
+
+### 24. Foto Psikolog
+
+Komponen `KartuPsikolog` menampilkan **foto bulat berukuran sama** (128 px)
+bagian atas, dengan **nama dan spesialisasi di bawahnya**, ditambah bio,
+SIPP/STR, pengalaman, dan tombol pendaftaran. Dipakai di beranda (ringkas) dan
+halaman `/tim` (lengkap).
+
+### 25. Arsip Google Drive & Spreadsheet
+
+Alur arsip otomatis untuk setiap pendaftaran baru:
+
+1. Folder kasus dibuat di folder Drive **psikolog yang dipilih**, dengan nama
+   `NOMOR — Nama Klien`.
+2. Ringkasan pendaftaran ditulis sebagai berkas teks di dalam folder tersebut.
+3. Tautan pintas (shortcut) ke folder kasus dibuat di folder **Data Keseluruhan
+   Klien** sehingga seluruh klien dapat dilihat dari satu tempat.
+4. Baris pendaftaran ditambahkan ke **spreadsheet arsip psikolog**.
+5. Baris yang sama ditambahkan ke **spreadsheet master (data keseluruhan klien)**.
+
+Folder yang digunakan:
+
+| Keperluan | Folder |
+| --- | --- |
+| Data keseluruhan klien | `16F1c4BWs8WDDuy4PQio76gOG1Hf4zUNc` |
+| Admin (melihat semua) | `1cH7UOUcErtOdcgvI0h0in8gyB1Sy0xEe` |
+| Per psikolog | folder masing-masing (tabel bagian 22) |
+
+Halaman **Admin → Tim Psikolog** (`/dashboard/psikolog`) menyediakan:
+
+- Panel *Arsip Digital Keseluruhan*: siapkan spreadsheet master, sinkronkan
+  tautan pintas folder psikolog ke folder admin, dan tautan ke folder klien.
+- Kartu per psikolog: sunting profil, foto, tautan folder Drive, dan siapkan
+  spreadsheet arsip psikolog.
+
+Kolom database baru:
+`ProfilPsikolog.fotoUrl`, `.driveFolderId`, `.driveFolderUrl`,
+`.spreadsheetId`, `.spreadsheetUrl`; `PengaturanSitus.driveClientFolderId`,
+`.driveAdminFolderId`, `.spreadsheetId`, `.spreadsheetUrl`.
+
+### 26. Ketahanan (Graceful Degradation)
+
+- Seluruh proses Google dibungkus penanganan kegagalan: bila kredensial belum
+  diisi atau folder belum dibagikan, pendaftaran **tetap tersimpan** dan
+  pengguna tidak melihat galat.
+- `after()` dibungkus helper `jalankanSetelahRespons()` yang otomatis jatuh ke
+  eksekusi langsung bila dipanggil di luar konteks request.
+- `revalidatePath` dibungkus `revalidasiAman()` agar kegagalan revalidasi tidak
+  menggagalkan pendaftaran yang sudah tersimpan.
+
+### 27. Hasil Uji Akhir
+
+- `tsc` ✅ · `eslint` ✅ · `next build` ✅
+- Uji akses RBAC & isolasi: **37/37 lulus** (termasuk Anugrah tidak dapat
+  membuka kasus Nadia, sedangkan Nadia dapat membuka kasusnya sendiri).
+- Uji logika server action pendaftaran: **lulus** — tanpa psikolog ditolak,
+  dengan psikolog menghasilkan `TR-2026-00005` dengan `psikolog` terisi benar.
+- Foto psikolog tersedia (HTTP 200) dan tampil sebagai `<img>` di `/tim`.
+- Data uji dibersihkan; database berisi 5 psikolog, 4 layanan, 0 pendaftaran.

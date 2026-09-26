@@ -9,6 +9,11 @@ const adapter = new PrismaPg({
 });
 const prisma = new PrismaClient({ adapter });
 
+// Folder Google Drive (induk arsip digital).
+const FOLDER_UTAMA = "1cH7UOUcErtOdcgvI0h0in8gyB1Sy0xEe";
+const FOLDER_KLIEN = "16F1c4BWs8WDDuy4PQio76gOG1Hf4zUNc";
+const FOLDER_ADMIN = "1cH7UOUcErtOdcgvI0h0in8gyB1Sy0xEe";
+
 const layanan = [
   // A. Tes & Asesmen
   {
@@ -86,18 +91,25 @@ async function main() {
 
   await prisma.pengaturanSitus.upsert({
     where: { id: "utama" },
-    update: {},
+    update: {
+      driveFolderId: FOLDER_UTAMA,
+      driveClientFolderId: FOLDER_KLIEN,
+      driveAdminFolderId: FOLDER_ADMIN,
+    },
     create: {
       id: "utama",
       namaBiro: "Tabula Rasa",
       tagline: "Ruang untuk bertumbuh, lembar yang belum tertulis.",
       deskripsi:
-        "Biro psikologi yang menyediakan layanan rekrutmen & seleksi, training & development, serta konseling bagi individu, sekolah, dan korporasi.",
+        "Biro psikologi yang menyediakan tes dan asesmen psikologi untuk individu, sekolah, serta layanan Psikologi Industri & Organisasi untuk perusahaan.",
       telepon: "0812-0000-0000",
       whatsapp: "6281200000000",
       email: "halo@tabularasa.id",
       alamat: "Jl. Contoh No. 1, Kota Anda",
       jamOperasional: "Senin–Sabtu, 08.00–20.00 WIB",
+      driveFolderId: FOLDER_UTAMA,
+      driveClientFolderId: FOLDER_KLIEN,
+      driveAdminFolderId: FOLDER_ADMIN,
     },
   });
 
@@ -127,57 +139,94 @@ async function main() {
 
   const psikologData = [
     {
-      email: "psikolog1@tabularasa.id",
-      nama: "Anindya Prameswari, M.Psi., Psikolog",
+      email: "anugrah@tabularasa.id",
+      nama: "Anugrah Mujaddidah Kadim",
       spesialisasi: "Psikolog Klinis",
       gelar: "M.Psi., Psikolog",
-      sipp: "SIPP 20240101-2024-01-0001",
-      str: "STR KT00002010100001",
-      pengalaman: 12,
-      bio: "Menangani kecemasan, depresi, trauma, dan krisis. Berpengalaman mendampingi remaja hingga dewasa.",
+      fotoUrl: "/psikolog/anugrah-mujaddidah-kadim.jpeg",
+      folderDrive: "11IYflposUKrD6wyoWMaTKebk_oz7jTt6",
+      pengalaman: 8,
+      bio: "Mendampingi klien dalam asesmen psikologis dan konseling individu dengan pendekatan yang hangat dan terstruktur.",
     },
     {
-      email: "psikolog2@tabularasa.id",
-      nama: "Bagas Nurwidodo, M.Psi., Psikolog",
-      spesialisasi: "Psikolog Industri & Organisasi",
+      email: "nadia@tabularasa.id",
+      nama: "Nadia Rafa Aziza",
+      spesialisasi: "Psikolog Klinis",
       gelar: "M.Psi., Psikolog",
-      sipp: "SIPP 20240102-2024-01-0002",
-      str: "STR KT00002010100002",
-      pengalaman: 9,
-      bio: "Fokus pada asesmen rekrutmen, pemetaan talenta, dan pengembangan organisasi.",
+      fotoUrl: "/psikolog/nadia-rafa-aziza.jpeg",
+      folderDrive: "15V5N-NjOe6lbouNkMCqDHl30zxccXrzp",
+      pengalaman: 6,
+      bio: "Berfokus pada asesmen anak dan remaja serta pendampingan orang tua dalam proses tumbuh kembang.",
     },
     {
-      email: "psikolog3@tabularasa.id",
-      nama: "Citra Larasati, M.Psi., Psikolog",
+      email: "aprilia@tabularasa.id",
+      nama: "Aprilia Anggorowati",
       spesialisasi: "Psikolog Pendidikan",
       gelar: "M.Psi., Psikolog",
-      sipp: "SIPP 20240103-2024-01-0003",
-      str: "STR KT00002010100003",
+      fotoUrl: "/psikolog/aprilia-anggorowati.jpeg",
+      folderDrive: "1sdnX6Oc98OhOB1mrevt96p1hAwWH1TkG",
       pengalaman: 7,
-      bio: "Mendampingi anak dan remaja, kesiapan sekolah, serta konsultasi orang tua.",
+      bio: "Menangani asesmen kesiapan sekolah, minat bakat, serta konsultasi pendidikan bersama sekolah dan keluarga.",
+    },
+    {
+      email: "anissa@tabularasa.id",
+      nama: "Anissa Salsabila",
+      spesialisasi: "Psikolog Klinis",
+      gelar: "M.Psi., Psikolog",
+      fotoUrl: "/psikolog/anissa-salsabila.jpeg",
+      folderDrive: "1trCNA2wcUwevp_daQoqkSNzIv2yknkt5",
+      pengalaman: 5,
+      bio: "Mendampingi dewasa muda dalam mengelola kecemasan, tekanan akademik, dan perencanaan karier.",
+    },
+    {
+      email: "amanda@tabularasa.id",
+      nama: "Amanda Fadhia Feriqhalisyah",
+      spesialisasi: "Psikolog Industri & Organisasi",
+      gelar: "M.Psi., Psikolog",
+      fotoUrl: "/psikolog/amanda-fadhia-feriqhalisyah.jpeg",
+      folderDrive: "16S35pkY4WS0TGn7nsVXRMyKkP7dklWRf",
+      pengalaman: 6,
+      bio: "Menangani asesmen rekrutmen, pemetaan potensi, dan pengembangan SDM untuk kebutuhan perusahaan.",
     },
   ];
 
+  // Bersihkan psikolog placeholder lama (beserta kasus ujinya) agar katalog
+  // psikolog persis sesuai data klien.
+  const emailLama = [
+    "psikolog1@tabularasa.id",
+    "psikolog2@tabularasa.id",
+    "psikolog3@tabularasa.id",
+  ];
+  await prisma.pendaftaran.deleteMany({
+    where: { psikolog: { email: { in: emailLama } } },
+  });
+  await prisma.user.deleteMany({ where: { email: { in: emailLama } } });
+
   for (const p of psikologData) {
+    const folderUrl = `https://drive.google.com/drive/folders/${p.folderDrive}`;
+    const profil = {
+      gelar: p.gelar,
+      spesialisasi: p.spesialisasi,
+      fotoUrl: p.fotoUrl,
+      driveFolderId: p.folderDrive,
+      driveFolderUrl: folderUrl,
+      bio: p.bio,
+      pengalaman: p.pengalaman,
+      publik: true,
+    };
+
     await prisma.user.upsert({
       where: { email: p.email },
-      update: {},
+      update: {
+        nama: p.nama,
+        profilPsikolog: { upsert: { create: profil, update: profil } },
+      },
       create: {
         nama: p.nama,
         email: p.email,
         passwordHash: password,
         role: "PSIKOLOG",
-        profilPsikolog: {
-          create: {
-            gelar: p.gelar,
-            spesialisasi: p.spesialisasi,
-            sipp: p.sipp,
-            str: p.str,
-            bio: p.bio,
-            pengalaman: p.pengalaman,
-            publik: true,
-          },
-        },
+        profilPsikolog: { create: profil },
       },
     });
   }
@@ -212,8 +261,7 @@ async function main() {
   console.log("Login demo (password sama: TabulaRasa123!):");
   console.log(`  Admin    : ${admin.email}`);
   console.log(`  Asisten  : ${asisten.email}`);
-  for (const p of psikologData) console.log(`  Psikolog : ${p.email}`);
-}
+  for (const p of psikologData) console.log(`  Psikolog : ${p.email}`);}
 
 main()
   .catch((e) => {
