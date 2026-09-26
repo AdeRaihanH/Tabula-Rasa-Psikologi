@@ -1,9 +1,36 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 
+import { arsipkanPendaftaranBaru } from "@/lib/drive-arsip";
 import { prisma } from "@/lib/prisma";
 import { buatNomorPendaftaran } from "@/lib/utils";
+
+/**
+ * Menjalankan pekerjaan latar setelah respons dikirim. Bila dipanggil di luar
+ * konteks request (mis. skrip/CLI), pekerjaan dijalankan langsung tanpa
+ * menggagalkan alur utama.
+ */
+function jalankanSetelahRespons(kerja: () => Promise<void>) {
+  try {
+    after(kerja);
+  } catch {
+    void kerja();
+  }
+}
+
+/**
+ * Revalidasi aman: kegagalan revalidasi tidak boleh menggagalkan pendaftaran
+ * yang sudah tersimpan.
+ */
+function revalidasiAman(jalur: string) {
+  try {
+    revalidatePath(jalur);
+  } catch {
+    // Diabaikan — hanya berlaku di luar konteks request.
+  }
+}
 
 export type HasilPendaftaran =
   | { ok: true; nomor: string }
@@ -31,6 +58,7 @@ export async function kirimPendaftaran(
   const email = bersih(formData.get("email"));
   const telepon = bersih(formData.get("telepon"));
   const layananId = bersih(formData.get("layananId"));
+  const psikologId = bersih(formData.get("psikologId"));
   const metode = bersih(formData.get("metode")) ?? "OFFLINE";
   const consent = formData.get("informedConsent") === "on";
 
@@ -41,6 +69,7 @@ export async function kirimPendaftaran(
     galat.email = "Format email tidak valid.";
   if (!telepon) galat.telepon = "Nomor telepon wajib diisi.";
   if (!layananId) galat.layananId = "Pilih layanan yang diinginkan.";
+  if (!psikologId) galat.psikologId = "Pilih psikolog yang Anda inginkan.";
   if (!consent) galat.informedConsent = "Persetujuan wajib dicentang.";
 
   if (Object.keys(galat).length > 0) {
@@ -53,6 +82,17 @@ export async function kirimPendaftaran(
     });
     if (!layanan) {
       return { ok: false, pesan: "Layanan tidak ditemukan atau sudah tidak aktif." };
+    }
+
+    const psikolog = await prisma.user.findFirst({
+      where: { id: psikologId!, role: "PSIKOLOG", aktif: true },
+      select: { id: true, nama: true },
+    });
+    if (!psikolog) {
+      return {
+        ok: false,
+        pesan: "Psikolog yang dipilih tidak tersedia. Silakan pilih kembali.",
+      };
     }
 
     const tanggalLahirRaw = bersih(formData.get("tanggalLahir"));
@@ -76,6 +116,7 @@ export async function kirimPendaftaran(
         nomor,
         klienId: klien.id,
         layananId: layanan.id,
+        psikologId: psikolog.id,
         metode: metode === "ONLINE" ? "ONLINE" : "OFFLINE",
         kebutuhan: bersih(formData.get("kebutuhan")),
         institusi: bersih(formData.get("institusi")),
@@ -90,14 +131,22 @@ export async function kirimPendaftaran(
         aksi: "PENDAFTARAN_BARU",
         entitas: "Pendaftaran",
         entitasId: pendaftaran.id,
-        detail: `Pendaftaran daring ${nomor} untuk layanan ${layanan.nama}`,
+        detail: `Pendaftaran daring ${nomor} untuk ${layanan.nama} — psikolog ${psikolog.nama}`,
       },
     });
 
-    revalidatePath("/dashboard/pendaftaran");
+    // Arsip digital (folder + spreadsheet) dijalankan setelah respons dikirim
+    // agar pengguna tidak menunggu proses Google API.
+    const idPendaftaran = pendaftaran.id;
+    jalankanSetelahRespons(async () => {
+      await arsipkanPendaftaranBaru(idPendaftaran);
+    });
+
+    revalidasiAman("/dashboard/pendaftaran");
 
     return { ok: true, nomor };
-  } catch {
+  } catch (e) {
+    console.error("[kirimPendaftaran] gagal menyimpan pendaftaran:", e);
     return {
       ok: false,
       pesan: "Terjadi kesalahan saat menyimpan pendaftaran. Silakan coba lagi.",

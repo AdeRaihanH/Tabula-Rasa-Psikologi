@@ -5,15 +5,16 @@ import { Readable } from "node:stream";
 import { google } from "googleapis";
 
 /**
- * Integrasi Google Drive memakai service account.
+ * Integrasi Google Workspace (Drive & Sheets) memakai service account.
  *
  * Variabel lingkungan yang dibutuhkan:
  *   GOOGLE_SERVICE_ACCOUNT_EMAIL  — email service account (...@...iam.gserviceaccount.com)
  *   GOOGLE_PRIVATE_KEY            — private key (boleh memakai \n literal)
- *   GOOGLE_DRIVE_FOLDER_ID        — ID folder Drive yang dibagikan ke service account
+ *   GOOGLE_DRIVE_FOLDER_ID        — ID folder Drive utama (opsional bila folder
+ *                                   diatur per psikolog / di pengaturan situs)
  *
- * Bila variabel belum diisi, fitur Drive otomatis dinonaktifkan dan aplikasi
- * tetap berjalan normal (tautan arsip diisi manual oleh admin).
+ * Bila variabel belum diisi, fitur Google otomatis dinonaktifkan dan aplikasi
+ * tetap berjalan normal.
  */
 
 export type HasilDrive = { id: string; tautan: string };
@@ -26,26 +27,38 @@ function kredensial() {
 }
 
 export function driveAktif() {
-  return Boolean(kredensial() && process.env.GOOGLE_DRIVE_FOLDER_ID);
+  return Boolean(kredensial());
 }
 
 export function folderIndukId() {
   return process.env.GOOGLE_DRIVE_FOLDER_ID ?? null;
 }
 
-function klien() {
+export function authGoogle() {
   const kred = kredensial();
-  if (!kred) throw new Error("Kredensial Google Drive belum diisi.");
-  const auth = new google.auth.JWT({
+  if (!kred) throw new Error("Kredensial Google belum diisi.");
+  return new google.auth.JWT({
     email: kred.email,
     key: kred.key,
-    scopes: ["https://www.googleapis.com/auth/drive.file"],
+    scopes: [
+      "https://www.googleapis.com/auth/drive",
+      "https://www.googleapis.com/auth/spreadsheets",
+    ],
   });
-  return google.drive({ version: "v3", auth });
+}
+
+export function driveKlien() {
+  return google.drive({ version: "v3", auth: authGoogle() });
+}
+
+export function idFolderDariTautan(tautan: string | null | undefined) {
+  if (!tautan) return null;
+  const cocok = tautan.match(/\/folders\/([A-Za-z0-9_-]+)/);
+  return cocok?.[1] ?? null;
 }
 
 async function cariFolder(nama: string, indukId: string) {
-  const drive = klien();
+  const drive = driveKlien();
   const aman = nama.replace(/'/g, "\\'");
   const res = await drive.files.list({
     q: `name = '${aman}' and '${indukId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
@@ -73,7 +86,7 @@ export async function pastikanFolder(
     };
   }
 
-  const drive = klien();
+  const drive = driveKlien();
   const dibuat = await drive.files.create({
     requestBody: {
       name: nama,
@@ -98,7 +111,7 @@ export async function unggahBerkas(opsi: {
   data: Buffer;
   folderId: string;
 }): Promise<HasilDrive> {
-  const drive = klien();
+  const drive = driveKlien();
   const res = await drive.files.create({
     requestBody: {
       name: opsi.nama,
@@ -130,6 +143,25 @@ export async function unggahTeks(opsi: {
     mimeType: "text/plain",
     data: Buffer.from(opsi.isi, "utf8"),
     folderId: opsi.folderId,
+  });
+}
+
+/** Membuat tautan pintas (shortcut) ke folder/berkas lain. */
+export async function buatShortcut(opsi: {
+  targetId: string;
+  parentId: string;
+  nama: string;
+}) {
+  const drive = driveKlien();
+  await drive.files.create({
+    requestBody: {
+      name: opsi.nama,
+      mimeType: "application/vnd.google-apps.shortcut",
+      parents: [opsi.parentId],
+      shortcutDetails: { targetId: opsi.targetId },
+    },
+    fields: "id",
+    supportsAllDrives: true,
   });
 }
 

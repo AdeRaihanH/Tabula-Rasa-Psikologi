@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { KartuPsikolog } from "@/components/publik/KartuPsikolog";
 import { ambilIdentitas, ambilLayanan, ambilPsikologPublik } from "@/lib/data-publik";
 import {
   anchorKategori,
@@ -11,7 +12,6 @@ import {
   testimoni,
 } from "@/lib/config";
 import { infoZona } from "@/lib/rbac";
-import { inisial } from "@/lib/utils";
 
 export const revalidate = 300;
 
@@ -292,27 +292,21 @@ export default async function Beranda() {
 
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {psikolog.slice(0, 3).map((p) => (
-              <div key={p.id} className="kartu p-6">
-                <div className="flex items-center gap-3">
-                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
-                    {inisial(p.user.nama)}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-ink">
-                      {p.user.nama}
-                    </p>
-                    <p className="text-xs text-muted">{p.spesialisasi}</p>
-                  </div>
-                </div>
-                {p.bio && (
-                  <p className="mt-4 line-clamp-3 text-sm leading-relaxed text-ink-soft">
-                    {p.bio}
-                  </p>
-                )}
-                <p className="mt-4 text-xs text-muted">
-                  {p.pengalaman} tahun pengalaman
-                </p>
-              </div>
+              <KartuPsikolog
+                key={p.id}
+                ringkas
+                p={{
+                  userId: p.userId,
+                  nama: p.user.nama,
+                  spesialisasi: p.spesialisasi,
+                  gelar: p.gelar,
+                  fotoUrl: p.fotoUrl,
+                  bio: p.bio,
+                  pengalaman: p.pengalaman,
+                  sipp: p.sipp,
+                  str: p.str,
+                }}
+              />
             ))}
           </div>
         </section>

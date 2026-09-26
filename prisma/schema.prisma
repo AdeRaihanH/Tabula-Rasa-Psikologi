@@ -110,6 +110,11 @@ model ProfilPsikolog {
   bio           String?
   pengalaman    Int      @default(0)
   publik        Boolean  @default(true)
+  fotoUrl       String?
+  driveFolderId  String?
+  driveFolderUrl String?
+  spreadsheetId  String?
+  spreadsheetUrl String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -383,6 +388,10 @@ model PengaturanSitus {
   alamat    String?
   jamOperasional String?
   driveFolderId  String?
+  driveClientFolderId String?
+  driveAdminFolderId  String?
+  spreadsheetId  String?
+  spreadsheetUrl String?
   updatedAt DateTime @updatedAt
 
   @@map("pengaturan_situs")

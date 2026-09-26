@@ -60,6 +60,7 @@ export const hakAkses = {
   "pengaturan:kelola": ["ADMIN"],
   "arsip:kelola": ["ADMIN"],
   "profil:kelola": ["PSIKOLOG", "ADMIN"],
+  "psikolog:kelola": ["ADMIN"],
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Kemampuan = keyof typeof hakAkses;

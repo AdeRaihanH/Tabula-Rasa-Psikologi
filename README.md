@@ -10,7 +10,8 @@ internal dengan **tiga zona kerahasiaan data**.
 - Beranda (gaya Mindset Psychology), katalog layanan 2 kategori, detail layanan,
   biaya, tim psikolog, alur layanan, sistem kerahasiaan, FAQ, kontak, dan cek
   status pendaftaran.
-- Formulir pendaftaran daring (Zona 1) dengan informed consent.
+- Formulir pendaftaran daring (Zona 1) dengan informed consent dan **pemilihan
+  psikolog** (wajib).
 - Palet warna *earth tone* (krem, terracotta, pasir, zaitun).
 
 **Katalog layanan**
@@ -20,17 +21,27 @@ internal dengan **tiga zona kerahasiaan data**.
 | A. Tes & Asesmen | Tes IQ · Tes Minat Bakat · Tes Kesiapan Sekolah |
 | B. Untuk Perusahaan (B2B) | Psikologi Industri & Organisasi (PIO) |
 
-**Arsip digital (Google Drive)** — opsional
+**Tim psikolog**
 
-- Setiap pendaftaran mendapat satu folder Drive berisi ringkasan pendaftaran.
+Lima psikolog dengan foto profil (folder `public/psikolog/`), spesialisasi, dan
+folder arsip Google Drive masing-masing. Kartu psikolog menampilkan foto bulat
+di atas dan nama di bawahnya, serta tombol *Daftar dengan psikolog ini*.
+
+**Arsip digital (Google Drive & Spreadsheet)** — opsional
+
+- Setiap pendaftaran mendapat satu folder Drive di folder psikolog yang dipilih,
+  berisi ringkasan pendaftaran, plus tautan pintas di folder *Data Keseluruhan Klien*.
+- Baris pendaftaran otomatis tercatat di spreadsheet arsip psikolog **dan**
+  spreadsheet master seluruh klien.
 - Unggah bukti pembayaran dan dokumen kasus langsung dari dashboard.
-- Bila kredensial Drive belum diisi, fitur ini nonaktif dan aplikasi tetap jalan.
+- Bila kredensial Drive belum diisi, seluruh fitur Google nonaktif dan aplikasi
+  tetap berjalan normal (pendaftaran tetap tersimpan).
 
 **Portal internal** (login email + kata sandi, sesi JWT httpOnly 8 jam)
 
 | Peran | Zona | Cakupan |
 | --- | --- | --- |
-| Admin | Zona 1 | Data diri klien, pendaftaran, jadwal, verifikasi pembayaran, katalog layanan, pengarsipan, pengguna & peran, pengaturan situs, log audit |
+| Admin | Zona 1 | Data diri klien, pendaftaran, jadwal, verifikasi pembayaran, katalog layanan, **tim psikolog & arsip Drive**, pengarsipan, pengguna & peran, pengaturan situs, log audit |
 | Asisten Psikolog | Zona 2 | Lembar tes, skor mentah, master alat tes |
 | Psikolog | Zona 3 | Laporan hasil, interpretasi, rekomendasi — **hanya kasus miliknya** (Zona 2 hanya baca) |
 
@@ -73,9 +84,11 @@ evaluasi & pengarsipan.
    GOOGLE_DRIVE_FOLDER_ID="1AbCdEfGhIjKlMnOpQrStUv"
    ```
 
-   > Untuk Google Drive: buat *service account*, aktifkan Google Drive API,
-   > bagikan folder tujuan ke email service account dengan akses **Editor**,
-   > lalu isi `GOOGLE_DRIVE_FOLDER_ID` dengan ID folder tersebut.
+   > Untuk Google Drive & Spreadsheet: buat *service account*, aktifkan
+   > **Google Drive API** dan **Google Sheets API**, lalu bagikan **setiap**
+   > folder tujuan ke email service account dengan akses **Editor**.
+   > Daftar folder diatur di aplikasi (Admin → Tim Psikolog dan Pengaturan Situs),
+   > sehingga `GOOGLE_DRIVE_FOLDER_ID` hanya sebagai cadangan.
 
 2. Pasang dependensi, migrasi, dan seed:
 
@@ -91,6 +104,9 @@ evaluasi & pengarsipan.
    npm run dev
    ```
 
+   > Bila baru mengubah skema Prisma, **restart** dev server agar Prisma Client
+   > yang baru dipakai.
+
 ### Akun demo (hasil seed)
 
 Kata sandi semuanya `TabulaRasa123!`
@@ -99,9 +115,11 @@ Kata sandi semuanya `TabulaRasa123!`
 | --- | --- |
 | `admin@tabularasa.id` | Administrator |
 | `asisten@tabularasa.id` | Asisten Psikolog |
-| `psikolog1@tabularasa.id` | Psikolog |
-| `psikolog2@tabularasa.id` | Psikolog |
-| `psikolog3@tabularasa.id` | Psikolog |
+| `anugrah@tabularasa.id` | Psikolog — Anugrah Mujaddidah Kadim |
+| `nadia@tabularasa.id` | Psikolog — Nadia Rafa Aziza |
+| `aprilia@tabularasa.id` | Psikolog — Aprilia Anggorowati |
+| `anissa@tabularasa.id` | Psikolog — Anissa Salsabila |
+| `amanda@tabularasa.id` | Psikolog — Amanda Fadhia Feriqhalisyah |
 
 > Ganti kata sandi dan `SESSION_SECRET` sebelum dipakai produksi.
 
@@ -125,6 +143,8 @@ Kata sandi semuanya `TabulaRasa123!`
    - `DATABASE_URL` — transaction pooler (port `6543`, `?pgbouncer=true`)
    - `DIRECT_URL` — session pooler (port `5432`)
    - `SESSION_SECRET` — nilai acak
+   - `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`,
+     `GOOGLE_DRIVE_FOLDER_ID` — bila memakai arsip Google (opsional)
 3. Terapkan migrasi ke database produksi dari mesin lokal:
 
    ```bash
@@ -134,18 +154,31 @@ Kata sandi semuanya `TabulaRasa123!`
 
 4. Deploy.
 
+> **Catatan Google Drive di Vercel:** pada Environment Variables, tempel
+> `GOOGLE_PRIVATE_KEY` **apa adanya** (dengan `\n` literal) — aplikasi otomatis
+> mengubahnya menjadi baris baru.
+
 ## Struktur
 
 ```
 prisma/
   schema.prisma        # model + enum (3 zona)
-  seed.ts              # data awal: akun, katalog layanan, alat tes
+  seed.ts              # data awal: 5 psikolog, 4 layanan, alat tes, folder Drive
+public/
+  psikolog/            # foto profil psikolog
 src/
   app/(publik)/        # situs publik
   app/(dalam)/dashboard/  # portal internal
   app/masuk/           # login
   app/actions/         # server actions
-  lib/                 # config, rbac, auth (session/dal), prisma
+  lib/
+    config.ts          # identitas, katalog, konten publik
+    rbac.ts            # matriks hak akses & 3 zona
+    auth/              # session, password, DAL
+    prisma.ts          # Prisma Client + driver adapter
+    gdrive.ts          # Google Drive (folder, unggah berkas)
+    gsheets.ts         # Google Sheets (spreadsheet arsip)
+    drive-arsip.ts     # orkestrasi arsip per pendaftaran
   components/          # UI publik, dashboard, ui
   proxy.ts             # pemeriksaan optimistik rute /dashboard
 ```
