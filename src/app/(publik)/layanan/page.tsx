@@ -140,21 +140,36 @@ export default async function HalamanLayanan() {
                         {l.ringkasan}
                       </p>
 
-                      <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-line pt-4 text-xs">
-                        {l.durasiMenit && (
-                          <span className="text-muted">{l.durasiMenit} menit</span>
-                        )}
-                        {l.metode.map((m) => (
-                          <span
-                            key={m}
-                            className="rounded bg-paper-2 px-1.5 py-0.5 font-medium text-ink-soft"
-                          >
-                            {m === "ONLINE" ? "Daring" : "Tatap muka"}
+                      <div className="mt-5 flex flex-col gap-3 border-t border-line pt-4 text-xs">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {l.durasiMenit && (
+                            <span className="text-muted">{l.durasiMenit} menit</span>
+                          )}
+                          {l.metode.map((m) => (
+                            <span
+                              key={m}
+                              className="rounded bg-paper-2 px-1.5 py-0.5 font-medium text-ink-soft"
+                            >
+                              {m === "ONLINE" ? "Daring" : "Tatap muka"}
+                            </span>
+                          ))}
+                        </div>
+
+                        <div className="mt-1 flex flex-col gap-3">
+                          <div className="flex flex-col gap-1 text-[0.75rem] text-muted">
+                            <div className="flex justify-between border-b border-line/50 pb-1">
+                              <span>Daring</span>
+                              <span className="font-semibold text-brand-700">Rp375.000</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Tatap muka</span>
+                              <span className="font-semibold text-brand-700">Rp545.000</span>
+                            </div>
+                          </div>
+                          <span className="w-full rounded-lg bg-brand-700 px-3 py-2 text-center font-semibold text-white transition hover:bg-brand-800">
+                            Daftar Sekarang
                           </span>
-                        ))}
-                        <span className="ml-auto font-semibold text-brand-700">
-                          {l.harga ? formatRupiah(l.harga.toString()) : "Sesuai proposal"}
-                        </span>
+                        </div>
                       </div>
                     </Link>
                   ))}

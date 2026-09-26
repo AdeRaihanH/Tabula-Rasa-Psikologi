@@ -118,7 +118,17 @@ export async function kirimPendaftaran(
         layananId: layanan.id,
         psikologId: psikolog.id,
         metode: metode === "ONLINE" ? "ONLINE" : "OFFLINE",
-        kebutuhan: bersih(formData.get("kebutuhan")),
+        kebutuhan: (() => {
+          let keb = bersih(formData.get("kebutuhan")) ?? "";
+          if (metode !== "ONLINE") {
+            const tgl = bersih(formData.get("tanggalPertemuan"));
+            const wkt = bersih(formData.get("waktuPertemuan"));
+            if (tgl || wkt) {
+              keb += `\n\n[Preferensi Jadwal]\nTanggal: ${tgl || "-"}\nWaktu: ${wkt || "-"}`;
+            }
+          }
+          return keb.trim() || null;
+        })(),
         institusi: bersih(formData.get("institusi")),
         informedConsent: consent,
         sumber: "web",

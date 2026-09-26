@@ -105,13 +105,10 @@ export default async function HalamanBiaya() {
                             .join(", ")}
                         </td>
                         <td className="border-b border-line px-4 py-3 text-right font-semibold text-ink">
-                          {l.harga ? (
-                            formatRupiah(l.harga.toString())
-                          ) : (
-                            <span className="text-xs font-normal text-muted">
-                              Sesuai proposal
-                            </span>
-                          )}
+                          <div className="flex flex-col items-end gap-1 text-[0.7rem]">
+                            <span className="text-muted">Daring: <span className="text-brand-700 font-semibold">Rp375.000</span></span>
+                            <span className="text-muted">Tatap muka: <span className="text-brand-700 font-semibold">Rp545.000</span></span>
+                          </div>
                         </td>
                       </tr>
                     ))}

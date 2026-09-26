@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { kirimPendaftaran, type HasilPendaftaran } from "@/app/actions/pendaftaran";
 import { labelKategori } from "@/lib/config";
@@ -45,6 +45,7 @@ export function FormPendaftaran({
     kirimPendaftaran,
     undefined,
   );
+  const [metode, setMetode] = useState("OFFLINE");
 
   if (hasil?.ok) {
     return (
@@ -201,7 +202,7 @@ export function FormPendaftaran({
               {[
                 { v: "OFFLINE", t: "Tatap muka" },
                 { v: "ONLINE", t: "Daring" },
-              ].map((m, i) => (
+              ].map((m) => (
                 <label
                   key={m.v}
                   className="flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm has-checked:border-brand-400 has-checked:bg-brand-50"
@@ -210,7 +211,8 @@ export function FormPendaftaran({
                     type="radio"
                     name="metode"
                     value={m.v}
-                    defaultChecked={i === 0}
+                    checked={metode === m.v}
+                    onChange={(e) => setMetode(e.target.value)}
                     className="accent-brand-600"
                   />
                   {m.t}
@@ -218,6 +220,39 @@ export function FormPendaftaran({
               ))}
             </div>
           </div>
+
+          {metode === "OFFLINE" && (
+            <div className="animate-in fade-in slide-in-from-top-2 flex flex-col gap-5 rounded-xl border border-brand-200 bg-brand-50/50 p-5 mt-2">
+              <div>
+                <label className="label" htmlFor="tanggalPertemuan">Pilih tanggal pertemuan</label>
+                <input 
+                  type="date" 
+                  id="tanggalPertemuan" 
+                  name="tanggalPertemuan" 
+                  className="input bg-white" 
+                />
+              </div>
+              <div>
+                <span className="label">Pilih waktu kedatangan</span>
+                <div className="flex flex-wrap gap-3">
+                  {["07.00 - 09.00", "12.00 - 14.00", "15.00 - 17.00"].map((jam) => (
+                    <label 
+                      key={jam} 
+                      className="flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-white px-3 py-2 text-xs has-checked:border-brand-400 has-checked:bg-brand-50 transition-colors"
+                    >
+                      <input 
+                        type="radio" 
+                        name="waktuPertemuan" 
+                        value={jam} 
+                        className="accent-brand-600" 
+                      />
+                      {jam}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="label" htmlFor="kebutuhan">
