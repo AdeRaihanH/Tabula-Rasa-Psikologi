@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { FormMasuk } from "@/components/publik/FormMasuk";
+import { Logo } from "@/components/ui/Logo";
 import { SlideshowMasuk } from "@/components/publik/SlideshowMasuk";
 import { sesiSaatIni } from "@/lib/auth/dal";
 import { rumahDashboard } from "@/lib/rbac";
@@ -32,16 +32,8 @@ export default async function HalamanMasuk() {
         <div className="mx-auto w-full max-w-sm">
 
           {/* Logo mobile only */}
-          <div className="mb-10 flex items-center gap-3 lg:hidden">
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-xl bg-white p-1"
-            >
-              <Image src="/logo-icon.png" alt="Logo" width={32} height={32} className="object-contain" />
-            </div>
-            <div>
-              <p className="text-sm font-bold" style={{ color: "var(--color-ink)" }}>Tabula Rasa</p>
-              <p className="text-[0.6rem] uppercase tracking-widest" style={{ color: "var(--color-muted)" }}>Biro Psikologi</p>
-            </div>
+          <div className="mb-10 lg:hidden">
+            <Logo />
           </div>
 
           {/* Heading */}
