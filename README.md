@@ -195,6 +195,7 @@ Perlindungan berlapis; modulnya ada di `src/lib/keamanan/`.
    DATABASE_URL="postgresql://...:6543/postgres?pgbouncer=true"  # transaction pooler (runtime)
    DIRECT_URL="postgresql://...:5432/postgres"                   # session pooler (migrasi)
    SESSION_SECRET="hasil openssl rand -base64 32"
+   SEED_PASSWORD="kata-sandi-awal-akun-staf"                     # dipakai saat seed
 
    # Opsional — arsip digital Google Drive
    GOOGLE_SERVICE_ACCOUNT_EMAIL="nama@proyek.iam.gserviceaccount.com"
@@ -225,14 +226,14 @@ Perlindungan berlapis; modulnya ada di `src/lib/keamanan/`.
    > Bila baru mengubah skema Prisma, **restart** dev server agar Prisma Client
    > yang baru dipakai.
 
-### Akun demo (hasil seed)
+### Akun awal (hasil seed)
 
 Seed membuat satu akun Administrator, satu Asisten Psikolog, dan lima akun
-Psikolog. **Email dan kata sandi default ditetapkan di `prisma/seed.ts`** —
-nilainya tidak didokumentasikan di sini. Wajib diganti sebelum dipakai produksi.
+Psikolog. **Kata sandi awal diambil dari `SEED_PASSWORD`** (min. 8 karakter) dan
+tidak disimpan di repositori. Wajib diganti sebelum dipakai produksi.
 
 > Akun **klien tidak di-seed** — buat sendiri melalui `/daftar-akun`.
-> Ganti kata sandi seed dan `SESSION_SECRET` sebelum dipakai produksi.
+> Isi `SEED_PASSWORD` dan `SESSION_SECRET` sebelum dipakai produksi.
 
 ## Perintah
 

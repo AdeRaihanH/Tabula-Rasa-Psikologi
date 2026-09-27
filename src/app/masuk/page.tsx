@@ -76,33 +76,6 @@ export default async function HalamanMasuk() {
             </a>
           </div>
 
-          {/* Demo account */}
-          <div
-            className="mt-6 rounded-xl border p-4"
-            style={{
-              borderColor: "var(--color-cream-200)",
-              background: "var(--color-cream-100)",
-            }}
-          >
-            <p className="text-xs font-semibold" style={{ color: "var(--color-ink-soft)" }}>
-              Akun demo
-            </p>
-            <ul className="mt-2 space-y-1 text-xs" style={{ color: "var(--color-muted)" }}>
-              <li>admin@tabularasa.id — Administrator</li>
-              <li>asisten@tabularasa.id — Asisten Psikolog</li>
-              <li>anugrah@tabularasa.id — Psikolog</li>
-            </ul>
-            <p className="mt-2 text-xs" style={{ color: "var(--color-muted)" }}>
-              Kata sandi:{" "}
-              <span
-                className="rounded px-1.5 py-0.5 font-mono text-[0.72rem]"
-                style={{ background: "var(--color-cream-200)", color: "var(--color-ink-soft)" }}
-              >
-                TabulaRasa123!
-              </span>
-            </p>
-          </div>
-
           {/* Back link */}
           <p className="mt-8 text-center text-xs" style={{ color: "var(--color-muted)" }}>
             <Link

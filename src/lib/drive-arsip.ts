@@ -398,14 +398,21 @@ export async function arsipkanPendaftaranBaru(pendaftaranId: string) {
   let folder: { id: string; tautan: string } | null = null;
   try {
     folder = await folderPendaftaran(pendaftaranId);
-  } catch {
+  } catch (e) {
+    console.error(`[arsip] gagal membuat folder untuk pendaftaran ${pendaftaranId}:`, e);
     folder = null;
   }
 
   try {
-    await catatPendaftaranKeSheet(pendaftaranId);
-  } catch {
-    // Diabaikan.
+    const hasil = await catatPendaftaranKeSheet(pendaftaranId);
+    if (hasil.pesan.length > 0) {
+      console.error(
+        `[arsip] sebagian gagal menulis spreadsheet untuk ${pendaftaranId}:`,
+        hasil.pesan,
+      );
+    }
+  } catch (e) {
+    console.error(`[arsip] gagal menulis spreadsheet untuk ${pendaftaranId}:`, e);
   }
 
   return folder;

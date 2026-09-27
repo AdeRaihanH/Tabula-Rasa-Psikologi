@@ -86,7 +86,14 @@ const alatTes = [
 ];
 
 async function main() {
-  const password = await bcrypt.hash("TabulaRasa123!", 10);
+  const seedPassword = process.env.SEED_PASSWORD;
+  if (!seedPassword || seedPassword.length < 8) {
+    console.error(
+      "SEED_PASSWORD belum diisi (min. 8 karakter). Tambahkan ke .env sebelum menjalankan seed.",
+    );
+    process.exit(1);
+  }
+  const password = await bcrypt.hash(seedPassword, 10);
 
   await prisma.pengaturanSitus.upsert({
     where: { id: "utama" },
@@ -305,10 +312,10 @@ async function main() {
   });
 
   console.log("Seed selesai.");
-  console.log("Login demo (password sama: TabulaRasa123!):");
-  console.log(`  Admin    : ${admin.email}`);
-  console.log(`  Asisten  : ${asisten.email}`);
-  for (const p of psikologData) console.log(`  Psikolog : ${p.email}`);}
+  console.log(
+    `Akun staf dibuat/diperbarui: ${admin.email}, ${asisten.email}, dan ${psikologData.length} akun psikolog.`,
+  );
+}
 
 main()
   .catch((e) => {

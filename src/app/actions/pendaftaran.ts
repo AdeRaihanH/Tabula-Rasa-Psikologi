@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 
 import { arsipkanPendaftaranBaru } from "@/lib/drive-arsip";
 import { klienMilikSaya, sesiSaatIni } from "@/lib/auth/dal";
@@ -17,19 +16,6 @@ import {
 import { hitungBiaya } from "@/lib/pembayaran";
 import { prisma } from "@/lib/prisma";
 import { buatNomorPendaftaran } from "@/lib/utils";
-
-/**
- * Menjalankan pekerjaan latar setelah respons dikirim. Bila dipanggil di luar
- * konteks request (mis. skrip/CLI), pekerjaan dijalankan langsung tanpa
- * menggagalkan alur utama.
- */
-function jalankanSetelahRespons(kerja: () => Promise<void>) {
-  try {
-    after(kerja);
-  } catch {
-    void kerja();
-  }
-}
 
 /**
  * Revalidasi aman: kegagalan revalidasi tidak boleh menggagalkan pendaftaran
@@ -268,12 +254,14 @@ export async function kirimPendaftaran(
       },
     });
 
-    // Arsip digital (folder + spreadsheet) dijalankan setelah respons dikirim
-    // agar pengguna tidak menunggu proses Google API.
-    const idPendaftaran = pendaftaran.id;
-    jalankanSetelahRespons(async () => {
-      await arsipkanPendaftaranBaru(idPendaftaran);
-    });
+    // Arsip digital (folder + spreadsheet) dijalankan langsung agar baris
+    // spreadsheet PASTI tercatat saat klien mendaftar. Kegagalan Google API
+    // tidak menggagalkan pendaftaran yang sudah tersimpan.
+    try {
+      await arsipkanPendaftaranBaru(pendaftaran.id);
+    } catch (e) {
+      console.error("[kirimPendaftaran] gagal arsip digital:", e);
+    }
 
     revalidasiAman("/dashboard/pendaftaran");
     revalidasiAman("/dashboard/jadwal");

@@ -163,17 +163,11 @@ Tanpa login: /dashboard = 307 → /masuk
    `DIRECT_URL` (pooler 5432), `SESSION_SECRET`.
 3. `npx prisma migrate deploy` (dari lokal) lalu deploy.
 
-## 10. Akun Demo
+## 10. Akun Awal
 
-Kata sandi semua: `TabulaRasa123!`
-
-| Email | Peran |
-| --- | --- |
-| `admin@tabularasa.id` | Administrator |
-| `asisten@tabularasa.id` | Asisten Psikolog |
-| `psikolog1@tabularasa.id` | Psikolog (Klinis) |
-| `psikolog2@tabularasa.id` | Psikolog (PIO) |
-| `psikolog3@tabularasa.id` | Psikolog (Pendidikan) |
+Akun staf (Administrator, Asisten Psikolog, Psikolog) dibuat oleh seed. Email
+dan kata sandi diisi melalui variabel `SEED_PASSWORD` dan tidak didokumentasikan
+di repositori. Ganti sebelum dipakai produksi.
 
 ---
 
@@ -350,7 +344,7 @@ Katalog psikolog placeholder diganti dengan 5 psikolog sesuai data klien:
 | Amanda Fadhia Feriqhalisyah | Psikolog Industri & Organisasi | `16S35pkY4WS0TGn7nsVXRMyKkP7dklWRf` |
 
 - Email login: `anugrah@`, `nadia@`, `aprilia@`, `anissa@`, `amanda@tabularasa.id`
-  (kata sandi tetap `TabulaRasa123!`).
+  (kata sandi diisi via `SEED_PASSWORD`, tidak ditulis di repo).
 - Foto masing-masing psikolog diletakkan di `public/psikolog/` dengan nama
   berbasis slug, lalu dipetakan melalui kolom `ProfilPsikolog.fotoUrl`.
 - Psikolog lama (`psikolog1-3@`) beserta kasus ujinya dibersihkan oleh seed.
@@ -1361,8 +1355,7 @@ otomatis naik ke `PENGOLAHAN_DATA` dan psikolog langsung dinotifikasi.
 
 Termasuk: psikolog B tidak dapat membuka kasus/asesmen psikolog A; psikolog B
 tidak melihat klien/jadwal psikolog A; admin & asisten tidak dapat membuka
-Zona 2/3; unduh dokumen hanya oleh psikolog pemilik (lain → 403); kata sandi
-demo terverifikasi bcrypt.
+Zona 2/3; unduh dokumen hanya oleh psikolog pemilik (lain → 403).
 
 `tsc` ✅ · `eslint` ✅ · `next build` ✅ · 13 migrasi terpasang, tidak ada yang
 menggantung.
