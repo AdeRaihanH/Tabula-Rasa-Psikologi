@@ -137,7 +137,7 @@ export default async function HalamanPengaturan() {
                 name="instruksiPembayaran"
                 rows={3}
                 defaultValue={nilai.instruksiPembayaran}
-                placeholder="mis. Transfer sesuai nominal, lalu kirim bukti ke WhatsApp admin."
+                placeholder="mis. Transfer tepat sesuai nominal. Bukti pembayaran dapat langsung diunggah melalui tombol di bawah."
                 className="input"
               />
             </div>

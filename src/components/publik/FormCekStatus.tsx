@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 
 import { AlurStatus } from "@/components/dashboard/AlurStatus";
 import { JebakanBot } from "@/components/ui/JebakanBot";
+import { UnggahBuktiKlien } from "@/components/publik/UnggahBuktiKlien";
 import {
   cekStatusPendaftaran,
   type HasilCekStatus,
@@ -11,7 +13,7 @@ import {
 import { labelStatusPendaftaran } from "@/lib/config";
 import { formatRupiah, formatTanggal, formatTanggalWaktu } from "@/lib/utils";
 
-export function FormCekStatus() {
+export function FormCekStatus({ sudahLogin = false }: { sudahLogin?: boolean }) {
   const [hasil, aksi, pending] = useActionState<HasilCekStatus, FormData>(
     cekStatusPendaftaran,
     undefined,
@@ -80,10 +82,36 @@ export function FormCekStatus() {
                 {hasil.nomor}
               </p>
             </div>
-            <span className="pil bg-brand-600 text-white">
-              {labelStatusPendaftaran[hasil.status] ?? hasil.status}
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="pil bg-brand-600 text-white">
+                {labelStatusPendaftaran[hasil.status] ?? hasil.status}
+              </span>
+              {hasil.pembayaranStatus === "DITOLAK" && (
+                <span className="pil bg-red-600 text-white">
+                  Bukti Ditolak
+                </span>
+              )}
             </span>
           </div>
+
+          {/* Banner penolakan — status DITOLAK ditampilkan tegas di sini agar
+              tidak terlihat seperti "menunggu pembayaran" biasa. */}
+          {hasil.pembayaranStatus === "DITOLAK" && (
+            <div className="mt-5 rounded-xl border border-red-300 bg-red-50 p-5">
+              <p className="text-sm font-bold text-red-800">
+                Bukti pembayaran DITOLAK
+              </p>
+              <p className="mt-1.5 text-sm leading-relaxed text-red-700">
+                <span className="font-semibold">Alasan dari admin:</span>{" "}
+                {hasil.catatanPembayaran ??
+                  "Bukti tidak dapat diverifikasi. Silakan kirim ulang bukti yang jelas."}
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-red-700/90">
+                Silakan unggah ulang bukti pembayaran yang benar pada kolom di
+                bawah ini.
+              </p>
+            </div>
+          )}
 
           <dl className="mt-5 space-y-2.5 text-sm">
             <div className="flex justify-between gap-4 border-b border-line pb-2.5">
@@ -133,8 +161,10 @@ export function FormCekStatus() {
 
               {hasil.pembayaranStatus === "DITOLAK" && (
                 <p className="mt-2 text-sm font-medium text-red-700">
-                  Bukti pembayaran sebelumnya ditolak. Silakan kirim ulang bukti
-                  yang benar ke admin.
+                  Bukti pembayaran sebelumnya ditolak
+                  {hasil.catatanPembayaran
+                    ? `: ${hasil.catatanPembayaran}`
+                    : ". Silakan kirim ulang bukti yang benar ke admin."}
                 </p>
               )}
 
@@ -157,37 +187,68 @@ export function FormCekStatus() {
                   "Transfer sesuai nominal, lalu kirim bukti transfer ke admin dengan menyebutkan nomor pendaftaran Anda."}
               </p>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                {hasil.whatsapp && (
+              {/* Upload bukti langsung */}
+              {hasil.pembayaranId && sudahLogin && (
+                <div className="mt-5 border-t border-brand-200 pt-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-brand-700">
+                    Unggah Bukti Pembayaran
+                  </p>
+                  <p className="mt-1 text-xs text-ink-soft">
+                    Upload langsung dari sini — tidak perlu kirim ke WA atau email.
+                    Admin akan memverifikasi otomatis setelah diterima.
+                  </p>
+                  <UnggahBuktiKlien
+                    pembayaranId={hasil.pembayaranId}
+                    status={
+                      (hasil.pembayaranStatus as
+                        | "MENUNGGU"
+                        | "TERVERIFIKASI"
+                        | "DITOLAK"
+                        | null) ?? null
+                    }
+                    adaBukti={hasil.buktiAda}
+                    catatan={hasil.catatanPembayaran}
+                  />
+                </div>
+              )}
+
+              {/* Belum login — sarankan login */}
+              {hasil.pembayaranId && !sudahLogin && (
+                <div className="mt-5 rounded-xl border border-brand-200 bg-brand-50/60 p-4">
+                  <p className="text-xs font-semibold text-brand-800">
+                    💡 Upload bukti lebih mudah dengan akun
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-brand-700">
+                    Masuk ke akun Anda untuk mengunggah bukti pembayaran langsung tanpa perlu kirim via WA atau email.
+                  </p>
                   <a
-                    href={`https://wa.me/${hasil.whatsapp}?text=${encodeURIComponent(
-                      `Halo, saya ingin mengirim bukti pembayaran untuk pendaftaran ${hasil.nomor}.`,
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="tombol tombol-sage !py-2 !text-xs"
+                    href={`/masuk?dari=/dashboard/riwayat`}
+                    className="tombol tombol-utama mt-3 block w-full text-center !py-2 !text-xs"
                   >
-                    Kirim bukti via WhatsApp
+                    Masuk untuk Upload Bukti
                   </a>
-                )}
-                {hasil.email && (
-                  <a
-                    href={`mailto:${hasil.email}?subject=${encodeURIComponent(
-                      `Bukti pembayaran ${hasil.nomor}`,
-                    )}`}
-                    className="tombol tombol-garis !py-2 !text-xs"
-                  >
-                    Kirim via Email
-                  </a>
-                )}
-              </div>
+                </div>
+              )}
+
             </div>
           )}
 
           {hasil.pembayaranStatus === "TERVERIFIKASI" && (
-            <p className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-              Pembayaran sudah diverifikasi. Terima kasih.
-            </p>
+            <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <p className="text-sm font-medium text-emerald-700">
+                Pembayaran sudah diverifikasi. Terima kasih.
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-emerald-700/90">
+                Tautan pengerjaan tes dari asisten tersedia di portal{" "}
+                <Link
+                  href="/dashboard/riwayat"
+                  className="font-semibold underline"
+                >
+                  Riwayat Pendaftaran
+                </Link>{" "}
+                dan aktif mengikuti jadwal yang Anda pilih.
+              </p>
+            </div>
           )}
 
           <div className="mt-5">

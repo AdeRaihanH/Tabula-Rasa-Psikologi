@@ -4,19 +4,16 @@ import { notFound } from "next/navigation";
 import {
   BadgeStatus,
   JudulHalaman,
-  Tabel,
-  Td,
-  Th,
 } from "@/components/dashboard/ui";
 import {
   buatJadwal,
-  catatPembayaran,
   tetapkanPsikolog,
   verifikasiPembayaran,
 } from "@/app/actions/admin";
 import { cekSyaratTahap } from "@/app/actions/alur";
 import { PanelTahap } from "@/components/dashboard/PanelTahap";
 import { PanelDrive, UnggahBukti } from "@/components/dashboard/PanelDrive";
+import { PratinjauBukti } from "@/components/dashboard/PratinjauBukti";
 import { wajibKemampuan } from "@/lib/auth/dal";
 import { tahapBerikutnya, tahapSebelumnya } from "@/lib/alur";
 import { nilaiDatetimeLokal } from "@/lib/jadwal";
@@ -47,7 +44,19 @@ export default async function DetailPendaftaran({
       klien: true,
       layanan: true,
       psikolog: { select: { id: true, nama: true } },
-      pembayaran: { orderBy: { createdAt: "desc" } },
+      pembayaran: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          jumlah: true,
+          metode: true,
+          status: true,
+          catatan: true,
+          updatedAt: true,
+          diverifikasiPada: true,
+          diverifikasiOleh: { select: { nama: true } },
+        },
+      },
       jadwal: {
         orderBy: { mulai: "asc" },
         include: { psikolog: { select: { nama: true } } },
@@ -56,6 +65,19 @@ export default async function DetailPendaftaran({
   });
 
   if (!p) notFound();
+
+  const buktiAdaMapAdmin = new Map(
+    (
+      await prisma.pembayaran.findMany({
+        where: { pendaftaranId: id, buktiUrl: { not: null } },
+        select: { id: true },
+      })
+    ).map((b) => [b.id, true] as const),
+  );
+  const pembayaranDenganFlag = p.pembayaran.map((b) => ({
+    ...b,
+    adaBukti: buktiAdaMapAdmin.has(b.id),
+  }));
 
   const daftarPsikolog = await prisma.user.findMany({
     where: { role: "PSIKOLOG", aktif: true },
@@ -166,69 +188,145 @@ export default async function DetailPendaftaran({
 
           {/* Pembayaran */}
           <section className="kartu p-6">
-            <h2 className="text-sm font-bold uppercase tracking-[0.08em] text-ink-soft">
-              Pembayaran
-            </h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-bold uppercase tracking-[0.08em] text-ink-soft">
+                Pembayaran
+              </h2>
+              {pembayaranDenganFlag.some(
+                (b) => b.status === "MENUNGGU" && b.adaBukti,
+              ) && (
+                <span className="pil bg-amber-100 font-semibold text-amber-800">
+                  Ada bukti perlu diverifikasi
+                </span>
+              )}
+            </div>
 
-            {p.pembayaran.length === 0 ? (
+            {pembayaranDenganFlag.length === 0 ? (
               <p className="mt-3 text-sm text-muted">Belum ada tagihan.</p>
             ) : (
-              <div className="mt-4">
-                <Tabel>
-                  <thead>
-                    <tr>
-                      <Th>Jumlah</Th>
-                      <Th>Metode</Th>
-                      <Th>Status</Th>
-                      <Th>Aksi</Th>
-                      <Th>Bukti</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {p.pembayaran.map((b) => (
-                      <tr key={b.id}>
-                        <Td className="font-semibold text-ink">
+              <div className="mt-4 space-y-4">
+                {pembayaranDenganFlag.map((b) => {
+                  const adaBukti = b.adaBukti;
+                  const perluVerifikasi =
+                    b.status === "MENUNGGU" && adaBukti;
+                  return (
+                    <div
+                      key={b.id}
+                      className={`rounded-xl border p-4 ${
+                        perluVerifikasi
+                          ? "border-amber-300 bg-amber-50/50"
+                          : "border-line bg-white"
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-bold text-ink">
                           {formatRupiah(b.jumlah.toString())}
-                        </Td>
-                        <Td className="text-xs">{b.metode}</Td>
-                        <Td>
-                          <BadgeStatus status={b.status} label={b.status} />
-                        </Td>
-                        <Td>
-                          {b.status === "MENUNGGU" ? (
-                            <div className="flex gap-2">
-                              <form action={verifikasiPembayaran}>
-                                <input type="hidden" name="id" value={b.id} />
-                                <input type="hidden" name="keputusan" value="TERIMA" />
-                                <button className="pil bg-emerald-50 text-emerald-700">
-                                  Terima
-                                </button>
-                              </form>
-                              <form action={verifikasiPembayaran}>
-                                <input type="hidden" name="id" value={b.id} />
-                                <input type="hidden" name="keputusan" value="TOLAK" />
-                                <button className="pil bg-red-50 text-red-700">
-                                  Tolak
-                                </button>
-                              </form>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted">
-                              {b.diverifikasiPada ? formatTanggal(b.diverifikasiPada) : "—"}
-                            </span>
-                          )}
-                        </Td>
-                        <Td>
-                          <UnggahBukti
+                          <span className="ml-2 text-xs font-normal text-muted">
+                            {b.metode} · dikirim{" "}
+                            {formatTanggal(b.updatedAt)}
+                          </span>
+                        </p>
+                        <BadgeStatus status={b.status} label={b.status} />
+                      </div>
+
+                      {perluVerifikasi && (
+                        <p className="mt-2 rounded-lg border border-amber-200 bg-amber-100/70 px-3 py-2 text-xs font-semibold text-amber-800">
+                          Bukti pembayaran baru dari klien — silakan periksa
+                          lalu Terima / Tolak.
+                        </p>
+                      )}
+                      {!adaBukti && b.status === "MENUNGGU" && (
+                        <p className="mt-2 text-xs text-muted">
+                          Menunggu klien mengunggah bukti pembayaran.
+                        </p>
+                      )}
+                      {b.catatan && b.status === "DITOLAK" && (
+                        <p className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+                          Alasan penolakan (dilihat klien): {b.catatan}
+                        </p>
+                      )}
+                      {b.catatan && b.status !== "DITOLAK" && (
+                        <p className="mt-2 text-xs text-ink-soft">
+                          Catatan: {b.catatan}
+                        </p>
+                      )}
+                      {b.status !== "MENUNGGU" && (
+                        <p className="mt-1 text-[0.7rem] text-muted">
+                          Diverifikasi{" "}
+                          {b.diverifikasiPada
+                            ? formatTanggal(b.diverifikasiPada)
+                            : "—"}
+                          {b.diverifikasiOleh?.nama
+                            ? ` oleh ${b.diverifikasiOleh.nama}`
+                            : ""}
+                        </p>
+                      )}
+
+                      {/* Bukti */}
+                      <div className="mt-3">
+                        {adaBukti ? (
+                          <PratinjauBukti
                             pembayaranId={b.id}
-                            buktiUrl={b.buktiUrl}
-                            driveSiap={driveSiap}
+                            tampilMini
+                            label="Lihat bukti lengkap ↗"
+                            className="tombol tombol-garis !py-1.5 !text-xs"
                           />
-                        </Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Tabel>
+                        ) : (
+                          <p className="text-xs text-muted">
+                            Belum ada bukti terlampir.
+                          </p>
+                        )}
+                        <UnggahBukti
+                          pembayaranId={b.id}
+                          buktiUrl={null}
+                          driveSiap={driveSiap}
+                        />
+                      </div>
+
+                      {/* Verifikasi */}
+                      {b.status === "MENUNGGU" ? (
+                        <div className="mt-3 grid gap-2 border-t border-line pt-3 sm:grid-cols-2">
+                          <form
+                            action={verifikasiPembayaran}
+                            className="flex gap-2"
+                          >
+                            <input type="hidden" name="id" value={b.id} />
+                            <input
+                              type="hidden"
+                              name="keputusan"
+                              value="TERIMA"
+                            />
+                            <button className="tombol tombol-utama w-full !py-2 !text-xs disabled:opacity-50">
+                              Terima pembayaran
+                            </button>
+                          </form>
+                          <form
+                            action={verifikasiPembayaran}
+                            className="flex gap-2"
+                          >
+                            <input type="hidden" name="id" value={b.id} />
+                            <input
+                              type="hidden"
+                              name="keputusan"
+                              value="TOLAK"
+                            />
+                            <input
+                              name="catatan"
+                              required
+                              minLength={5}
+                              placeholder="Alasan penolakan (wajib — dilihat klien)"
+                              title="Wajib isi alasan penolakan karena akan ditampilkan ke klien"
+                              className="input !py-2 !text-xs"
+                            />
+                            <button className="tombol w-full !bg-red-600 !py-2 !text-xs !text-white hover:!bg-red-700">
+                              Tolak
+                            </button>
+                          </form>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
                 <p className="mt-3 text-xs text-muted">
                   Total terverifikasi:{" "}
                   <span className="font-semibold text-ink">
@@ -238,28 +336,7 @@ export default async function DetailPendaftaran({
               </div>
             )}
 
-            <form action={catatPembayaran} className="mt-5 grid gap-3 border-t border-line pt-5 sm:grid-cols-3">
-              <input type="hidden" name="pendaftaranId" value={p.id} />
-              <div>
-                <label className="label" htmlFor="jumlah">
-                  Jumlah tagihan
-                </label>
-                <input id="jumlah" name="jumlah" type="number" min="0" className="input" placeholder="1500000" />
-              </div>
-              <div>
-                <label className="label" htmlFor="metode">
-                  Metode
-                </label>
-                <select id="metode" name="metode" className="input" defaultValue="transfer">
-                  <option value="transfer">Transfer bank</option>
-                  <option value="tunai">Tunai</option>
-                  <option value="invoice">Invoice institusi</option>
-                </select>
-              </div>
-              <div className="flex items-end">
-                <button className="tombol tombol-garis w-full">Catat tagihan</button>
-              </div>
-            </form>
+
           </section>
 
           {/* Jadwal */}

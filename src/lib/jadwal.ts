@@ -121,31 +121,6 @@ export function validasiJadwal(
 }
 
 /**
- * Mengubah pilihan klien (tanggal `YYYY-MM-DD` + label slot) menjadi waktu
- * sesungguhnya. Jam pada `SLOT_WAKTU` adalah WIB, jadi dikurangi 7 jam agar
- * `Date` (UTC) mewakili waktu yang benar — penting saat server berjalan di UTC.
- *
- * Mengembalikan null bila tanggal atau slot tidak dikenali.
- */
-export function waktuSesi(
-  tanggal: string,
-  labelSlot: string,
-): { mulai: Date; selesai: Date } | null {
-  if (!tanggalValid(tanggal)) return null;
-  const slot = SLOT_WAKTU.find((s) => s.label === labelSlot);
-  if (!slot) return null;
-
-  const [y, m, d] = tanggal.split("-").map(Number);
-  const selisihWibKeUtc = 7;
-  return {
-    mulai: new Date(Date.UTC(y, m - 1, d, slot.mulaiJam - selisihWibKeUtc, 0, 0)),
-    selesai: new Date(
-      Date.UTC(y, m - 1, d, slot.selesaiJam - selisihWibKeUtc, 0, 0),
-    ),
-  };
-}
-
-/**
  * Nilai untuk `<input type="datetime-local">` menurut WIB (`YYYY-MM-DDTHH:mm`).
  * Dipakai agar admin melihat jadwal yang sudah ada pada formulirnya.
  */
@@ -162,4 +137,22 @@ export function nilaiDatetimeLokal(tanggal: Date) {
   const ambil = (tipe: string) => p.find((x) => x.type === tipe)?.value ?? "";
   const jam = ambil("hour") === "24" ? "00" : ambil("hour");
   return `${ambil("year")}-${ambil("month")}-${ambil("day")}T${jam}:${ambil("minute")}`;
+}
+
+/**
+ * Preferensi hari/jam yang ditulis pendaftar pada formulir
+ * ("[Preferensi Jadwal]\nTanggal: ...\nWaktu: ..."). Dipakai untuk membuat
+ * jadwal otomatis dan sebagai tampilan cadangan bila baris jadwal belum ada.
+ */
+export function parsePreferensiJadwal(kebutuhan: string | null | undefined): {
+  tanggal: string;
+  waktu: string;
+} | null {
+  if (!kebutuhan || !kebutuhan.includes("[Preferensi Jadwal]")) return null;
+  const tanggal = kebutuhan.match(/^Tanggal:\s*(.+)$/m)?.[1]?.trim();
+  const waktu = kebutuhan.match(/^Waktu:\s*(.+)$/m)?.[1]?.trim();
+  if (!tanggal || !waktu || tanggal === "-" || waktu === "-") return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggal)) return null;
+  if (!SLOT_WAKTU.some((s) => s.label === waktu)) return null;
+  return { tanggal, waktu };
 }

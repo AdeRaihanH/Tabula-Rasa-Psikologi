@@ -1,12 +1,16 @@
 import type { Role } from "@/lib/rbac";
 
-/** Status yang menjadi bagian dari alur 8 tahap (DIBATALKAN di luar alur). */
+/**
+ * Alur layanan 5 tahap (DIBATALKAN di luar alur).
+ *
+ * Disederhanakan dari 8 tahap: skrining dilebur ke tahap 1 (tagihan otomatis
+ * terbit saat daftar), penjadwalan otomatis mengikuti pilihan pendaftar
+ * sehingga tidak menjadi tahap tersendiri, dan pengolahan data + pelaporan
+ * digabung menjadi "Pelaporan Hasil".
+ */
 export const statusAlur = [
-  "BARU",
-  "SKRINING",
   "MENUNGGU_PEMBAYARAN",
   "TERVERIFIKASI",
-  "TERJADWAL",
   "PELAKSANAAN",
   "PENGOLAHAN_DATA",
   "SELESAI",
@@ -25,66 +29,42 @@ export type Tahap = {
 
 export const TAHAP: Tahap[] = [
   {
-    kode: "BARU",
+    kode: "MENUNGGU_PEMBAYARAN",
     nomor: 1,
-    judul: "Pendaftaran Baru",
-    isi: "Formulir Anda sudah masuk dan menunggu diperiksa admin.",
+    judul: "Pendaftaran & Pembayaran",
+    isi: "Daftar layanan, pilih jadwal, lalu unggah bukti pembayaran.",
     aktor: "Klien",
     peran: ["ADMIN"],
   },
   {
-    kode: "SKRINING",
-    nomor: 2,
-    judul: "Skrining Kebutuhan",
-    isi: "Admin sedang memverifikasi kebutuhan Anda.",
-    aktor: "Admin",
-    peran: ["ADMIN"],
-  },
-  {
-    kode: "MENUNGGU_PEMBAYARAN",
-    nomor: 3,
-    judul: "Menunggu Pembayaran",
-    isi: "Tagihan sudah diterbitkan, menunggu pembayaran dan verifikasi.",
-    aktor: "Klien & Admin",
-    peran: ["ADMIN"],
-  },
-  {
     kode: "TERVERIFIKASI",
-    nomor: 4,
-    judul: "Terverifikasi",
-    isi: "Pembayaran sah. Menunggu penjadwalan sesi.",
-    aktor: "Admin",
-    peran: ["ADMIN"],
-  },
-  {
-    kode: "TERJADWAL",
-    nomor: 5,
-    judul: "Terjadwal",
-    isi: "Sesi sudah dijadwalkan bersama psikolog.",
+    nomor: 2,
+    judul: "Verifikasi Pembayaran",
+    isi: "Admin memeriksa bukti pembayaran dan mengonfirmasi jadwal tes Anda.",
     aktor: "Admin",
     peran: ["ADMIN"],
   },
   {
     kode: "PELAKSANAAN",
-    nomor: 6,
-    judul: "Pelaksanaan",
-    isi: "Sesi atau asesmen sedang berlangsung.",
-    aktor: "Asisten Psikolog",
+    nomor: 3,
+    judul: "Pelaksanaan Tes",
+    isi: "Kerjakan tes melalui tautan dari asisten, sesuai jadwal Anda.",
+    aktor: "Klien & Asisten",
     peran: ["ASISTEN"],
   },
   {
     kode: "PENGOLAHAN_DATA",
-    nomor: 7,
-    judul: "Pengolahan Data",
-    isi: "Hasil sedang diolah dan disusun laporannya.",
-    aktor: "Asisten & Psikolog",
+    nomor: 4,
+    judul: "Pelaporan Hasil",
+    isi: "Tes selesai dikerjakan. Psikolog menyusun laporan hasil Anda.",
+    aktor: "Psikolog",
     peran: ["ASISTEN", "PSIKOLOG"],
   },
   {
     kode: "SELESAI",
-    nomor: 8,
+    nomor: 5,
     judul: "Selesai",
-    isi: "Laporan sudah diserahkan. Kasus memasuki tahap pengarsipan.",
+    isi: "Laporan diserahkan pada sesi umpan balik bersama psikolog.",
     aktor: "Psikolog",
     peran: ["PSIKOLOG"],
   },
@@ -92,8 +72,26 @@ export const TAHAP: Tahap[] = [
 
 export const petaTahap = new Map(TAHAP.map((t) => [t.kode, t]));
 
+/**
+ * Status lama sebelum penyederhanaan (BARU, SKRINING, TERJADWAL) dipetakan ke
+ * tahap terdekat agar data lama tetap tampil wajar dan otomatis dimigrasikan
+ * oleh `majuOtomatis` saat kasus disentuh berikutnya.
+ */
+const LEGACY_KE_TAHAP: Record<string, StatusAlur> = {
+  BARU: "MENUNGGU_PEMBAYARAN",
+  SKRINING: "MENUNGGU_PEMBAYARAN",
+  TERJADWAL: "PELAKSANAAN",
+};
+
+/** Kode tahap yang berlaku (legacy dinormalisasi). Null bila di luar alur. */
+export function normalisasiStatus(status: string): StatusAlur | null {
+  if (petaTahap.has(status as StatusAlur)) return status as StatusAlur;
+  return LEGACY_KE_TAHAP[status] ?? null;
+}
+
 export function nomorTahap(status: string): number {
-  return petaTahap.get(status as StatusAlur)?.nomor ?? 0;
+  const kode = normalisasiStatus(status);
+  return kode ? (petaTahap.get(kode)?.nomor ?? 0) : 0;
 }
 
 export function tahapKe(nomor: number): Tahap | undefined {

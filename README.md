@@ -85,27 +85,26 @@ kata sandi. Psikolog juga mengelola profil publiknya.
   Bila sebelumnya klien pernah mendaftar tanpa akun dengan email yang sama,
   **riwayat lamanya otomatis ditautkan** ke akun baru.
 - `/dashboard/riwayat` — daftar semua pendaftaran klien beserta status terkini,
-  biaya, dan ringkasan tahap (mis. *Tahap 3 dari 8*).
-- `/dashboard/riwayat/[id]` — detail: ringkasan layanan, jadwal sesi, penanda 8
-  tahap, total biaya + rekening, dan **form unggah bukti pembayaran**
-  (PDF/JPG/PNG, maks. 8 MB). Bila arsip Google belum dikonfigurasi, klien
-  diarahkan mengirim bukti via WhatsApp/email.
+  biaya, dan ringkasan tahap (mis. *Tahap 3 dari 5*).
+- `/dashboard/riwayat/[id]` — detail: ringkasan layanan, jadwal sesi (dibuat
+  otomatis dari pilihan saat mendaftar), penanda 5 tahap, total biaya +
+  rekening, **form unggah bukti pembayaran** (PDF/JPG/PNG, maks. 8 MB), dan
+  **kartu Pelaksanaan Tes** berisi tautan pengerjaan dari asisten yang aktif
+  mengikuti jadwal. Hasil asesmen dan interpretasi psikolog **tidak**
+  ditampilkan di portal — diserahkan langsung melalui sesi umpan balik.
 - Hasil asesmen dan interpretasi psikolog **tidak** ditampilkan di portal —
   diserahkan langsung melalui sesi umpan balik.
 
-Alur pendaftaran mengikuti 8 tahap yang **ditegakkan sistem** — status tidak
+Alur pendaftaran mengikuti 5 tahap yang **ditegakkan sistem** — status tidak
 dapat melompat dan setiap tahap punya syarat serta penanggung jawab:
 
 | # | Tahap | Aktor | Syarat untuk dicapai |
 | --- | --- | --- | --- |
-| 1 | Pendaftaran Baru | Klien | — |
-| 2 | Skrining Kebutuhan | Admin | — |
-| 3 | Menunggu Pembayaran | Klien & Admin | Ada tagihan pembayaran |
-| 4 | Terverifikasi | Admin | Pembayaran diverifikasi |
-| 5 | Terjadwal | Admin | Ada jadwal sesi |
-| 6 | Pelaksanaan | Asisten Psikolog | Ada lembar tes |
-| 7 | Pengolahan Data | Asisten & Psikolog | Semua lembar tes punya skor |
-| 8 | Selesai | Psikolog | Laporan berstatus FINAL |
+| 1 | Pendaftaran & Pembayaran | Klien | Ada tagihan pembayaran |
+| 2 | Verifikasi Pembayaran | Admin | Pembayaran diverifikasi |
+| 3 | Pelaksanaan Tes | Klien & Asisten | Ada jadwal sesi (otomatis dari pilihan pendaftar) |
+| 4 | Pelaporan Hasil | Psikolog | Semua lembar tes punya skor |
+| 5 | Selesai | Psikolog | Laporan berstatus FINAL |
 
 Penanda tahap tampil di halaman detail pendaftaran (admin), detail asesmen
 (asisten), detail kasus (psikolog), dan halaman publik **Cek Status**.

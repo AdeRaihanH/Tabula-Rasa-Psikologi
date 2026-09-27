@@ -82,11 +82,11 @@ export async function simpanLaporan(
   });
 
   if (finalkan) {
-    // Tahap 7 lalu 8 — supaya jejak audit menunjukkan keduanya.
+    // Tahap 4 lalu 5 — supaya jejak audit menunjukkan keduanya.
     await majuOtomatis(pendaftaranId, "PENGOLAHAN_DATA");
     await majuOtomatis(pendaftaranId, "SELESAI");
   } else {
-    // Menyusun draft berarti data sedang diolah (tahap 7).
+    // Menyusun draft berarti laporan sedang disusun (tahap 4).
     await majuOtomatis(pendaftaranId, "PENGOLAHAN_DATA");
   }
 
@@ -109,6 +109,6 @@ export async function simpanLaporan(
     ok: true,
     pesan: finalkan
       ? "Laporan difinalkan. Kasus berstatus Selesai dan siap diarsipkan."
-      : "Draft laporan tersimpan. Kasus masuk tahap Pengolahan Data.",
+      : "Draft laporan tersimpan. Kasus masuk tahap Pelaporan Hasil.",
   };
 }

@@ -1,6 +1,11 @@
 import "server-only";
 
-import { nomorTahap, tahapKe, type StatusAlur } from "@/lib/alur";
+import {
+  normalisasiStatus,
+  nomorTahap,
+  tahapKe,
+  type StatusAlur,
+} from "@/lib/alur";
 import { prisma } from "@/lib/prisma";
 
 export type HasilSyarat = { ok: boolean; pesan: string };
@@ -22,9 +27,6 @@ export async function cekSyaratTahap(
   if (!p) return { ok: false, pesan: "Pendaftaran tidak ditemukan." };
 
   switch (target) {
-    case "SKRINING":
-      return { ok: true, pesan: "" };
-
     case "MENUNGGU_PEMBAYARAN":
       if (p.pembayaran.length === 0) {
         return {
@@ -45,22 +47,15 @@ export async function cekSyaratTahap(
       }
       return { ok: true, pesan: "" };
 
-    case "TERJADWAL":
+    case "PELAKSANAAN":
+      // Jadwal dibuat otomatis dari pilihan pendaftar saat mendaftar, jadi
+      // tahap ini terbuka segera setelah ada jadwal — asisten lalu
+      // membagikan tautan tes dan klien mengerjakannya sesuai jadwal.
       if (p.jadwal.length === 0) {
         return {
           ok: false,
           pesan:
-            "Belum ada jadwal. Buat jadwal sesi bersama psikolog terlebih dahulu.",
-        };
-      }
-      return { ok: true, pesan: "" };
-
-    case "PELAKSANAAN":
-      if (p.lembarTes.length === 0) {
-        return {
-          ok: false,
-          pesan:
-            "Belum ada lembar tes. Asisten psikolog perlu menambahkan lembar tes terlebih dahulu.",
+            "Belum ada jadwal. Jadwal dibuat otomatis dari pilihan pendaftar, atau buat manual pada bagian Jadwal Sesi.",
         };
       }
       return { ok: true, pesan: "" };
@@ -140,8 +135,11 @@ export async function syaratFinalkan(
  *
  * Aturan penting: status hanya naik SATU TAHAP demi satu dan setiap tahap
  * diperiksa syaratnya. Jadi kasus tidak mungkin melompat (mis. dari
- * "Pendaftaran Baru" langsung ke "Selesai"). Bila syarat tahap berikutnya
+ * "Pendaftaran" langsung ke "Selesai"). Bila syarat tahap berikutnya
  * belum terpenuhi, kenaikan berhenti di tahap terakhir yang sah.
+ *
+ * Status lama (BARU, SKRINING, TERJADWAL) dinormalisasi dulu ke tahap baru
+ * yang setara, sehingga data lama ikut terpigrasi dengan sendirinya.
  *
  * Mengembalikan status akhir setelah proses.
  */
@@ -156,10 +154,26 @@ export async function majuOtomatis(
   if (!p) return "";
   if (p.status === "DIBATALKAN") return p.status;
 
-  let sekarang = p.status as StatusAlur;
+  let sekarang = normalisasiStatus(p.status);
+  if (!sekarang) return p.status;
+  if (sekarang !== p.status) {
+    await prisma.pendaftaran.update({
+      where: { id: pendaftaranId },
+      data: { status: sekarang },
+    });
+    await prisma.auditLog.create({
+      data: {
+        aksi: "NAIK_TAHAP_OTOMATIS",
+        entitas: "Pendaftaran",
+        entitasId: pendaftaranId,
+        detail: `${p.status} → ${sekarang} (normalisasi ke alur 5 tahap)`,
+      },
+    });
+  }
+
   let nomorSekarang = nomorTahap(sekarang);
   const nomorTarget = nomorTahap(target);
-  if (nomorSekarang === 0 || nomorTarget === 0) return p.status;
+  if (nomorSekarang === 0 || nomorTarget === 0) return sekarang;
 
   while (nomorSekarang < nomorTarget) {
     const berikut = tahapKe(nomorSekarang + 1);

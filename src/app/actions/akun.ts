@@ -161,6 +161,25 @@ export async function unggahBuktiKlien(
     return { ok: false, pesan: "Ukuran berkas maksimal 8 MB." };
   }
 
+  // Validasi tipe berkas agar bisa dibuka admin saat verifikasi.
+  const tipeDiizinkan = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+  ];
+  const ekstensiOk = /\.(jpe?g|png|webp|pdf)$/i.test(berkas.name);
+  if (
+    (berkas.type && !tipeDiizinkan.includes(berkas.type)) ||
+    (!berkas.type && !ekstensiOk)
+  ) {
+    return {
+      ok: false,
+      pesan: "Format berkas harus JPG, PNG, WEBP, atau PDF.",
+    };
+  }
+
   const bayar = await prisma.pembayaran.findUnique({
     where: { id: pembayaranId },
     select: { id: true, pendaftaranId: true, status: true },
@@ -193,27 +212,40 @@ export async function unggahBuktiKlien(
     };
   }
 
-  if (!driveAktif()) {
-    return {
-      ok: false,
-      pesan:
-        "Arsip digital belum dikonfigurasi. Silakan kirim bukti pembayaran melalui WhatsApp atau email admin.",
-    };
-  }
-
   try {
-    const folder = await folderPendaftaran(bayar.pendaftaranId);
-    const hasil = await unggahBerkas({
-      nama: `bukti-${milik.nomor}-${Date.now()}-${berkas.name}`.slice(0, 120),
-      mimeType: berkas.type || "application/octet-stream",
-      data: Buffer.from(await berkas.arrayBuffer()),
-      folderId: folder.id,
-    });
+    let buktiUrl: string;
+    let sumberBukti = "penyimpanan lokal";
+
+    if (driveAktif()) {
+      try {
+        const folder = await folderPendaftaran(bayar.pendaftaranId);
+        const namaAman = berkas.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 60);
+        const hasil = await unggahBerkas({
+          nama: `bukti-${milik.nomor}-${Date.now()}-${namaAman}`.slice(0, 120),
+          mimeType: berkas.type || "application/octet-stream",
+          data: Buffer.from(await berkas.arrayBuffer()),
+          folderId: folder.id,
+        });
+        buktiUrl = hasil.tautan;
+        sumberBukti = `Google Drive (${hasil.tautan})`;
+      } catch (e) {
+        // Drive dikonfigurasi tapi gagal (mis. folder belum diatur) —
+        // simpan lokal agar bukti klien tidak hilang.
+        console.error("[unggahBuktiKlien] Drive gagal, pakai lokal:", e);
+        const buffer = Buffer.from(await berkas.arrayBuffer());
+        buktiUrl = `data:${berkas.type || "application/octet-stream"};base64,${buffer.toString("base64")}`;
+        sumberBukti = "penyimpanan lokal (Drive gagal)";
+      }
+    } else {
+      const buffer = Buffer.from(await berkas.arrayBuffer());
+      buktiUrl = `data:${berkas.type || "image/jpeg"};base64,${buffer.toString("base64")}`;
+    }
 
     await prisma.pembayaran.update({
       where: { id: pembayaranId },
-      data: { buktiUrl: hasil.tautan, status: "MENUNGGU", catatan: null },
+      data: { buktiUrl, status: "MENUNGGU", catatan: null },
     });
+
 
     await prisma.auditLog.create({
       data: {
@@ -221,7 +253,7 @@ export async function unggahBuktiKlien(
         aksi: "KLIEN_UNGGAH_BUKTI",
         entitas: "Pembayaran",
         entitasId: pembayaranId,
-        detail: `Klien mengunggah bukti untuk ${milik.nomor}: ${hasil.tautan}`,
+        detail: `Klien mengunggah bukti untuk ${milik.nomor} via ${sumberBukti}`,
       },
     });
 
@@ -229,7 +261,12 @@ export async function unggahBuktiKlien(
     revalidatePath(`/dashboard/riwayat/${bayar.pendaftaranId}`);
     revalidatePath("/dashboard/pendaftaran");
     revalidatePath(`/dashboard/pendaftaran/${bayar.pendaftaranId}`);
-    return { ok: true, pesan: "Bukti pembayaran berhasil diunggah." };
+    revalidatePath("/dashboard");
+    return {
+      ok: true,
+      pesan:
+        "Bukti pembayaran berhasil dikirim dan menunggu verifikasi admin. Anda akan diberi tahu setelah diverifikasi.",
+    };
   } catch (e) {
     console.error("[unggahBuktiKlien] gagal:", e);
     return {
