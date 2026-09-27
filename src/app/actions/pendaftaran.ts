@@ -5,7 +5,7 @@ import { after } from "next/server";
 
 import { arsipkanPendaftaranBaru } from "@/lib/drive-arsip";
 import { klienMilikSaya, sesiSaatIni } from "@/lib/auth/dal";
-import { validasiJadwal } from "@/lib/jadwal";
+import { validasiJadwal, waktuSesi } from "@/lib/jadwal";
 import { ambilIp } from "@/lib/keamanan/ip";
 import {
   cekBatas,
@@ -234,6 +234,33 @@ export async function kirimPendaftaran(
           metode: "transfer",
           status: "MENUNGGU",
           catatan: `Tagihan otomatis: ${layanan.nama} (${metodeDiminta === "ONLINE" ? "daring" : "tatap muka"})`,
+        },
+      });
+    }
+
+    // Jadwal yang dipilih klien saat mendaftar langsung menjadi sesi nyata,
+    // supaya status di portal klien tidak lagi "jadwal belum ditetapkan".
+    // Admin tetap dapat mengubahnya lewat detail pendaftaran.
+    const slot = waktuSesi(tanggalPertemuan ?? "", waktuPertemuan ?? "");
+    if (slot) {
+      await prisma.jadwalSesi.create({
+        data: {
+          pendaftaranId: pendaftaran.id,
+          psikologId: psikolog.id,
+          mulai: slot.mulai,
+          selesai: slot.selesai,
+          metode: metodeDiminta,
+          status: "TERJADWAL",
+          catatan: "Jadwal dipilih klien saat pendaftaran; menunggu konfirmasi admin.",
+        },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          aksi: "JADWAL_DARI_KLIEN",
+          entitas: "JadwalSesi",
+          entitasId: pendaftaran.id,
+          detail: `Klien memilih jadwal ${tanggalPertemuan} ${waktuPertemuan} untuk ${nomor}`,
         },
       });
     }

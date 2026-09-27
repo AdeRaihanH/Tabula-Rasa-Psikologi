@@ -5,7 +5,9 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { Logo } from "@/components/ui/Logo";
+import { LoncengNotifikasi } from "@/components/dashboard/LoncengNotifikasi";
 import { navPublik } from "@/lib/config";
+import type { Notifikasi } from "@/lib/notifikasi";
 import { cn } from "@/lib/utils";
 
 type Identitas = {
@@ -19,9 +21,11 @@ type Identitas = {
 export function Header({
   identitas,
   sesi,
+  notifikasi = [],
 }: {
   identitas: Identitas;
   sesi: { nama: string; role: string } | null;
+  notifikasi?: Notifikasi[];
 }) {
   const [buka, setBuka] = useState(false);
   const pathname = usePathname();
@@ -92,9 +96,12 @@ export function Header({
               Cek Status
             </Link>
             {sesi ? (
-              <Link href="/dashboard" className="tombol tombol-utama">
-                Dashboard Saya
-              </Link>
+              <>
+                <LoncengNotifikasi daftar={notifikasi} />
+                <Link href="/dashboard" className="tombol tombol-utama">
+                  Dashboard Saya
+                </Link>
+              </>
             ) : (
               <>
                 <Link href="/masuk" className="tombol tombol-garis">
@@ -164,15 +171,18 @@ export function Header({
                 >
                   Chat WhatsApp
                 </a>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
                   {sesi ? (
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setBuka(false)}
-                      className="tombol tombol-utama flex-1"
-                    >
-                      Dashboard Saya
-                    </Link>
+                    <>
+                      <LoncengNotifikasi daftar={notifikasi} />
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setBuka(false)}
+                        className="tombol tombol-utama flex-1"
+                      >
+                        Dashboard Saya
+                      </Link>
+                    </>
                   ) : (
                     <>
                       <Link

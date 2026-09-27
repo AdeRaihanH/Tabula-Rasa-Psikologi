@@ -73,7 +73,16 @@ export function FormPendaftaran({
 }: {
   layanan: LayananRingkas[];
   psikolog: PsikologRingkas[];
-  akun: { nama: string; email: string; telepon: string | null };
+  akun: {
+    nama: string;
+    email: string;
+    telepon: string | null;
+    tanggalLahir: string | null;
+    jenisKelamin: string | null;
+    alamat: string | null;
+    pekerjaan: string | null;
+    institusi: string | null;
+  };
   slugAwal?: string;
   psikologAwal?: string;
 }) {
@@ -366,14 +375,25 @@ export function FormPendaftaran({
             <label className="label" htmlFor="tanggalLahir">
               Tanggal lahir
             </label>
-            <input id="tanggalLahir" name="tanggalLahir" type="date" className="input" />
+            <input
+              id="tanggalLahir"
+              name="tanggalLahir"
+              type="date"
+              className="input"
+              defaultValue={akun.tanggalLahir ?? ""}
+            />
           </div>
 
           <div>
             <label className="label" htmlFor="jenisKelamin">
               Jenis kelamin
             </label>
-            <select id="jenisKelamin" name="jenisKelamin" className="input" defaultValue="">
+            <select
+              id="jenisKelamin"
+              name="jenisKelamin"
+              className="input"
+              defaultValue={akun.jenisKelamin ?? ""}
+            >
               <option value="">Pilih…</option>
               <option value="L">Laki-laki</option>
               <option value="P">Perempuan</option>
@@ -384,21 +404,39 @@ export function FormPendaftaran({
             <label className="label" htmlFor="alamat">
               Alamat domisili
             </label>
-            <input id="alamat" name="alamat" className="input" placeholder="Kota / kabupaten" />
+            <input
+              id="alamat"
+              name="alamat"
+              className="input"
+              defaultValue={akun.alamat ?? ""}
+              placeholder="Kota / kabupaten"
+            />
           </div>
 
           <div>
             <label className="label" htmlFor="pekerjaan">
               Pekerjaan
             </label>
-            <input id="pekerjaan" name="pekerjaan" className="input" placeholder="mis. Karyawan swasta" />
+            <input
+              id="pekerjaan"
+              name="pekerjaan"
+              className="input"
+              defaultValue={akun.pekerjaan ?? ""}
+              placeholder="mis. Karyawan swasta"
+            />
           </div>
 
           <div>
             <label className="label" htmlFor="institusi">
               Institusi / perusahaan
             </label>
-            <input id="institusi" name="institusi" className="input" placeholder="Isi jika mendaftar atas nama lembaga" />
+            <input
+              id="institusi"
+              name="institusi"
+              className="input"
+              defaultValue={akun.institusi ?? ""}
+              placeholder="Isi jika mendaftar atas nama lembaga"
+            />
           </div>
         </div>
       </section>

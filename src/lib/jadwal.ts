@@ -119,3 +119,47 @@ export function validasiJadwal(
 
   return { ok: true };
 }
+
+/**
+ * Mengubah pilihan klien (tanggal `YYYY-MM-DD` + label slot) menjadi waktu
+ * sesungguhnya. Jam pada `SLOT_WAKTU` adalah WIB, jadi dikurangi 7 jam agar
+ * `Date` (UTC) mewakili waktu yang benar — penting saat server berjalan di UTC.
+ *
+ * Mengembalikan null bila tanggal atau slot tidak dikenali.
+ */
+export function waktuSesi(
+  tanggal: string,
+  labelSlot: string,
+): { mulai: Date; selesai: Date } | null {
+  if (!tanggalValid(tanggal)) return null;
+  const slot = SLOT_WAKTU.find((s) => s.label === labelSlot);
+  if (!slot) return null;
+
+  const [y, m, d] = tanggal.split("-").map(Number);
+  const selisihWibKeUtc = 7;
+  return {
+    mulai: new Date(Date.UTC(y, m - 1, d, slot.mulaiJam - selisihWibKeUtc, 0, 0)),
+    selesai: new Date(
+      Date.UTC(y, m - 1, d, slot.selesaiJam - selisihWibKeUtc, 0, 0),
+    ),
+  };
+}
+
+/**
+ * Nilai untuk `<input type="datetime-local">` menurut WIB (`YYYY-MM-DDTHH:mm`).
+ * Dipakai agar admin melihat jadwal yang sudah ada pada formulirnya.
+ */
+export function nilaiDatetimeLokal(tanggal: Date) {
+  const p = new Intl.DateTimeFormat("en-GB", {
+    timeZone: ZONA_WAKTU,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(tanggal);
+  const ambil = (tipe: string) => p.find((x) => x.type === tipe)?.value ?? "";
+  const jam = ambil("hour") === "24" ? "00" : ambil("hour");
+  return `${ambil("year")}-${ambil("month")}-${ambil("day")}T${jam}:${ambil("minute")}`;
+}

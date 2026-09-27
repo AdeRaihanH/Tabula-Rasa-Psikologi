@@ -19,6 +19,7 @@ import { PanelTahap } from "@/components/dashboard/PanelTahap";
 import { PanelDrive, UnggahBukti } from "@/components/dashboard/PanelDrive";
 import { wajibKemampuan } from "@/lib/auth/dal";
 import { tahapBerikutnya, tahapSebelumnya } from "@/lib/alur";
+import { nilaiDatetimeLokal } from "@/lib/jadwal";
 import { driveAktif } from "@/lib/gdrive";
 import { labelKategori, labelStatusPendaftaran } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
@@ -67,6 +68,10 @@ export default async function DetailPendaftaran({
     .reduce((a, b) => a + Number(b.jumlah), 0);
 
   const driveSiap = driveAktif();
+
+  // Jadwal pertama (biasanya pilihan klien saat mendaftar) dipakai untuk
+  // mengisi awal formulir agar admin tinggal menyesuaikan bila perlu.
+  const jadwalAda = p.jadwal[0] ?? null;
 
   const tahapBerikut = tahapBerikutnya(p.status);
   const syarat = tahapBerikut
@@ -286,6 +291,12 @@ export default async function DetailPendaftaran({
 
             <form action={buatJadwal} className="mt-5 grid gap-3 border-t border-line pt-5 sm:grid-cols-2">
               <input type="hidden" name="pendaftaranId" value={p.id} />
+              {jadwalAda && (
+                <p className="rounded-xl bg-paper-2 px-4 py-2.5 text-xs leading-relaxed text-ink-soft sm:col-span-2">
+                  Klien sudah memilih jadwal saat mendaftar. Menyimpan formulir
+                  ini akan <strong>memperbarui</strong> jadwal tersebut.
+                </p>
+              )}
               <div className="sm:col-span-2">
                 <label className="label" htmlFor="psikologId">
                   Psikolog
@@ -294,7 +305,7 @@ export default async function DetailPendaftaran({
                   id="psikologId"
                   name="psikologId"
                   className="input"
-                  defaultValue={p.psikologId ?? ""}
+                  defaultValue={jadwalAda?.psikologId ?? p.psikologId ?? ""}
                 >
                   <option value="">Pilih psikolog…</option>
                   {daftarPsikolog.map((d) => (
@@ -309,19 +320,36 @@ export default async function DetailPendaftaran({
                 <label className="label" htmlFor="mulai">
                   Mulai
                 </label>
-                <input id="mulai" name="mulai" type="datetime-local" className="input" />
+                <input
+                  id="mulai"
+                  name="mulai"
+                  type="datetime-local"
+                  className="input"
+                  defaultValue={jadwalAda ? nilaiDatetimeLokal(jadwalAda.mulai) : undefined}
+                />
               </div>
               <div>
                 <label className="label" htmlFor="selesai">
                   Selesai
                 </label>
-                <input id="selesai" name="selesai" type="datetime-local" className="input" />
+                <input
+                  id="selesai"
+                  name="selesai"
+                  type="datetime-local"
+                  className="input"
+                  defaultValue={jadwalAda ? nilaiDatetimeLokal(jadwalAda.selesai) : undefined}
+                />
               </div>
               <div>
                 <label className="label" htmlFor="metode-jadwal">
                   Metode
                 </label>
-                <select id="metode-jadwal" name="metode" className="input" defaultValue={p.metode}>
+                <select
+                  id="metode-jadwal"
+                  name="metode"
+                  className="input"
+                  defaultValue={jadwalAda?.metode ?? p.metode}
+                >
                   <option value="OFFLINE">Tatap muka</option>
                   <option value="ONLINE">Daring</option>
                 </select>
@@ -330,10 +358,18 @@ export default async function DetailPendaftaran({
                 <label className="label" htmlFor="lokasi">
                   Lokasi / tautan
                 </label>
-                <input id="lokasi" name="lokasi" className="input" placeholder="Ruang 1 / link meeting" />
+                <input
+                  id="lokasi"
+                  name="lokasi"
+                  className="input"
+                  placeholder="Ruang 1 / link meeting"
+                  defaultValue={jadwalAda?.lokasi ?? ""}
+                />
               </div>
               <div className="sm:col-span-2">
-                <button className="tombol tombol-utama w-full">Buat jadwal</button>
+                <button className="tombol tombol-utama w-full">
+                  {jadwalAda ? "Perbarui jadwal" : "Buat jadwal"}
+                </button>
               </div>
             </form>
           </section>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 
 import { daftarAkunKlien, type HasilAkun } from "@/app/actions/akun";
+import { InputSandi } from "@/components/ui/InputSandi";
 import { JebakanBot } from "@/components/ui/JebakanBot";
 
 function Galat({ pesan }: { pesan?: string }) {
@@ -78,14 +79,11 @@ export function FormDaftarAkun() {
         <label className="label" htmlFor="password">
           Kata sandi
         </label>
-        <input
+        <InputSandi
           id="password"
           name="password"
-          type="password"
-          className="input"
           placeholder="Minimal 8 karakter"
           autoComplete="new-password"
-          required
         />
         <Galat pesan={galat?.password} />
       </div>
@@ -94,14 +92,11 @@ export function FormDaftarAkun() {
         <label className="label" htmlFor="ulang">
           Ulangi kata sandi
         </label>
-        <input
+        <InputSandi
           id="ulang"
           name="ulang"
-          type="password"
-          className="input"
           placeholder="Ulangi kata sandi"
           autoComplete="new-password"
-          required
         />
         <Galat pesan={galat?.ulang} />
       </div>

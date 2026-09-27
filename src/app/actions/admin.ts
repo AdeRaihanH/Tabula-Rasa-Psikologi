@@ -127,18 +127,32 @@ export async function buatJadwal(formData: FormData) {
   const tautan = String(formData.get("tautan") ?? "").trim() || null;
   if (!pendaftaranId || !psikologId || !mulai || !selesai) return;
 
-  const sesiBaru = await prisma.jadwalSesi.create({
-    data: {
-      pendaftaranId,
-      psikologId,
-      mulai: new Date(mulai),
-      selesai: new Date(selesai),
-      metode: metode === "ONLINE" ? "ONLINE" : "OFFLINE",
-      lokasi,
-      tautan,
-      status: "TERJADWAL",
-    },
+  // Bila klien sudah memilih jadwal saat mendaftar, jadwal itu DIPERBARUI
+  // (bukan ditambah), supaya tidak ada sesi ganda untuk satu pendaftaran.
+  const jadwalAda = await prisma.jadwalSesi.findFirst({
+    where: { pendaftaranId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
   });
+
+  const dataJadwal = {
+    psikologId,
+    mulai: new Date(mulai),
+    selesai: new Date(selesai),
+    metode: (metode === "ONLINE" ? "ONLINE" : "OFFLINE") as "ONLINE" | "OFFLINE",
+    lokasi,
+    tautan,
+    status: "TERJADWAL" as const,
+  };
+
+  const sesiBaru = jadwalAda
+    ? await prisma.jadwalSesi.update({
+        where: { id: jadwalAda.id },
+        data: dataJadwal,
+      })
+    : await prisma.jadwalSesi.create({
+        data: { pendaftaranId, ...dataJadwal },
+      });
 
   await prisma.pendaftaran.update({
     where: { id: pendaftaranId },
@@ -150,10 +164,12 @@ export async function buatJadwal(formData: FormData) {
 
   await catat(
     sesi.userId,
-    "BUAT_JADWAL",
+    jadwalAda ? "PERBARUI_JADWAL" : "BUAT_JADWAL",
     "JadwalSesi",
     sesiBaru.id,
-    `Jadwal sesi ${new Date(mulai).toLocaleString("id-ID")} dibuat`,
+    `Jadwal sesi ${new Date(mulai).toLocaleString("id-ID")} ${
+      jadwalAda ? "diperbarui" : "dibuat"
+    }`,
   );
 
   revalidatePath(`/dashboard/pendaftaran/${pendaftaranId}`);

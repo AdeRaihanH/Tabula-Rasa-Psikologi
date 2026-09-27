@@ -28,13 +28,24 @@ export default async function HalamanDaftar({
   }
   if (sesi.role !== "KLIEN") redirect("/dashboard");
 
-  const [layanan, psikolog, sp, akun] = await Promise.all([
+  const [layanan, psikolog, sp, akun, klien] = await Promise.all([
     ambilLayanan(),
     ambilPsikologPublik(),
     searchParams,
     prisma.user.findUnique({
       where: { id: sesi.userId },
       select: { nama: true, email: true, telepon: true },
+    }),
+    prisma.klien.findFirst({
+      where: { userId: sesi.userId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        tanggalLahir: true,
+        jenisKelamin: true,
+        alamat: true,
+        pekerjaan: true,
+        institusi: true,
+      },
     }),
   ]);
   const slugAwal = typeof sp?.layanan === "string" ? sp.layanan : undefined;
@@ -79,6 +90,13 @@ export default async function HalamanDaftar({
             nama: akun?.nama ?? sesi.nama,
             email: akun?.email ?? "",
             telepon: akun?.telepon ?? null,
+            tanggalLahir: klien?.tanggalLahir
+              ? klien.tanggalLahir.toISOString().slice(0, 10)
+              : null,
+            jenisKelamin: klien?.jenisKelamin ?? null,
+            alamat: klien?.alamat ?? null,
+            pekerjaan: klien?.pekerjaan ?? null,
+            institusi: klien?.institusi ?? null,
           }}
           slugAwal={slugAwal}
           psikologAwal={psikologAwal}

@@ -34,7 +34,6 @@ export const navDashboard: Record<Role, ItemNav[]> = {
   KLIEN: [
     { href: "/dashboard/riwayat", label: "Riwayat Pendaftaran", ikon: "berkas" },
     { href: "/dashboard/profil", label: "Profil Saya", ikon: "orang" },
-    { href: "/daftar", label: "Daftar Layanan Baru", ikon: "daftar" },
   ],
 };
 

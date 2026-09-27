@@ -3,6 +3,7 @@ import { FormProfil } from "@/components/dashboard/FormProfil";
 import { wajibMasuk } from "@/lib/auth/dal";
 import { labelRole } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
+import { formatTanggal } from "@/lib/utils";
 
 export default async function HalamanProfil() {
   const sesi = await wajibMasuk();
@@ -18,13 +19,15 @@ export default async function HalamanProfil() {
     <>
       <JudulHalaman
         judul="Profil Saya"
-        keterangan={`Peran Anda: ${labelRole[user.role]}. Perubahan nama dan kontak langsung tersimpan pada akun.`}
+        keterangan={`Peran Anda: ${labelRole[user.role]}. Perubahan data di bawah langsung tersimpan pada akun Anda.`}
       />
 
       <FormProfil
         role={user.role}
         awal={{
           nama: user.nama,
+          email: user.email,
+          terdaftarSejak: formatTanggal(user.createdAt),
           telepon: user.telepon ?? "",
           spesialisasi: user.profilPsikolog?.spesialisasi ?? "",
           gelar: user.profilPsikolog?.gelar ?? "",

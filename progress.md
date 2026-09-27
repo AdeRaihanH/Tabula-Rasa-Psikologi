@@ -1016,3 +1016,69 @@ ulang bersama. Hasil akhir:
 Catatan penting untuk pengujian: karena sesi divalidasi ke database, skrip uji
 harus membuat baris `sesi_login` dan menyertakan `sid` di dalam JWT serta
 memakai User-Agent yang sama seperti saat pembuatan sesi.
+
+### 75. Tombol Mata pada Input Kata Sandi
+
+Komponen baru `src/components/ui/InputSandi.tsx`: input kata sandi dengan tombol
+mata untuk menampilkan/menyembunyikan isinya.
+
+- Tombol memakai `type="button"` agar tidak ikut mengirim formulir.
+- `aria-label` dan `aria-pressed` diisi supaya dapat dipakai pembaca layar.
+- Input memakai `pr-11` sehingga ikon tidak menutupi teks.
+- Ikon SVG ditulis langsung (tanpa dependensi ikon baru).
+
+Diterapkan pada **6 input kata sandi** di 3 formulir:
+
+| Formulir | Input |
+| --- | --- |
+| `FormMasuk` | kata sandi |
+| `FormDaftarAkun` | kata sandi, ulangi kata sandi |
+| `FormProfil` | kata sandi lama, baru, ulangi |
+
+Diuji: 9/9 lulus — tombol mata muncul di tiap input (2 pada daftar akun, 3 pada
+profil), default tetap `type="password"`, dan `aria-pressed="false"` terpasang.
+
+---
+
+## Revisi Kesebelas: Jadwal Otomatis dari Pilihan Klien
+
+### 76. Masalah
+
+Klien wajib memilih tanggal dan jam saat mendaftar, tetapi dashboard-nya tetap
+menampilkan **"Jadwal belum ditetapkan"**. Penyebabnya: pilihan itu hanya
+disimpan sebagai **teks** di kolom `Pendaftaran.kebutuhan` dengan penanda
+`[Preferensi Jadwal]` — tidak pernah dibuatkan baris `JadwalSesi`.
+
+### 77. Perbaikan
+
+- Helper baru `waktuSesi(tanggal, labelSlot)` di `src/lib/jadwal.ts` mengubah
+  pilihan klien menjadi waktu sesungguhnya. Slot pada `SLOT_WAKTU` adalah WIB,
+  jadi dikurangi 7 jam agar `Date` (UTC) mewakili waktu yang benar — penting
+  karena server produksi (Vercel) berjalan di UTC.
+- `kirimPendaftaran` kini **membuat `JadwalSesi`** dari pilihan klien, dengan
+  `psikologId` yang dipilih, status `TERJADWAL`, dan catatan *"Jadwal dipilih
+  klien saat pendaftaran; menunggu konfirmasi admin."*
+- `buatJadwal` (admin) tidak lagi selalu **menambah** sesi: bila pendaftaran
+  sudah punya jadwal, jadwal itu **diperbarui** — mencegah sesi ganda.
+- Halaman detail pendaftaran (admin) mengisi awal formulir dengan jadwal yang
+  ada lewat helper `nilaiDatetimeLokal()` (WIB → `YYYY-MM-DDTHH:mm`), menampilkan
+  pemberitahuan bahwa menyimpan akan memperbarui, dan tombol berubah menjadi
+  **"Perbarui jadwal"**.
+- Portal klien karena itu langsung menampilkan jadwal, bukan lagi pesan
+  "belum ditetapkan".
+
+### 78. Hasil Uji
+
+23/23 lulus, termasuk:
+
+| Pemeriksaan | Hasil |
+| --- | --- |
+| Pendaftaran dengan tanggal + slot 12.00-14.00 | jadwal otomatis dibuat |
+| Jam mulai | 12.00 WIB (benar, bukan bergeser) |
+| Durasi | 2 jam |
+| Tanggal | sesuai pilihan klien |
+| Portal klien | tidak lagi "belum ditetapkan" |
+| Admin menyimpan ulang | tetap **1** jadwal (diperbarui, bukan ditambah) |
+| Perubahan metode & lokasi | tersimpan |
+
+`tsc` ✅ · `eslint` ✅ · `next build` ✅

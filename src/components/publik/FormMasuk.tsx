@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import { masuk, type HasilMasuk } from "@/app/actions/auth";
+import { InputSandi } from "@/components/ui/InputSandi";
 import { JebakanBot } from "@/components/ui/JebakanBot";
 
 export function FormMasuk() {
@@ -36,14 +37,11 @@ export function FormMasuk() {
         <label className="label" htmlFor="password">
           Kata sandi
         </label>
-        <input
+        <InputSandi
           id="password"
           name="password"
-          type="password"
           autoComplete="current-password"
-          className="input"
           placeholder="••••••••"
-          required
         />
       </div>
 
