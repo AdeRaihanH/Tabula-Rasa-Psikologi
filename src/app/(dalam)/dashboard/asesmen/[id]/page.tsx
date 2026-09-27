@@ -6,15 +6,16 @@ import {
   BadgeZona,
   JudulHalaman,
 } from "@/components/dashboard/ui";
-import { simpanSkor, tambahLembarTes, ubahStatusLembarTes } from "@/app/actions/asesmen";
+import { simpanSkor, simpanTautanTes, tambahLembarTes, ubahStatusLembarTes } from "@/app/actions/asesmen";
 import { cekSyaratTahap } from "@/app/actions/alur";
 import { PanelTahap } from "@/components/dashboard/PanelTahap";
 import { wajibKemampuan } from "@/lib/auth/dal";
 import { tahapBerikutnya, tahapSebelumnya } from "@/lib/alur";
+import { parsePreferensiJadwal } from "@/lib/jadwal";
 import { boleh } from "@/lib/rbac";
 import { labelStatusPendaftaran } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
-import { formatTanggalWaktu } from "@/lib/utils";
+import { formatTanggal, formatTanggalWaktu } from "@/lib/utils";
 
 const statusLembar = ["MENUNGGU", "DIKERJAKAN", "SKOR_DIISI", "SELESAI"];
 
@@ -30,6 +31,7 @@ export default async function DetailAsesmen({
     include: {
       klien: { select: { nama: true } },
       layanan: { select: { nama: true } },
+      psikolog: { select: { nama: true } },
       jadwal: { orderBy: { mulai: "asc" } },
       lembarTes: {
         orderBy: { createdAt: "asc" },
@@ -55,6 +57,11 @@ export default async function DetailAsesmen({
     : { ok: true, pesan: "" };
   const tahapSebelum = tahapSebelumnya(p.status);
 
+  // Pilihan hari/jam klien: utama dari baris jadwal, cadangan dari teks
+  // preferensi pada formulir pendaftaran.
+  const preferensi =
+    p.jadwal.length === 0 ? parsePreferensiJadwal(p.kebutuhan) : null;
+
   return (
     <>
       <div className="mb-5">
@@ -73,6 +80,59 @@ export default async function DetailAsesmen({
           </div>
         }
       />
+
+      {/* Siapa & kapan: psikolog penanggung jawab + jadwal pilihan klien */}
+      <section className="kartu mb-6 p-5">
+        <h2 className="text-xs font-bold uppercase tracking-[0.08em] text-muted">
+          Klien, Psikolog & Jadwal
+        </h2>
+        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+          <div className="rounded-xl bg-paper-2 p-4">
+            <dt className="text-xs text-muted">Klien</dt>
+            <dd className="mt-1 font-bold text-ink">{p.klien.nama}</dd>
+            <dd className="mt-0.5 text-xs text-muted">{p.layanan.nama}</dd>
+          </div>
+          <div className="rounded-xl bg-paper-2 p-4">
+            <dt className="text-xs text-muted">Psikolog</dt>
+            <dd className="mt-1 font-bold text-ink">
+              {p.psikolog?.nama ?? "Belum ditetapkan"}
+            </dd>
+          </div>
+          <div className="rounded-xl bg-paper-2 p-4">
+            <dt className="text-xs text-muted">Jadwal pilihan klien</dt>
+            {p.jadwal.length > 0 ? (
+              <dd className="mt-1 font-bold text-ink">
+                {formatTanggalWaktu(p.jadwal[0].mulai)}
+                <span className="block text-xs font-normal text-muted">
+                  {p.jadwal[0].metode === "ONLINE" ? "Daring" : "Tatap muka"}
+                  {p.jadwal.length > 1
+                    ? ` · +${p.jadwal.length - 1} sesi lain`
+                    : ""}
+                  {p.jadwal[0].catatan?.includes("pilihan pendaftar")
+                    ? " · sesuai pilihan pendaftar"
+                    : ""}
+                </span>
+              </dd>
+            ) : preferensi ? (
+              <dd className="mt-1 font-bold text-ink">
+                {/^\d{4}-\d{2}-\d{2}$/.test(preferensi.tanggal)
+                  ? formatTanggal(
+                      new Date(`${preferensi.tanggal}T00:00:00+07:00`),
+                    )
+                  : preferensi.tanggal}{" "}
+                · {preferensi.waktu}
+                <span className="block text-xs font-normal text-muted">
+                  Pilihan pada formulir — jadwal menyusul dari admin
+                </span>
+              </dd>
+            ) : (
+              <dd className="mt-1 text-xs text-muted">
+                Belum ada jadwal maupun preferensi.
+              </dd>
+            )}
+          </div>
+        </dl>
+      </section>
 
       <div className="mb-6">
         <PanelTahap
@@ -152,6 +212,56 @@ export default async function DetailAsesmen({
                     </form>
                   )}
                 </div>
+              </div>
+
+              {/* Tautan pengerjaan untuk klien */}
+              <div className="mt-5 border-t border-line pt-5">
+                <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">
+                  Tautan pengerjaan (dilihat klien)
+                </p>
+                {bolehKelola ? (
+                  <form action={simpanTautanTes} className="mt-3 grid gap-2">
+                    <input type="hidden" name="id" value={l.id} />
+                    <input
+                      name="tautan"
+                      type="url"
+                      defaultValue={l.tautan ?? ""}
+                      placeholder="https://forms.gle/… (link Google Form / platform tes)"
+                      className="input !py-1.5 !text-xs"
+                    />
+                    <input
+                      name="instruksi"
+                      defaultValue={l.instruksi ?? ""}
+                      placeholder="Instruksi singkat untuk klien (mis. kerjakan 30 menit tanpa jeda)"
+                      className="input !py-1.5 !text-xs"
+                    />
+                    <button className="tombol tombol-garis w-fit !py-1.5 !text-xs">
+                      {l.tautan ? "Perbarui tautan" : "Bagikan tautan ke klien"}
+                    </button>
+                    <p className="text-[0.68rem] text-muted">
+                      Menyimpan tautan otomatis memajukan kasus ke tahap
+                      Pelaksanaan Tes dan langsung tampil di portal klien.
+                    </p>
+                  </form>
+                ) : l.tautan ? (
+                  <a
+                    href={l.tautan}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block text-xs font-semibold text-brand-700 hover:underline"
+                  >
+                    Buka tautan pengerjaan ↗
+                  </a>
+                ) : (
+                  <p className="mt-2 text-xs text-muted">
+                    Belum ada tautan pengerjaan.
+                  </p>
+                )}
+                {l.instruksi && (
+                  <p className="mt-2 text-xs leading-relaxed text-ink-soft">
+                    Instruksi: {l.instruksi}
+                  </p>
+                )}
               </div>
 
               {/* Skor mentah */}
@@ -262,6 +372,18 @@ export default async function DetailAsesmen({
               Catatan pelaksanaan
             </label>
             <input id="catatan" name="catatan" className="input" placeholder="Kondisi klien, kendala, dsb." />
+          </div>
+          <div className="sm:col-span-3">
+            <label className="label" htmlFor="tautan">
+              Tautan pengerjaan (opsional — langsung dibagikan ke klien)
+            </label>
+            <input id="tautan" name="tautan" type="url" className="input" placeholder="https://forms.gle/…" />
+          </div>
+          <div className="sm:col-span-3">
+            <label className="label" htmlFor="instruksi">
+              Instruksi untuk klien (opsional)
+            </label>
+            <input id="instruksi" name="instruksi" className="input" placeholder="mis. kerjakan sesuai jadwal yang tertera" />
           </div>
           <div className="sm:col-span-3">
             <button className="tombol tombol-garis w-full">Tambah lembar tes</button>

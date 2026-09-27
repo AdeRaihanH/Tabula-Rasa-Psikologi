@@ -6,6 +6,7 @@ import { after } from "next/server";
 import { arsipkanPendaftaranBaru } from "@/lib/drive-arsip";
 import { klienMilikSaya, sesiSaatIni } from "@/lib/auth/dal";
 import { validasiJadwal } from "@/lib/jadwal";
+import { pastikanJadwalOtomatis } from "@/lib/jadwal-otomatis";
 import { ambilIp } from "@/lib/keamanan/ip";
 import {
   cekBatas,
@@ -56,6 +57,7 @@ export type HasilPendaftaran =
       layanan: string;
       metode: "ONLINE" | "OFFLINE";
       biaya: number | null;
+      pembayaranId: string | null;
       rekening: Rekening;
       whatsapp: string | null;
       telepon: string | null;
@@ -220,14 +222,30 @@ export async function kirimPendaftaran(
         institusi: bersih(formData.get("institusi")),
         informedConsent: consent,
         sumber: "web",
-        status: "BARU",
+        // Tahap 1 alur 5 tahap: tagihan otomatis terbit, jadi langsung
+        // "Menunggu Pembayaran". Tanpa tagihan tetap BARU (dinormalisasi
+        // ke tahap 1 saat ditampilkan).
+        status: biaya !== null && biaya > 0 ? "MENUNGGU_PEMBAYARAN" : "BARU",
       },
     });
 
+    // Jadwal dibuat otomatis dari tanggal + waktu yang dipilih pendaftar,
+    // sehingga admin/asisten tidak perlu menanyakan ulang. Kegagalan di sini
+    // tidak menggagalkan pendaftaran (admin bisa buat manual, dan verifikasi
+    // pembayaran mencoba lagi sebagai backfill).
+    if (tanggalPertemuan && waktuPertemuan) {
+      try {
+        await pastikanJadwalOtomatis(pendaftaran.id);
+      } catch (e) {
+        console.error("[kirimPendaftaran] gagal membuat jadwal otomatis:", e);
+      }
+    }
+
     // Tagihan dibuat otomatis bila harga layanan sudah ditetapkan, supaya
     // klien langsung tahu nominal yang harus dibayar.
+    let idPembayaran: string | null = null;
     if (biaya !== null && biaya > 0) {
-      await prisma.pembayaran.create({
+      const pembayaranBaru = await prisma.pembayaran.create({
         data: {
           pendaftaranId: pendaftaran.id,
           jumlah: biaya,
@@ -236,6 +254,7 @@ export async function kirimPendaftaran(
           catatan: `Tagihan otomatis: ${layanan.nama} (${metodeDiminta === "ONLINE" ? "daring" : "tatap muka"})`,
         },
       });
+      idPembayaran = pembayaranBaru.id;
     }
 
     const set = await prisma.pengaturanSitus.findUnique({
@@ -261,6 +280,8 @@ export async function kirimPendaftaran(
     });
 
     revalidasiAman("/dashboard/pendaftaran");
+    revalidasiAman("/dashboard/jadwal");
+    revalidasiAman("/dashboard/riwayat");
 
     return {
       ok: true,
@@ -268,6 +289,7 @@ export async function kirimPendaftaran(
       layanan: layanan.nama,
       metode: metodeDiminta,
       biaya,
+      pembayaranId: idPembayaran,
       rekening: {
         bank: set?.bankNama ?? null,
         nomor: set?.bankNomor ?? null,
@@ -298,7 +320,10 @@ export type HasilCekStatus =
       jadwal: string | null;
       metode: "ONLINE" | "OFFLINE";
       biaya: number | null;
+      pembayaranId: string | null;
       pembayaranStatus: string | null;
+      buktiAda: boolean;
+      catatanPembayaran: string | null;
       rekening: Rekening;
       whatsapp: string | null;
       email: string | null;
@@ -339,7 +364,14 @@ export async function cekStatusPendaftaran(
           jadwal: { orderBy: { mulai: "asc" }, take: 1, select: { mulai: true } },
           pembayaran: {
             orderBy: { createdAt: "desc" },
-            select: { jumlah: true, status: true },
+            select: {
+              id: true,
+              jumlah: true,
+              status: true,
+              buktiUrl: true,
+              catatan: true,
+            },
+            take: 1,
           },
         },
       }),
@@ -374,7 +406,10 @@ export async function cekStatusPendaftaran(
       jadwal: p.jadwal[0]?.mulai.toISOString() ?? null,
       metode: p.metode,
       biaya: bayar ? Number(bayar.jumlah) : null,
+      pembayaranId: bayar?.id ?? null,
       pembayaranStatus: bayar?.status ?? null,
+      buktiAda: Boolean(bayar?.buktiUrl),
+      catatanPembayaran: bayar?.catatan ?? null,
       rekening: {
         bank: set?.bankNama ?? null,
         nomor: set?.bankNomor ?? null,

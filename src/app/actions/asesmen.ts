@@ -18,12 +18,20 @@ async function catat(
   });
 }
 
+function bersihkanTautan(v: FormDataEntryValue | null) {
+  const s = typeof v === "string" ? v.trim() : "";
+  if (!s) return null;
+  return /^https?:\/\/.+/i.test(s) ? s : null;
+}
+
 export async function tambahLembarTes(formData: FormData) {
   const sesi = await wajibKemampuan("lembartes:kelola");
   const pendaftaranId = String(formData.get("pendaftaranId") ?? "");
   const alatTesId = String(formData.get("alatTesId") ?? "");
   const jadwalSesiId = String(formData.get("jadwalSesiId") ?? "") || null;
   const catatan = String(formData.get("catatan") ?? "").trim() || null;
+  const tautan = bersihkanTautan(formData.get("tautan"));
+  const instruksi = String(formData.get("instruksi") ?? "").trim() || null;
   if (!pendaftaranId || !alatTesId) return;
 
   const lembar = await prisma.lembarTes.create({
@@ -33,6 +41,8 @@ export async function tambahLembarTes(formData: FormData) {
       jadwalSesiId,
       asistenId: sesi.userId,
       catatan,
+      tautan,
+      instruksi,
       status: "MENUNGGU",
     },
     include: { alatTes: { select: { nama: true } } },
@@ -43,17 +53,62 @@ export async function tambahLembarTes(formData: FormData) {
     "TAMBAH_LEMBAR_TES",
     "LembarTes",
     lembar.id,
-    `Lembar tes ${lembar.alatTes.nama} ditambahkan (Zona 2)`,
+    `Lembar tes ${lembar.alatTes.nama} ditambahkan (Zona 2)${tautan ? " + tautan pengerjaan dibagikan ke klien" : ""}`,
   );
 
-  // Tahap 6 — asesmen mulai dilaksanakan.
+  // Tahap 3 — distribusi tes ke klien dimulai.
   await majuOtomatis(pendaftaranId, "PELAKSANAAN");
 
   revalidatePath("/dashboard/asesmen");
   revalidatePath(`/dashboard/asesmen/${pendaftaranId}`);
   revalidatePath(`/dashboard/pendaftaran/${pendaftaranId}`);
   revalidatePath("/dashboard/pendaftaran");
+  revalidatePath("/dashboard/riwayat");
+  revalidatePath(`/dashboard/riwayat/${pendaftaranId}`);
   revalidatePath("/dashboard");
+}
+
+/**
+ * Asisten menempel/memperbarui tautan pengerjaan + instruksi pada lembar tes.
+ * Tautan inilah yang dilihat klien di portal Riwayat ("Kerjakan Tes") dan
+ * aktif mengikuti jadwal sesi. Menyimpan tautan otomatis memajukan kasus ke
+ * tahap 3 Pelaksanaan Tes.
+ */
+export async function simpanTautanTes(formData: FormData) {
+  const sesi = await wajibKemampuan("lembartes:kelola");
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const tautanMentah = String(formData.get("tautan") ?? "").trim();
+  if (tautanMentah && !/^https?:\/\/.+/i.test(tautanMentah)) return;
+  const instruksi = String(formData.get("instruksi") ?? "").trim() || null;
+
+  const lembar = await prisma.lembarTes.update({
+    where: { id },
+    data: {
+      tautan: tautanMentah || null,
+      instruksi,
+      asistenId: sesi.userId,
+    },
+    include: { alatTes: { select: { nama: true } } },
+  });
+
+  await catat(
+    sesi.userId,
+    "BAGIKAN_TAUTAN_TES",
+    "LembarTes",
+    id,
+    `Tautan pengerjaan ${lembar.alatTes.nama} ${tautanMentah ? "dibagikan" : "dihapus"} untuk klien`,
+  );
+
+  if (tautanMentah) {
+    await majuOtomatis(lembar.pendaftaranId, "PELAKSANAAN");
+  }
+
+  revalidatePath("/dashboard/asesmen");
+  revalidatePath(`/dashboard/asesmen/${lembar.pendaftaranId}`);
+  revalidatePath("/dashboard/riwayat");
+  revalidatePath(`/dashboard/riwayat/${lembar.pendaftaranId}`);
 }
 
 export async function ubahStatusLembarTes(formData: FormData) {
@@ -74,6 +129,8 @@ export async function ubahStatusLembarTes(formData: FormData) {
 
   revalidatePath("/dashboard/asesmen");
   revalidatePath(`/dashboard/asesmen/${lembar.pendaftaranId}`);
+  revalidatePath("/dashboard/riwayat");
+  revalidatePath(`/dashboard/riwayat/${lembar.pendaftaranId}`);
 }
 
 export async function simpanSkor(formData: FormData) {
@@ -116,7 +173,7 @@ export async function simpanSkor(formData: FormData) {
     `${baris.length} baris skor mentah disimpan (Zona 2)`,
   );
 
-  // Tahap 7 — seluruh lembar tes sudah punya skor.
+  // Tahap 4 — seluruh lembar tes sudah punya skor.
   const idPendaftaran = lembar?.pendaftaranId;
   if (idPendaftaran) {
     const semua = await prisma.lembarTes.findMany({
@@ -132,5 +189,7 @@ export async function simpanSkor(formData: FormData) {
   revalidatePath(`/dashboard/pendaftaran/${idPendaftaran ?? ""}`);
   revalidatePath("/dashboard/pendaftaran");
   revalidatePath("/dashboard/kasus");
+  revalidatePath(`/dashboard/riwayat/${idPendaftaran ?? ""}`);
+  revalidatePath("/dashboard/riwayat");
   revalidatePath("/dashboard");
 }

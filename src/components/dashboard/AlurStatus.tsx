@@ -2,7 +2,7 @@ import { TAHAP, nomorTahap } from "@/lib/alur";
 import { cn } from "@/lib/utils";
 
 /**
- * Penanda 8 tahap alur layanan. Tahap yang sudah dilewati ditandai centang,
+ * Penanda 5 tahap alur layanan. Tahap yang sudah dilewati ditandai centang,
  * tahap aktif disorot, tahap berikutnya ditampilkan pudar.
  */
 export function AlurStatus({

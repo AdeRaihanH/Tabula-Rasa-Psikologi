@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { FormCekStatus } from "@/components/publik/FormCekStatus";
+import { sesiRingkas } from "@/lib/auth/dal";
 import { TAHAP } from "@/lib/alur";
 
 export const metadata: Metadata = {
@@ -10,7 +11,10 @@ export const metadata: Metadata = {
     "Periksa status pendaftaran layanan tanpa login, cukup dengan nomor pendaftaran dan email terdaftar.",
 };
 
-export default function HalamanCekStatus() {
+export default async function HalamanCekStatus() {
+  const sesi = await sesiRingkas();
+  const sudahLogin = Boolean(sesi?.userId && sesi.role === "KLIEN");
+
   return (
     <>
       <section className="border-b border-line bg-paper-2">
@@ -35,7 +39,7 @@ export default function HalamanCekStatus() {
       </section>
 
       <div className="wadah grid gap-10 py-12 lg:grid-cols-[1.2fr_1fr]">
-        <FormCekStatus />
+        <FormCekStatus sudahLogin={sudahLogin} />
 
         <aside>
           <div className="kartu p-6">

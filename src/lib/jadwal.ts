@@ -119,3 +119,21 @@ export function validasiJadwal(
 
   return { ok: true };
 }
+
+/**
+ * Preferensi hari/jam yang ditulis pendaftar pada formulir
+ * ("[Preferensi Jadwal]\nTanggal: ...\nWaktu: ..."). Dipakai untuk membuat
+ * jadwal otomatis dan sebagai tampilan cadangan bila baris jadwal belum ada.
+ */
+export function parsePreferensiJadwal(kebutuhan: string | null | undefined): {
+  tanggal: string;
+  waktu: string;
+} | null {
+  if (!kebutuhan || !kebutuhan.includes("[Preferensi Jadwal]")) return null;
+  const tanggal = kebutuhan.match(/^Tanggal:\s*(.+)$/m)?.[1]?.trim();
+  const waktu = kebutuhan.match(/^Waktu:\s*(.+)$/m)?.[1]?.trim();
+  if (!tanggal || !waktu || tanggal === "-" || waktu === "-") return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggal)) return null;
+  if (!SLOT_WAKTU.some((s) => s.label === waktu)) return null;
+  return { tanggal, waktu };
+}

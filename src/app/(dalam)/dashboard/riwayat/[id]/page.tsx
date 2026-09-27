@@ -6,7 +6,7 @@ import { AlurStatus } from "@/components/dashboard/AlurStatus";
 import { UnggahBuktiKlien } from "@/components/dashboard/UnggahBuktiKlien";
 import { filterPendaftaranKlien, wajibKlien } from "@/lib/auth/dal";
 import { labelStatusPendaftaran } from "@/lib/config";
-import { driveAktif } from "@/lib/gdrive";
+import { parsePreferensiJadwal } from "@/lib/jadwal";
 import { keAngka } from "@/lib/pembayaran";
 import { prisma } from "@/lib/prisma";
 import { formatRupiah, formatTanggal, formatTanggalWaktu } from "@/lib/utils";
@@ -33,7 +33,30 @@ export default async function DetailRiwayatKlien({
     include: {
       layanan: { select: { nama: true, kategori: true, durasiMenit: true } },
       psikolog: { select: { nama: true } },
-      pembayaran: { orderBy: { createdAt: "desc" } },
+      // Jangan sertakan isi buktiUrl (base64 belasan MB) — cukup metadata.
+      // Keberadaan bukti dicek lewat query ringan di bawah.
+      pembayaran: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          jumlah: true,
+          status: true,
+          catatan: true,
+        },
+      },
+      // Tes yang dibagikan asisten. Klien hanya melihat nama alat, tautan,
+      // dan instruksi — isi soal & skor tetap di Zona 2.
+      lembarTes: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          status: true,
+          tautan: true,
+          instruksi: true,
+          alatTes: { select: { nama: true } },
+          jadwalSesi: { select: { mulai: true, metode: true } },
+        },
+      },
       jadwal: { orderBy: { mulai: "asc" } },
     },
   });
@@ -52,10 +75,34 @@ export default async function DetailRiwayatKlien({
     redirect("/dashboard/riwayat");
   }
 
-  const bayar = p.pembayaran[0] ?? null;
-  const sudahTerverifikasi = bayar?.status === "TERVERIFIKASI";
+  const daftarBayar = p.pembayaran ?? [];
+  const semuaTerverifikasi =
+    daftarBayar.length > 0 &&
+    daftarBayar.every((b) => b.status === "TERVERIFIKASI");
+  const buktiAdaMap = new Map(
+    (
+      await prisma.pembayaran.findMany({
+        where: {
+          pendaftaranId: p.id,
+          buktiUrl: { not: null },
+        },
+        select: { id: true },
+      })
+    ).map((b) => [b.id, true] as const),
+  );
+  const adaBuktiUntuk = (pembayaranId: string) =>
+    buktiAdaMap.has(pembayaranId);
+  const adaDitolak = daftarBayar.some((b) => b.status === "DITOLAK");
+  const daftarTes = p.lembarTes ?? [];
+  const sekarang = new Date();
+  // Pilihan hari/jam pendaftar: utama dari baris jadwal otomatis, cadangan
+  // dari teks preferensi pada formulir pendaftaran.
+  const preferensi =
+    p.jadwal.length === 0 ? parsePreferensiJadwal(p.kebutuhan) : null;
+  // Kartu tes tampil setelah pembayaran terverifikasi (atau bila asisten
+  // sudah membagikan tes) — tidak perlu menunggu tahap lain.
+  const tampilTes = semuaTerverifikasi || daftarTes.length > 0;
   const set = await prisma.pengaturanSitus.findUnique({ where: { id: "utama" } });
-  const driveSiap = driveAktif();
 
   const wa = set?.whatsapp
     ? `https://wa.me/${set.whatsapp}?text=${encodeURIComponent(
@@ -78,10 +125,15 @@ export default async function DetailRiwayatKlien({
         judul={p.nomor}
         keterangan={`${p.layanan.nama} · daftar ${formatTanggal(p.createdAt)}`}
         aksi={
-          <BadgeStatus
-            status={p.status}
-            label={labelStatusPendaftaran[p.status] ?? p.status}
-          />
+          <span className="flex flex-wrap items-center gap-2">
+            <BadgeStatus
+              status={p.status}
+              label={labelStatusPendaftaran[p.status] ?? p.status}
+            />
+            {adaDitolak && (
+              <span className="pil bg-red-600 text-white">Bukti Ditolak</span>
+            )}
+          </span>
         }
       />
 
@@ -121,10 +173,28 @@ export default async function DetailRiwayatKlien({
               Jadwal Sesi
             </h2>
             {p.jadwal.length === 0 ? (
-              <p className="mt-3 text-sm text-muted">
-                Jadwal belum ditetapkan. Admin akan menghubungi Anda setelah
-                pembayaran terverifikasi.
-              </p>
+              preferensi ? (
+                <div className="mt-3 rounded-xl border border-brand-200 bg-brand-50/60 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-brand-700">
+                    Pilihan Anda saat mendaftar
+                  </p>
+                  <p className="mt-2 text-sm font-bold text-ink">
+                    {formatTanggal(
+                      new Date(`${preferensi.tanggal}T00:00:00+07:00`),
+                    )}{" "}
+                    · {preferensi.waktu}
+                  </p>
+                  <p className="mt-1 text-[0.7rem] text-muted">
+                    Admin akan mengonfirmasi jadwal final setelah pembayaran
+                    terverifikasi.
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-muted">
+                  Jadwal belum tersedia. Admin akan mengonfirmasi jadwal
+                  setelah pembayaran terverifikasi.
+                </p>
+              )
             ) : (
               <ul className="mt-3 space-y-3">
                 {p.jadwal.map((j) => (
@@ -139,6 +209,11 @@ export default async function DetailRiwayatKlien({
                       {j.metode === "ONLINE" ? "Daring" : "Tatap muka"}
                       {j.lokasi ? ` · ${j.lokasi}` : ""}
                     </p>
+                    {j.catatan?.includes("pilihan pendaftar") && (
+                      <p className="mt-1 text-[0.7rem] font-medium text-brand-700">
+                        Sesuai jadwal yang Anda pilih saat mendaftar
+                      </p>
+                    )}
                     {j.tautan && (
                       <a
                         href={j.tautan}
@@ -199,40 +274,15 @@ export default async function DetailRiwayatKlien({
               Pembayaran
             </h2>
 
-            {!bayar ? (
+            {daftarBayar.length === 0 ? (
               <p className="mt-3 text-sm text-muted">
                 Biaya layanan ini belum ditetapkan otomatis. Admin akan
                 menghubungi Anda dengan rincian biaya.
               </p>
             ) : (
               <>
-                <div className="mt-4 rounded-xl bg-paper-2 p-4">
-                  <p className="text-xs text-muted">Total biaya</p>
-                  <p className="mt-1 text-2xl font-bold text-brand-700">
-                    {formatRupiah(keAngka(bayar.jumlah))}
-                  </p>
-                  <p className="mt-2 text-xs">
-                    Status:{" "}
-                    <span
-                      className={`font-semibold ${
-                        bayar.status === "TERVERIFIKASI"
-                          ? "text-emerald-700"
-                          : bayar.status === "DITOLAK"
-                            ? "text-red-600"
-                            : "text-amber-700"
-                      }`}
-                    >
-                      {bayar.status === "TERVERIFIKASI"
-                        ? "Terverifikasi"
-                        : bayar.status === "DITOLAK"
-                          ? "Bukti ditolak — silakan kirim ulang"
-                          : "Menunggu pembayaran / verifikasi"}
-                    </span>
-                  </p>
-                </div>
-
                 {/* Instruksi transfer */}
-                {!sudahTerverifikasi && set?.bankNomor && (
+                {!semuaTerverifikasi && set?.bankNomor && (
                   <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50/60 p-5">
                     <p className="text-xs font-semibold uppercase tracking-[0.1em] text-brand-700">
                       Transfer ke
@@ -256,15 +306,126 @@ export default async function DetailRiwayatKlien({
                   </div>
                 )}
 
-                <UnggahBuktiKlien
-                  pembayaranId={bayar.id}
-                  buktiUrl={bayar.buktiUrl}
-                  driveSiap={driveSiap}
-                  sudahTerverifikasi={sudahTerverifikasi}
-                />
+                <div className="mt-4 space-y-4">
+                  {daftarBayar.map((bayar) => {
+                    const adaBukti = adaBuktiUntuk(bayar.id);
+                    return (
+                      <div
+                        key={bayar.id}
+                        className="rounded-xl bg-paper-2 p-4"
+                      >
+                        <p className="text-xs text-muted">Total biaya</p>
+                        <p className="mt-1 text-2xl font-bold text-brand-700">
+                          {formatRupiah(keAngka(bayar.jumlah))}
+                        </p>
+                        <p className="mt-2 text-xs">
+                          Status:{" "}
+                          <span
+                            className={`font-semibold ${
+                              bayar.status === "TERVERIFIKASI"
+                                ? "text-emerald-700"
+                                : bayar.status === "DITOLAK"
+                                  ? "text-red-600"
+                                  : "text-amber-700"
+                            }`}
+                          >
+                            {bayar.status === "TERVERIFIKASI"
+                              ? "Terverifikasi"
+                              : bayar.status === "DITOLAK"
+                                ? "Bukti ditolak — silakan kirim ulang"
+                                : adaBukti
+                                  ? "Bukti terkirim — menunggu verifikasi admin"
+                                  : "Menunggu pembayaran"}
+                          </span>
+                        </p>
+
+
+                        <UnggahBuktiKlien
+                          pembayaranId={bayar.id}
+                          status={bayar.status}
+                          adaBukti={adaBukti}
+                          catatan={bayar.catatan}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
               </>
             )}
           </section>
+
+          {/* Pelaksanaan tes */}
+          {tampilTes && (
+            <section className="kartu p-6">
+              <h2 className="text-sm font-bold uppercase tracking-[0.08em] text-ink-soft">
+                Pelaksanaan Tes
+              </h2>
+              {daftarTes.length === 0 ? (
+                <p className="mt-3 text-sm leading-relaxed text-muted">
+                  Pembayaran Anda sudah terverifikasi. Asisten sedang
+                  menyiapkan tautan pengerjaan tes — tautan akan muncul di sini
+                  dan aktif mengikuti jadwal Anda.
+                </p>
+              ) : (
+                <ul className="mt-4 space-y-4">
+                  {daftarTes.map((t) => {
+                    const mulai =
+                      t.jadwalSesi?.mulai ?? p.jadwal[0]?.mulai ?? null;
+                    const sudahWaktunya =
+                      !mulai || sekarang >= new Date(mulai);
+                    const bisaKerjakan = Boolean(t.tautan) && sudahWaktunya;
+                    return (
+                      <li
+                        key={t.id}
+                        className="rounded-xl bg-paper-2 p-4"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-sm font-bold text-ink">
+                            {t.alatTes.nama}
+                          </p>
+                          <BadgeStatus status={t.status} label={t.status} />
+                        </div>
+                        {t.instruksi && (
+                          <p className="mt-2 text-xs leading-relaxed text-ink-soft">
+                            {t.instruksi}
+                          </p>
+                        )}
+                        {mulai && (
+                          <p className="mt-1 text-[0.7rem] text-muted">
+                            Jadwal: {formatTanggalWaktu(mulai)}
+                            {t.jadwalSesi
+                              ? ` · ${t.jadwalSesi.metode === "ONLINE" ? "Daring" : "Tatap muka"}`
+                              : ""}
+                          </p>
+                        )}
+                        <div className="mt-3">
+                          {bisaKerjakan ? (
+                            <a
+                              href={t.tautan!}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="tombol tombol-utama w-full !py-2 !text-xs"
+                            >
+                              Kerjakan Tes Sekarang ↗
+                            </a>
+                          ) : !t.tautan ? (
+                            <p className="text-xs text-muted">
+                              Tautan pengerjaan menyusul dari asisten.
+                            </p>
+                          ) : (
+                            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                              Tautan tersedia dan akan aktif pada jadwal di
+                              atas. Silakan kembali saat waktunya tiba.
+                            </p>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          )}
 
           <div className="kartu border-dashed p-5">
             <p className="text-xs leading-relaxed text-ink-soft">

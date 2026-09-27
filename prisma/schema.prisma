@@ -292,6 +292,11 @@ model LembarTes {
   asistenId     String?
   status        StatusLembarTes  @default(MENUNGGU)
   catatan       String?
+  // Distribusi pengerjaan ke klien: tautan tes eksternal (mis. Google Form)
+  // + instruksi singkat. Klien melihat nama alat, tautan, dan instruksi saja —
+  // isi soal dan skor tetap di Zona 2.
+  tautan        String?
+  instruksi     String?
   dikerjakanPada DateTime?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt

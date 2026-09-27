@@ -7,7 +7,7 @@ import {
 } from "@/components/dashboard/ui";
 import { filterPendaftaranKlien, wajibKlien } from "@/lib/auth/dal";
 import { labelStatusPendaftaran } from "@/lib/config";
-import { nomorTahap } from "@/lib/alur";
+import { nomorTahap, TAHAP } from "@/lib/alur";
 import { keAngka } from "@/lib/pembayaran";
 import { prisma } from "@/lib/prisma";
 import { formatRupiah, formatTanggal, formatTanggalWaktu } from "@/lib/utils";
@@ -25,7 +25,11 @@ export default async function HalamanRiwayatKlien() {
       pembayaran: {
         orderBy: { createdAt: "desc" },
         take: 1,
-        select: { jumlah: true, status: true, buktiUrl: true },
+        // Jangan ambil isi buktiUrl (bisa belasan MB base64) di daftar —
+        // cukup tahu ada/tidak lewat query ringan di bawah.
+        // `catatan` kecil (alasan penolakan) aman ikut diambil agar klien
+        // langsung tahu kenapa ditolak tanpa membuka detail.
+        select: { id: true, jumlah: true, status: true, catatan: true },
       },
       jadwal: {
         orderBy: { mulai: "asc" },
@@ -34,6 +38,19 @@ export default async function HalamanRiwayatKlien() {
       },
     },
   });
+
+  // Peta pendaftaranId -> ada bukti (tanpa memuat isi berkas).
+  const buktiAdaSet = new Set(
+    (
+      await prisma.pembayaran.findMany({
+        where: {
+          pendaftaranId: { in: daftar.map((p) => p.id) },
+          buktiUrl: { not: null },
+        },
+        select: { pendaftaranId: true },
+      })
+    ).map((b) => b.pendaftaranId),
+  );
 
   const perluBayar = daftar.filter(
     (p) =>
@@ -96,6 +113,11 @@ export default async function HalamanRiwayatKlien() {
                         status={p.status}
                         label={labelStatusPendaftaran[p.status] ?? p.status}
                       />
+                      {bayar?.status === "DITOLAK" && (
+                        <span className="pil bg-red-600 text-white">
+                          Bukti Ditolak
+                        </span>
+                      )}
                     </div>
                     <p className="mt-1.5 text-sm text-ink-soft">{p.layanan.nama}</p>
                     <p className="mt-0.5 text-xs text-muted">
@@ -124,11 +146,16 @@ export default async function HalamanRiwayatKlien() {
                           {bayar.status === "TERVERIFIKASI"
                             ? "Pembayaran terverifikasi"
                             : bayar.status === "DITOLAK"
-                              ? "Bukti ditolak — kirim ulang"
-                              : bayar.buktiUrl
+                              ? "Bukti DITOLAK — kirim ulang"
+                              : buktiAdaSet.has(p.id)
                                 ? "Bukti terkirim, menunggu verifikasi"
                                 : "Belum bayar"}
                         </p>
+                        {bayar.status === "DITOLAK" && bayar.catatan && (
+                          <p className="mt-1 max-w-64 truncate text-[0.7rem] text-red-600">
+                            Alasan: {bayar.catatan}
+                          </p>
+                        )}
                       </>
                     ) : (
                       <p className="text-xs text-muted">Biaya dikonfirmasi admin</p>
@@ -139,7 +166,7 @@ export default async function HalamanRiwayatKlien() {
                 {/* Progres ringkas */}
                 <div className="mt-4 flex items-center gap-3">
                   <span className="pil bg-paper-2 text-ink-soft">
-                    Tahap {tahap} dari 8
+                    Tahap {tahap} dari {TAHAP.length}
                   </span>
                   <span className="text-xs text-muted">
                     {p.jadwal[0]

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { majuOtomatis } from "@/lib/alur-otomatis";
 import { wajibKemampuan } from "@/lib/auth/dal";
+import { pastikanJadwalOtomatis } from "@/lib/jadwal-otomatis";
 import { prisma } from "@/lib/prisma";
 
 async function catat(
@@ -49,37 +50,62 @@ export async function verifikasiPembayaran(formData: FormData) {
   const sesi = await wajibKemampuan("pembayaran:verifikasi");
   const id = String(formData.get("id") ?? "");
   const keputusan = String(formData.get("keputusan") ?? "");
-  const catatan = String(formData.get("catatan") ?? "").trim() || null;
+  const catatanInput = String(formData.get("catatan") ?? "").trim();
   if (!id) return;
+
+  const ditolak = keputusan !== "TERIMA";
+  // Alasan penolakan wajib — klien harus tahu kenapa ditolak dan apa yang
+  // perlu diperbaiki. Bila admin mengosongkan, pakai kalimat baku agar
+  // klien tidak melihat status DITOLAK tanpa penjelasan.
+  const catatan = ditolak
+    ? catatanInput ||
+      "Bukti tidak dapat diverifikasi. Pastikan foto/screenshot transfer jelas, nominal sesuai tagihan, lalu kirim ulang."
+    : catatanInput || null;
 
   const bayar = await prisma.pembayaran.update({
     where: { id },
     data: {
-      status: keputusan === "TERIMA" ? "TERVERIFIKASI" : "DITOLAK",
+      status: ditolak ? "DITOLAK" : "TERVERIFIKASI",
       catatan,
       diverifikasiOlehId: sesi.userId,
       diverifikasiPada: new Date(),
     },
   });
 
-  if (keputusan === "TERIMA") {
-    // Tahap 4 — pembayaran sah.
+  if (!ditolak) {
+    // Tahap 2 — pembayaran sah.
     await majuOtomatis(bayar.pendaftaranId, "TERVERIFIKASI");
+    // Backfill: pendaftar lama yang belum punya baris jadwal dibuatkan dari
+    // preferensi hari/jam yang ia pilih, agar jadwal langsung tampil di
+    // halaman asisten begitu pembayaran disetujui.
+    try {
+      await pastikanJadwalOtomatis(bayar.pendaftaranId);
+    } catch (e) {
+      console.error("[verifikasiPembayaran] gagal backfill jadwal:", e);
+    }
   }
+  // Saat DITOLAK status pendaftaran sengaja TIDAK diubah — ia tetap di tahap
+  // pembayaran, dan sisi klien menampilkan status "Bukti Ditolak" + alasan
+  // + perintah kirim ulang (bukan kembali seolah belum pernah mengunggah).
 
   await catat(
     sesi.userId,
-    keputusan === "TERIMA" ? "VERIFIKASI_PEMBAYARAN" : "TOLAK_PEMBAYARAN",
+    ditolak ? "TOLAK_PEMBAYARAN" : "VERIFIKASI_PEMBAYARAN",
     "Pembayaran",
     id,
-    `Pembayaran ${bayar.jumlah.toString()} diverifikasi sebagai ${
-      keputusan === "TERIMA" ? "sah" : "ditolak"
-    }`,
+    ditolak
+      ? `Pembayaran ${bayar.jumlah.toString()} ditolak. Alasan: ${catatan}`
+      : `Pembayaran ${bayar.jumlah.toString()} diverifikasi sebagai sah`,
   );
 
   revalidatePath(`/dashboard/pendaftaran/${bayar.pendaftaranId}`);
   revalidatePath("/dashboard/pendaftaran");
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/asesmen");
+  revalidatePath(`/dashboard/asesmen/${bayar.pendaftaranId}`);
+  revalidatePath("/dashboard/jadwal");
+  revalidatePath("/dashboard/riwayat");
+  revalidatePath(`/dashboard/riwayat/${bayar.pendaftaranId}`);
 }
 
 export async function catatPembayaran(formData: FormData) {
@@ -100,7 +126,7 @@ export async function catatPembayaran(formData: FormData) {
     },
   });
 
-  // Tahap 3 — tagihan diterbitkan.
+  // Tahap 1 — tagihan diterbitkan.
   await majuOtomatis(pendaftaranId, "MENUNGGU_PEMBAYARAN");
 
   await catat(
@@ -145,8 +171,10 @@ export async function buatJadwal(formData: FormData) {
     data: { psikologId },
   });
 
-  // Tahap 5 — sesi sudah dijadwalkan.
-  await majuOtomatis(pendaftaranId, "TERJADWAL");
+  // Jadwal manual oleh admin (koreksi/penyesuaian — jadwal utama sudah dibuat
+  // otomatis dari pilihan pendaftar). Bila pembayaran sudah terverifikasi,
+  // kasus otomatis maju ke tahap 3 Pelaksanaan Tes.
+  await majuOtomatis(pendaftaranId, "PELAKSANAAN");
 
   await catat(
     sesi.userId,
@@ -160,6 +188,8 @@ export async function buatJadwal(formData: FormData) {
   revalidatePath("/dashboard/jadwal");
   revalidatePath("/dashboard/asesmen");
   revalidatePath("/dashboard/kasus");
+  revalidatePath("/dashboard/riwayat");
+  revalidatePath(`/dashboard/riwayat/${pendaftaranId}`);
   revalidatePath("/dashboard");
 }
 

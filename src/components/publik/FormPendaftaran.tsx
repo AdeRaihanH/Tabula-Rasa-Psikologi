@@ -6,6 +6,7 @@ import { useActionState, useState, useSyncExternalStore } from "react";
 
 import { kirimPendaftaran, type HasilPendaftaran } from "@/app/actions/pendaftaran";
 import { JebakanBot } from "@/components/ui/JebakanBot";
+import { UnggahBuktiKlien } from "@/components/publik/UnggahBuktiKlien";
 import { labelKategori } from "@/lib/config";
 import {
   SLOT_WAKTU,
@@ -123,11 +124,6 @@ export function FormPendaftaran({
     : null;
 
   if (hasil?.ok) {
-    const wa = hasil.whatsapp
-      ? `https://wa.me/${hasil.whatsapp}?text=${encodeURIComponent(
-          `Halo, saya sudah melakukan pendaftaran dengan nomor ${hasil.nomor}. Saya ingin mengirim bukti pembayaran.`,
-        )}`
-      : null;
     const adaRekening = Boolean(hasil.rekening.bank && hasil.rekening.nomor);
 
     return (
@@ -209,8 +205,8 @@ export function FormPendaftaran({
                 {[
                   `Transfer tepat sebesar ${formatRupiah(hasil.biaya)} ke rekening di atas.`,
                   "Simpan bukti transfer Anda.",
-                  "Kirim bukti transfer ke admin dengan menyebutkan nomor pendaftaran.",
-                  "Admin akan memverifikasi, lalu Anda menerima jadwal sesi.",
+                  "Unggah bukti transfer langsung di bawah ini.",
+                  "Admin memverifikasi pembayaran, lalu asisten membagikan tautan tes sesuai jadwal yang Anda pilih.",
                 ].map((t, i) => (
                   <li key={t} className="flex gap-3 text-sm text-ink-soft">
                     <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-100 text-[0.65rem] font-bold text-brand-700">
@@ -227,27 +223,20 @@ export function FormPendaftaran({
                 </p>
               )}
 
-              <div className="mt-6 flex flex-wrap gap-3">
-                {wa && (
-                  <a
-                    href={wa}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="tombol tombol-sage"
-                  >
-                    Kirim bukti via WhatsApp
-                  </a>
-                )}
-                {hasil.email && (
-                  <a
-                    href={`mailto:${hasil.email}?subject=${encodeURIComponent(
-                      `Bukti pembayaran ${hasil.nomor}`,
-                    )}`}
-                    className="tombol tombol-garis"
-                  >
-                    Kirim via Email
-                  </a>
-                )}
+              {/* Upload bukti pembayaran langsung */}
+              {hasil.pembayaranId && (
+                <div className="mt-6 border-t border-line pt-6">
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
+                    Unggah Bukti Pembayaran
+                  </p>
+                  <p className="mt-1 text-xs text-ink-soft">
+                    Unggah screenshot atau foto bukti transfer Anda. Admin akan segera memverifikasi.
+                  </p>
+                  <UnggahBuktiKlien pembayaranId={hasil.pembayaranId} />
+                </div>
+              )}
+
+              <div className="mt-6">
                 <Link href="/cek-status" className="tombol tombol-garis">
                   Cek Status Pendaftaran
                 </Link>
@@ -260,17 +249,7 @@ export function FormPendaftaran({
                 menghubungi Anda dengan rincian biaya, lalu Anda dapat
                 melakukan pembayaran.
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                {wa && (
-                  <a
-                    href={wa}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="tombol tombol-sage"
-                  >
-                    Tanya biaya via WhatsApp
-                  </a>
-                )}
+              <div className="mt-6">
                 <Link href="/cek-status" className="tombol tombol-garis">
                   Cek Status Pendaftaran
                 </Link>

@@ -62,18 +62,28 @@ export const labelRole: Record<string, string> = {
 export const alurLayanan = [
   {
     nomor: "01",
-    judul: "Pendaftaran dan pembayaran",
-    isi: "Isi data diri dan selesaikan pembayaran untuk konfirmasi pendaftaran.",
+    judul: "Pendaftaran & pembayaran",
+    isi: "Isi formulir, pilih jadwal, lalu unggah bukti pembayaran.",
   },
   {
     nomor: "02",
-    judul: "Pelaksanaan tes",
-    isi: "Sesi asesmen atau tes psikologi dilaksanakan sesuai jadwal yang dipilih.",
+    judul: "Verifikasi pembayaran",
+    isi: "Admin memeriksa bukti dan mengonfirmasi jadwal tes Anda.",
   },
   {
     nomor: "03",
-    judul: "Hasil tes",
-    isi: "Laporan hasil tes diserahkan beserta sesi konsultasi umpan balik.",
+    judul: "Pelaksanaan tes",
+    isi: "Kerjakan tes lewat tautan dari asisten, sesuai jadwal Anda.",
+  },
+  {
+    nomor: "04",
+    judul: "Pelaporan hasil",
+    isi: "Psikolog menyusun laporan hasil asesmen Anda.",
+  },
+  {
+    nomor: "05",
+    judul: "Selesai & umpan balik",
+    isi: "Terima laporan pada sesi umpan balik bersama psikolog.",
   },
 ] as const;
 

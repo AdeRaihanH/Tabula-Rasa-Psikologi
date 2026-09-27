@@ -22,7 +22,7 @@ export default async function RingkasanDashboard() {
   // Klien punya portal sendiri; peran internal lain punya halaman utamanya.
   if (sesi.role !== "ADMIN") redirect(rumahDashboard(sesi.role));
 
-  const [totalKlien, totalPendaftaran, menungguBayar, terverifikasi, terbaru, logTerbaru] =
+  const [totalKlien, totalPendaftaran, menungguBayar, terverifikasi, terbaru, logTerbaru, buktiMenunggu] =
     await Promise.all([
       prisma.klien.count(),
       prisma.pendaftaran.count(),
@@ -37,6 +37,22 @@ export default async function RingkasanDashboard() {
         },
       }),
       prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 6 }),
+      prisma.pembayaran.findMany({
+        where: { status: "MENUNGGU", buktiUrl: { not: null } },
+        orderBy: { updatedAt: "desc" },
+        take: 8,
+        select: {
+          id: true,
+          updatedAt: true,
+          pendaftaran: {
+            select: {
+              id: true,
+              nomor: true,
+              klien: { select: { nama: true } },
+            },
+          },
+        },
+      }),
     ]);
 
   const perZona = [
@@ -100,6 +116,65 @@ export default async function RingkasanDashboard() {
           </div>
         ))}
       </div>
+
+      {/* Bukti pembayaran menunggu verifikasi */}
+      <section className="kartu mt-6 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-bold uppercase tracking-[0.08em] text-ink-soft">
+            Bukti pembayaran menunggu verifikasi ({buktiMenunggu.length})
+          </h2>
+          <Link
+            href="/dashboard/pendaftaran?status=MENUNGGU_PEMBAYARAN"
+            className="text-xs font-semibold text-brand-700 hover:underline"
+          >
+            Lihat semua →
+          </Link>
+        </div>
+        {buktiMenunggu.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">
+            Tidak ada bukti baru. Bukti yang diunggah klien akan muncul di sini
+            untuk diverifikasi.
+          </p>
+        ) : (
+          <ul className="mt-4 divide-y divide-line">
+            {buktiMenunggu.map((b) => (
+              <li
+                key={b.id}
+                className="flex flex-wrap items-center justify-between gap-2 py-2.5"
+              >
+                <div>
+                  <Link
+                    href={`/dashboard/pendaftaran/${b.pendaftaran.id}`}
+                    className="text-sm font-semibold text-brand-700 hover:underline"
+                  >
+                    {b.pendaftaran.nomor}
+                  </Link>
+                  <p className="text-xs text-muted">
+                    {b.pendaftaran.klien.nama} · dikirim{" "}
+                    {formatTanggal(b.updatedAt)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`/api/bukti/${b.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="pil bg-paper-2 text-ink-soft"
+                  >
+                    Lihat bukti ↗
+                  </a>
+                  <Link
+                    href={`/dashboard/pendaftaran/${b.pendaftaran.id}`}
+                    className="pil bg-amber-100 font-semibold text-amber-800"
+                  >
+                    Verifikasi
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         <section>

@@ -5,7 +5,7 @@ import { alurLayanan, jumlahLangkahKata } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "Alur Layanan",
-  description: `Alur layanan dalam ${jumlahLangkahKata} tahap utama: pendaftaran dan pembayaran, pelaksanaan tes, serta hasil tes.`,
+  description: `Alur layanan dalam ${jumlahLangkahKata} tahap utama: pendaftaran, verifikasi, pelaksanaan tes, pelaporan hasil, hingga umpan balik.`,
 };
 
 /**

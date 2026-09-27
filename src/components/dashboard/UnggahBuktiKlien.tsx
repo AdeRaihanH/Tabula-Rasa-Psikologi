@@ -1,58 +1,87 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { unggahBuktiKlien, type HasilUnggahBukti } from "@/app/actions/akun";
+import { PratinjauBukti } from "@/components/dashboard/PratinjauBukti";
 
 export function UnggahBuktiKlien({
   pembayaranId,
-  buktiUrl,
-  driveSiap,
-  sudahTerverifikasi,
+  status,
+  adaBukti,
+  catatan = null,
 }: {
   pembayaranId: string;
-  buktiUrl: string | null;
-  driveSiap: boolean;
-  sudahTerverifikasi: boolean;
+  status: "MENUNGGU" | "TERVERIFIKASI" | "DITOLAK";
+  adaBukti: boolean;
+  catatan?: string | null;
 }) {
   const [hasil, aksi, pending] = useActionState<HasilUnggahBukti, FormData>(
     unggahBuktiKlien,
     undefined,
   );
 
+  // Penghitung kiriman untuk cache-buster pratinjau: setiap percobaan unggah
+  // memakai query `?t=` baru agar gambar lama tidak tampil dari cache.
+  // (Diperbarui di event handler, bukan di effect.)
+  const [unggahanKe, setUnggahanKe] = useState(0);
+
+  // Aturan tampil:
+  // - Sudah unggah & MENUNGGU  → sembunyikan form, tampilkan status + pratinjau.
+  // - TERVERIFIKASI            → sembunyikan form.
+  // - DITOLAK / belum ada bukti → tampilkan form (kirim / kirim ulang).
+  const sudahKirimMenunggu = status === "MENUNGGU" && adaBukti;
+  const sudahTerverifikasi = status === "TERVERIFIKASI";
+  const ditolak = status === "DITOLAK";
+  const tampilForm = !sudahKirimMenunggu && !sudahTerverifikasi;
+
   return (
     <div className="mt-4 border-t border-line pt-4">
-      {buktiUrl && (
-        <a
-          href={buktiUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block text-xs font-semibold text-brand-700 hover:underline"
-        >
-          Lihat bukti yang sudah diunggah ↗
-        </a>
+      {adaBukti && (
+        <PratinjauBukti
+          pembayaranId={pembayaranId}
+          t={unggahanKe > 0 ? String(unggahanKe) : ""}
+          tampilMini
+        />
       )}
 
-      {sudahTerverifikasi ? (
+      {sudahTerverifikasi && (
         <p className="mt-2 text-xs text-emerald-700">
           Pembayaran sudah diverifikasi. Tidak perlu mengunggah ulang.
         </p>
-      ) : !driveSiap ? (
-        <p className="mt-2 text-xs leading-relaxed text-amber-700">
-          Unggah berkas belum tersedia. Silakan kirim bukti pembayaran melalui
-          WhatsApp atau email admin dengan menyebutkan nomor pendaftaran Anda.
+      )}
+
+      {sudahKirimMenunggu && (
+        <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+          Bukti Anda sudah diterima dan sedang diverifikasi admin. Tidak perlu
+          mengunggah ulang kecuali diminta.
         </p>
-      ) : (
-        <form action={aksi} className="mt-3">
+      )}
+
+      {tampilForm && (
+        <form action={aksi} onSubmit={() => setUnggahanKe((n) => n + 1)} className="mt-3">
+          {ditolak && (
+            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-700">
+              <p className="font-bold">Bukti pembayaran DITOLAK.</p>
+              <p className="mt-1">
+                <span className="font-semibold">Alasan dari admin:</span>{" "}
+                {catatan ??
+                  "Bukti tidak dapat diverifikasi. Silakan kirim ulang bukti yang jelas."}
+              </p>
+              <p className="mt-1 font-medium">
+                Silakan unggah ulang bukti yang benar di bawah ini.
+              </p>
+            </div>
+          )}
           <input type="hidden" name="pembayaranId" value={pembayaranId} />
           <label className="label" htmlFor={`bukti-${pembayaranId}`}>
-            Unggah bukti pembayaran
+            {ditolak ? "Unggah ulang bukti pembayaran" : "Unggah bukti pembayaran"}
           </label>
           <input
             id={`bukti-${pembayaranId}`}
             name="berkas"
             type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
             className="input !py-1.5 !text-xs file:mr-3 file:rounded-md file:border-0 file:bg-paper-2 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-ink-soft"
           />
           <button
@@ -60,10 +89,14 @@ export function UnggahBuktiKlien({
             disabled={pending}
             className="tombol tombol-utama mt-3 w-full !py-2 !text-xs disabled:opacity-60"
           >
-            {pending ? "Mengunggah…" : "Kirim bukti pembayaran"}
+            {pending
+              ? "Mengunggah…"
+              : ditolak
+                ? "Kirim ulang bukti pembayaran"
+                : "Kirim bukti pembayaran"}
           </button>
           <p className="mt-2 text-[0.68rem] text-muted">
-            Format PDF/JPG/PNG, maksimal 8 MB. Bukti akan diverifikasi admin.
+            Format PDF/JPG/PNG/WEBP, maksimal 8 MB. Bukti akan diverifikasi admin.
           </p>
         </form>
       )}

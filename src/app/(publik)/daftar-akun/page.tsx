@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 const manfaat = [
   {
     judul: "Pantau status real-time",
-    isi: "Lihat posisi pendaftaran Anda pada 8 tahap layanan tanpa perlu bertanya ke admin.",
+    isi: "Lihat posisi pendaftaran Anda pada 5 tahap layanan tanpa perlu bertanya ke admin.",
   },
   {
     judul: "Riwayat terkumpul",
