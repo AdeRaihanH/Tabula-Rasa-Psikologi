@@ -10,6 +10,7 @@ import {
   unggahTeks,
 } from "@/lib/gdrive";
 import { buatSpreadsheet, JUDUL_SHEET, rapikanSpreadsheet, tambahBaris } from "@/lib/gsheets";
+import { ZONA_WAKTU } from "@/lib/jadwal";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -130,7 +131,7 @@ export async function folderPendaftaran(pendaftaranId: string) {
     `Psikolog          : ${p.psikolog?.nama ?? "belum ditetapkan"}`,
     `Metode            : Tatap Muka`,
     `Status            : ${p.status}`,
-    `Tanggal masuk     : ${p.createdAt.toISOString()}`,
+    `Tanggal masuk     : ${p.createdAt.toLocaleString("id-ID", { timeZone: ZONA_WAKTU })}`,
     "",
     "Kebutuhan:",
     p.kebutuhan ?? "-",
@@ -344,13 +345,15 @@ export async function catatPendaftaranKeSheet(pendaftaranId: string) {
   if (!p) return { psikolog: false, klien: false, pesan: ["Pendaftaran tidak ditemukan."] };
 
   const baris = [
-    new Date(p.createdAt).toLocaleString("id-ID"),
+    new Date(p.createdAt).toLocaleString("id-ID", { timeZone: ZONA_WAKTU }),
     p.nomor,
     p.klien.nama,
     p.klien.email,
     p.klien.telepon,
     p.klien.tanggalLahir
-      ? new Date(p.klien.tanggalLahir).toLocaleDateString("id-ID")
+      ? new Date(p.klien.tanggalLahir).toLocaleDateString("id-ID", {
+          timeZone: ZONA_WAKTU,
+        })
       : "",
     p.klien.jenisKelamin === "L"
       ? "Laki-laki"

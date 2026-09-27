@@ -97,11 +97,21 @@ export async function tambahBaris(
     spreadsheetId,
     range: `'${judul}'!A1`,
     valueInputOption: "USER_ENTERED",
-    insertDataOption: "INSERT_ROWS",
+    // OVERWRITE (bukan INSERT_ROWS) supaya baris baru TIDAK mewarisi format
+    // baris header (teks putih), yang membuat tulisan tak terlihat.
+    insertDataOption: "OVERWRITE",
     requestBody: {
       values: [baris.map((b) => (b === null || b === undefined ? "" : b))],
     },
   });
+
+  // Rapikan ulang agar baris data yang baru ditambahkan mendapat warna teks
+  // gelap + latar selang-seling yang benar.
+  try {
+    await rapikanSpreadsheet(spreadsheetId, judul);
+  } catch {
+    // Pemformatan opsional.
+  }
 
   return judul;
 }
@@ -166,6 +176,7 @@ const WARNA = {
   headerGaris: "#763F2A",
   banding1: "#FFFFFF",
   banding2: "#FBF7F1",
+  teks: "#42231A",
 };
 
 function hexKeRgb(hex: string) {
@@ -215,6 +226,14 @@ export async function rapikanSpreadsheet(spreadsheetId: string, judul?: string) 
       },
     });
   }
+
+  // Jumlah baris data saat ini (baris pertama = judul), untuk pewarnaan
+  // selang-seling per baris.
+  const isiKolomA = await sheets().spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${target}'!A1:A`,
+  });
+  const jumlahBarisData = Math.max((isiKolomA.data.values ?? []).length - 1, 0);
 
   const jumlahKolom = LEBAR_KOLOM.length;
 
@@ -360,23 +379,35 @@ export async function rapikanSpreadsheet(spreadsheetId: string, judul?: string) 
     });
   }
 
-  // Warna baris selang-seling.
-  requests.push({
-    addBanding: {
-      bandedRange: {
+  // Warna baris data: teks gelap + latar selang-seling (putih/krem).
+  // Ditulis per baris agar baris yang sempat mewarisi format header (teks
+  // putih) ikut dikoreksi menjadi terbaca.
+  for (let i = 1; i <= jumlahBarisData; i++) {
+    requests.push({
+      repeatCell: {
         range: {
           sheetId,
-          startRowIndex: 1,
+          startRowIndex: i,
+          endRowIndex: i + 1,
           startColumnIndex: 0,
           endColumnIndex: jumlahKolom,
         },
-        rowProperties: {
-          firstBandColor: hexKeRgb(WARNA.banding1),
-          secondBandColor: hexKeRgb(WARNA.banding2),
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: hexKeRgb(
+              i % 2 === 1 ? WARNA.banding1 : WARNA.banding2,
+            ),
+            textFormat: {
+              bold: false,
+              foregroundColor: hexKeRgb(WARNA.teks),
+            },
+          },
         },
+        fields:
+          "userEnteredFormat(backgroundColor,textFormat(bold,foregroundColor))",
       },
-    },
-  });
+    });
+  }
 
   // Filter otomatis pada baris judul.
   requests.push({
