@@ -80,7 +80,7 @@ model User {
   updatedAt    DateTime @updatedAt
 
   profilPsikolog  ProfilPsikolog?
-  klien           Klien?
+  klien           Klien[]
   pendaftaranSebagaiPsikolog Pendaftaran[] @relation("PendaftaranPsikolog")
   konfirmasiTesSebagaiAsisten Pendaftaran[] @relation("KonfirmasiTesAsisten")
   sesiSebagaiPsikolog JadwalSesi[]     @relation("SesiPsikolog")
@@ -134,7 +134,7 @@ model SesiLogin {
 
 model Klien {
   id            String   @id @default(cuid())
-  userId        String?  @unique
+  userId        String?
   nama          String
   email         String
   telepon       String

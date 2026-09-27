@@ -112,6 +112,7 @@ export async function kirimPendaftaran(
   const consent = formData.get("informedConsent") === "on";
   const tanggalPertemuan = bersih(formData.get("tanggalPertemuan"));
   const waktuPertemuan = bersih(formData.get("waktuPertemuan"));
+  const untukOrangLain = formData.get("jenisPendaftaran") === "orangLain";
 
   const galat: Record<string, string> = {};
   if (!telepon) galat.telepon = "Nomor telepon wajib diisi.";
@@ -153,7 +154,7 @@ export async function kirimPendaftaran(
       where: { id: sesi.userId },
       select: { email: true },
     });
-    const emailAkun = akun?.email ?? email ?? "";
+    const emailAkun = email ?? (untukOrangLain ? "" : akun?.email) ?? "";
 
     const dataDiri = {
       nama: nama!,
@@ -166,10 +167,15 @@ export async function kirimPendaftaran(
       institusi: bersih(formData.get("institusi")),
     };
 
-    // Pakai data klien milik akun (tidak membuat record baru setiap mendaftar).
     const klienAkun = await klienMilikSaya(sesi);
-    const klien =
-      klienAkun.length > 0
+    let klien;
+    
+    if (untukOrangLain) {
+      klien = await prisma.klien.create({
+        data: { ...dataDiri, userId: sesi.userId },
+      });
+    } else {
+      klien = klienAkun.length > 0
         ? await prisma.klien.update({
             where: { id: klienAkun[0].id },
             data: {
@@ -188,6 +194,7 @@ export async function kirimPendaftaran(
         : await prisma.klien.create({
             data: { ...dataDiri, userId: sesi.userId },
           });
+    }
 
     // Biaya ditentukan dari layanan (semua layanan Tatap Muka).
     const biaya = hitungBiaya(layanan);

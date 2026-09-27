@@ -94,6 +94,7 @@ export function FormPendaftaran({
   );
   const [tanggal, setTanggal] = useState("");
   const [waktu, setWaktu] = useState("");
+  const [untukOrangLain, setUntukOrangLain] = useState(false);
 
   // Waktu sekarang hanya tersedia di klien (null saat render server).
   const sekarang = useSyncExternalStore(
@@ -270,6 +271,7 @@ export function FormPendaftaran({
   return (
     <form action={aksi} className="space-y-8">
       <JebakanBot />
+      <input type="hidden" name="jenisPendaftaran" value={untukOrangLain ? "orangLain" : "sendiri"} />
       {hasil && !hasil.ok && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {hasil.pesan}
@@ -281,18 +283,46 @@ export function FormPendaftaran({
         <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-ink-soft">
           Data Diri
         </h2>
-        <p className="mt-2 text-xs text-muted">
-          Diambil dari akun Anda.{" "}
-          <Link
-            href="/dashboard/profil"
-            className="font-semibold text-brand-700 underline"
-          >
-            Ubah di Profil Saya
-          </Link>{" "}
-          bila perlu diperbarui.
-        </p>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <div className="mt-4 flex gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input 
+              type="radio" 
+              checked={!untukOrangLain} 
+              onChange={() => setUntukOrangLain(false)} 
+              className="accent-brand-600" 
+            />
+            <span className="text-sm text-ink-soft font-medium">Untuk Saya Sendiri</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input 
+              type="radio" 
+              checked={untukOrangLain} 
+              onChange={() => setUntukOrangLain(true)} 
+              className="accent-brand-600" 
+            />
+            <span className="text-sm text-ink-soft font-medium">Untuk Orang Lain</span>
+          </label>
+        </div>
+
+        {!untukOrangLain ? (
+          <p className="mt-4 text-xs text-muted">
+            Diambil dari akun Anda.{" "}
+            <Link
+              href="/dashboard/profil"
+              className="font-semibold text-brand-700 underline"
+            >
+              Ubah di Profil Saya
+            </Link>{" "}
+            bila perlu diperbarui.
+          </p>
+        ) : (
+          <p className="mt-4 text-xs text-muted">
+            Silakan isi data diri klien yang akan Anda daftarkan.
+          </p>
+        )}
+
+        <div key={untukOrangLain ? "lain" : "sendiri"} className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className="label" htmlFor="nama">
               Nama lengkap *
@@ -300,9 +330,10 @@ export function FormPendaftaran({
             <input
               id="nama"
               name="nama"
-              className="input bg-paper-2"
-              defaultValue={akun.nama}
-              readOnly
+              className={cn("input", !untukOrangLain && "bg-paper-2")}
+              defaultValue={untukOrangLain ? "" : akun.nama}
+              readOnly={!untukOrangLain}
+              required
             />
             <Galat pesan={galat?.nama} />
           </div>
@@ -315,9 +346,10 @@ export function FormPendaftaran({
               id="email"
               name="email"
               type="email"
-              className="input bg-paper-2"
-              defaultValue={akun.email}
-              readOnly
+              className={cn("input", !untukOrangLain && "bg-paper-2")}
+              defaultValue={untukOrangLain ? "" : akun.email}
+              readOnly={!untukOrangLain}
+              required
             />
             <Galat pesan={galat?.email} />
           </div>
@@ -330,8 +362,9 @@ export function FormPendaftaran({
               id="telepon"
               name="telepon"
               className="input"
-              defaultValue={akun.telepon ?? ""}
+              defaultValue={untukOrangLain ? "" : akun.telepon ?? ""}
               placeholder="08xxxxxxxxxx"
+              required
             />
             <Galat pesan={galat?.telepon} />
           </div>
@@ -345,7 +378,7 @@ export function FormPendaftaran({
               name="tanggalLahir"
               type="date"
               className="input"
-              defaultValue={akun.tanggalLahir ?? ""}
+              defaultValue={untukOrangLain ? "" : akun.tanggalLahir ?? ""}
             />
           </div>
 
@@ -357,7 +390,7 @@ export function FormPendaftaran({
               id="jenisKelamin"
               name="jenisKelamin"
               className="input"
-              defaultValue={akun.jenisKelamin ?? ""}
+              defaultValue={untukOrangLain ? "" : akun.jenisKelamin ?? ""}
             >
               <option value="">Pilih…</option>
               <option value="L">Laki-laki</option>
@@ -373,7 +406,7 @@ export function FormPendaftaran({
               id="alamat"
               name="alamat"
               className="input"
-              defaultValue={akun.alamat ?? ""}
+              defaultValue={untukOrangLain ? "" : akun.alamat ?? ""}
               placeholder="Kota / kabupaten"
             />
           </div>
@@ -386,7 +419,7 @@ export function FormPendaftaran({
               id="pekerjaan"
               name="pekerjaan"
               className="input"
-              defaultValue={akun.pekerjaan ?? ""}
+              defaultValue={untukOrangLain ? "" : akun.pekerjaan ?? ""}
               placeholder="mis. Karyawan swasta"
             />
           </div>
@@ -399,7 +432,7 @@ export function FormPendaftaran({
               id="institusi"
               name="institusi"
               className="input"
-              defaultValue={akun.institusi ?? ""}
+              defaultValue={untukOrangLain ? "" : akun.institusi ?? ""}
               placeholder="Isi jika mendaftar atas nama lembaga"
             />
           </div>

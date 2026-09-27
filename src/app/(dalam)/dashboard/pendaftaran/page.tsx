@@ -138,11 +138,11 @@ export default async function HalamanPendaftaran({
               const bayar = p.pembayaran[p.pembayaran.length - 1];
               const adaBukti = bayar ? buktiAdaPembayaran.has(bayar.id) : false;
               return (
-                <tr key={p.id} className="hover:bg-paper-2/40">
+                <tr key={p.id} className="group relative hover:bg-paper-2/40">
                   <Td>
                     <Link
                       href={`/dashboard/pendaftaran/${p.id}`}
-                      className="font-semibold text-brand-700 hover:underline"
+                      className="font-semibold text-brand-700 hover:underline before:absolute before:inset-0"
                     >
                       {p.nomor}
                     </Link>

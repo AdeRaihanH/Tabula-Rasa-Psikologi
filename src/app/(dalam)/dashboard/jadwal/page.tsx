@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   BadgeStatus,
   JudulHalaman,
@@ -35,6 +36,7 @@ export default async function HalamanJadwal({
     psikolog: { select: { nama: true } },
     pendaftaran: {
       select: {
+        id: true,
         nomor: true,
         status: true,
         metode: true,
@@ -123,9 +125,14 @@ export default async function HalamanJadwal({
                 </thead>
                 <tbody>
                   {b.data.map((j) => (
-                    <tr key={j.id} className="hover:bg-paper-2/40">
+                    <tr key={j.id} className="group relative hover:bg-paper-2/40">
                       <Td className="whitespace-nowrap text-xs font-medium text-ink">
-                        {formatTanggalWaktu(j.mulai)}
+                        <Link
+                          href={`/dashboard/pendaftaran/${j.pendaftaran.id}`}
+                          className="before:absolute before:inset-0"
+                        >
+                          {formatTanggalWaktu(j.mulai)}
+                        </Link>
                       </Td>
                       <Td className="text-xs">{j.pendaftaran.klien.nama}</Td>
                       <Td className="max-w-[12rem] truncate text-xs">

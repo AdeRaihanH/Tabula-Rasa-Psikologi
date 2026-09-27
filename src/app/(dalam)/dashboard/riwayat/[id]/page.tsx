@@ -6,7 +6,13 @@ import { AlurStatus } from "@/components/dashboard/AlurStatus";
 import { UnggahBuktiKlien } from "@/components/dashboard/UnggahBuktiKlien";
 import { filterPendaftaranKlien, wajibKlien } from "@/lib/auth/dal";
 import { labelStatusPendaftaran } from "@/lib/config";
-import { parsePreferensiJadwal } from "@/lib/jadwal";
+import {
+  butuhPeringatanJam,
+  jadwalBergeserDariPreferensi,
+  jadwalDiubahAdmin,
+  jadwalMasihPilihanPendaftar,
+  parsePreferensiJadwal,
+} from "@/lib/jadwal";
 import { keAngka } from "@/lib/pembayaran";
 import { prisma } from "@/lib/prisma";
 import { formatRupiah, formatTanggal, formatTanggalWaktu } from "@/lib/utils";
@@ -92,8 +98,21 @@ export default async function DetailRiwayatKlien({
   const adaDitolak = daftarBayar.some((b) => b.status === "DITOLAK");
   // Pilihan hari/jam pendaftar: utama dari baris jadwal otomatis, cadangan
   // dari teks preferensi pada formulir pendaftaran.
-  const preferensi =
-    p.jadwal.length === 0 ? parsePreferensiJadwal(p.kebutuhan) : null;
+  // `preferensiAwal` selalu dibaca (bukan hanya saat jadwal kosong) agar bisa
+  // membedakan "jam digeser admin" vs "jam sama, hanya ruangan ditetapkan".
+  const preferensiAwal = parsePreferensiJadwal(p.kebutuhan);
+  const preferensi = p.jadwal.length === 0 ? preferensiAwal : null;
+  // Jadwal yang pernah disentuh admin (geser jam / tetapkan ruangan) terdeteksi
+  // lewat selisih updatedAt–createdAt — bukan dari teks catatan — sehingga baris
+  // lama yang catatannya belum diperbarui tetap tampil benar sebagai "diubah".
+  // Nada peringatan mengikuti EDIT TERAKHIR: "peringatan" hanya bila edit
+  // terakhir menggeser jam; bila edit terakhir hanya melengkapi info (ruangan),
+  // yang ditonjolkan adalah ruangannya tanpa klaim "jadwal diubah".
+  const adaPeringatanJam = p.jadwal.some((j) =>
+    butuhPeringatanJam(j, preferensiAwal),
+  );
+  const adaInfoDiperbarui =
+    !adaPeringatanJam && p.jadwal.some((j) => jadwalDiubahAdmin(j));
   // Kartu pelaksanaan tes tampil setelah pembayaran terverifikasi.
   const tampilTes = semuaTerverifikasi || Boolean(p.konfirmasiTesPada);
   const sudahDilaksanakan = Boolean(p.konfirmasiTesPada);
@@ -191,37 +210,124 @@ export default async function DetailRiwayatKlien({
                 </p>
               )
             ) : (
-              <ul className="mt-3 space-y-3">
-                {p.jadwal.map((j) => (
-                  <li key={j.id} className="rounded-xl border border-line p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-sm font-semibold text-ink">
-                        {formatTanggalWaktu(j.mulai)}
-                      </span>
-                      <BadgeStatus status={j.status} label={j.status} />
-                    </div>
-                    <p className="mt-1 text-xs text-muted">
-                      Tatap Muka
-                      {j.lokasi ? ` · ${j.lokasi}` : ""}
+              <>
+                {adaPeringatanJam && (
+                  <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
+                    <p className="text-xs font-bold text-amber-800">
+                      ⚠ Jadwal diubah oleh admin
                     </p>
-                    {j.catatan?.includes("pilihan pendaftar") && (
-                      <p className="mt-1 text-[0.7rem] font-medium text-brand-700">
-                        Sesuai jadwal yang Anda pilih saat mendaftar
-                      </p>
-                    )}
-                    {j.tautan && (
-                      <a
-                        href={j.tautan}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-2 inline-block text-xs font-semibold text-brand-700 hover:underline"
+                    <p className="mt-1 text-xs leading-relaxed text-amber-800/90">
+                      Waktu di bawah ini adalah jadwal terbaru yang ditetapkan
+                      admin (mis. karena situasi darurat) — bukan lagi jadwal
+                      yang Anda pilih saat mendaftar. Mohon datang sesuai waktu
+                      terbaru ini; hubungi admin bila tidak cocok.
+                    </p>
+                  </div>
+                )}
+                {adaInfoDiperbarui && (
+                  <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <p className="text-xs font-bold text-emerald-800">
+                      ℹ Info sesi diperbarui admin
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-emerald-800/90">
+                      Admin melengkapi info sesi (mis. ruangan) — perhatikan
+                      info terbaru di bawah ini.
+                    </p>
+                  </div>
+                )}
+                <ul className="mt-3 space-y-3">
+                  {p.jadwal.map((j) => {
+                    const peringatan = butuhPeringatanJam(j, preferensiAwal);
+                    const diubah = peringatan || jadwalDiubahAdmin(j);
+                    // Fakta netral: waktu saat ini vs pilihan awal (tanpa
+                    // menuduh "diubah" bila edit terakhir hanya info).
+                    const bedaDariPilihan = preferensiAwal
+                      ? jadwalBergeserDariPreferensi(j.mulai, preferensiAwal, false)
+                      : false;
+                    // Label "sesuai pilihan" hanya untuk jam yang memang belum
+                    // bergeser dari pilihan awal.
+                    const jamSesuaiPilihan = preferensiAwal
+                      ? !bedaDariPilihan
+                      : !diubah && jadwalMasihPilihanPendaftar(j);
+                    const disentuh =
+                      j.updatedAt.getTime() > j.createdAt.getTime();
+                    const ruangan = j.lokasi?.trim() || null;
+                    return (
+                      <li
+                        key={j.id}
+                        className={`rounded-xl border p-4 ${
+                          peringatan
+                            ? "border-amber-300 bg-amber-50/50"
+                            : "border-line"
+                        }`}
                       >
-                        Buka tautan sesi ↗
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-sm font-semibold text-ink">
+                            {formatTanggalWaktu(j.mulai)}
+                          </span>
+                          <span className="flex flex-wrap items-center gap-1.5">
+                            {peringatan && (
+                              <span className="pil bg-amber-500 font-semibold text-white">
+                                Diubah admin
+                              </span>
+                            )}
+                            <BadgeStatus status={j.status} label={j.status} />
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-muted">Tatap Muka</p>
+                        {ruangan ? (
+                          <p className="mt-2 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                            Ruangan kamu di: {ruangan}
+                          </p>
+                        ) : (
+                          <p className="mt-1 text-xs text-muted">
+                            Ruangan menyusul — akan diumumkan admin di sini.
+                          </p>
+                        )}
+                        {jamSesuaiPilihan && (
+                          <p className="mt-1 text-[0.7rem] font-medium text-brand-700">
+                            Sesuai jadwal yang Anda pilih saat mendaftar
+                          </p>
+                        )}
+                        {peringatan && (
+                          <p className="mt-1 text-[0.7rem] font-medium text-amber-800">
+                            Jadwal ini telah disesuaikan admin dari pilihan
+                            awal Anda. Patokan yang berlaku adalah waktu di
+                            atas.
+                          </p>
+                        )}
+                        {!peringatan && bedaDariPilihan && preferensiAwal && (
+                          <p className="mt-1 text-[0.7rem] text-muted">
+                            Pilihan awal Anda saat mendaftar:{" "}
+                            {formatTanggal(
+                              new Date(
+                                `${preferensiAwal.tanggal}T00:00:00+07:00`,
+                              ),
+                            )}{" "}
+                            · {preferensiAwal.waktu}.
+                          </p>
+                        )}
+                        {!peringatan && diubah && (preferensiAwal || disentuh) && (
+                          <p className="mt-1 text-[0.7rem] font-medium text-emerald-700">
+                            Info sesi diperbarui admin — jam tidak berubah.
+                          </p>
+                        )}
+                        {j.tautan && (
+                          <a
+                            href={j.tautan}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-2 inline-block text-xs font-semibold text-brand-700 hover:underline"
+                          >
+                            Buka tautan sesi ↗
+                          </a>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
             )}
           </section>
 

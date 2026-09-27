@@ -9,6 +9,11 @@ import { Paginasi } from "@/components/dashboard/Paginasi";
 import { filterPendaftaranKlien, wajibKlien } from "@/lib/auth/dal";
 import { labelStatusPendaftaran } from "@/lib/config";
 import { nomorTahap, TAHAP } from "@/lib/alur";
+import {
+  butuhPeringatanJam,
+  jadwalDiubahAdmin,
+  parsePreferensiJadwal,
+} from "@/lib/jadwal";
 import { keAngka } from "@/lib/pembayaran";
 import { UKURAN_HALAMAN, hitungPaginasi } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
@@ -43,7 +48,13 @@ export default async function HalamanRiwayatKlien({
         jadwal: {
           orderBy: { mulai: "asc" },
           take: 1,
-          select: { mulai: true },
+          select: {
+            mulai: true,
+            lokasi: true,
+            catatan: true,
+            createdAt: true,
+            updatedAt: true,
+          },
         },
       },
     }),
@@ -117,6 +128,13 @@ export default async function HalamanRiwayatKlien({
           {daftar.map((p) => {
             const bayar = p.pembayaran[0];
             const tahap = nomorTahap(p.status);
+            const sesi = p.jadwal[0] ?? null;
+            const sesiPeringatan =
+              sesi != null &&
+              butuhPeringatanJam(sesi, parsePreferensiJadwal(p.kebutuhan));
+            const sesiDiperbarui =
+              !sesiPeringatan && sesi != null && jadwalDiubahAdmin(sesi);
+            const ruangan = sesi?.lokasi?.trim() || null;
 
             return (
               <Link
@@ -183,15 +201,31 @@ export default async function HalamanRiwayatKlien({
                 </div>
 
                 {/* Progres ringkas */}
-                <div className="mt-4 flex items-center gap-3">
+                <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5">
                   <span className="pil bg-paper-2 text-ink-soft">
                     Tahap {tahap} dari {TAHAP.length}
                   </span>
                   <span className="text-xs text-muted">
-                    {p.jadwal[0]
-                      ? `Sesi: ${formatTanggalWaktu(p.jadwal[0].mulai)}`
+                    {sesi
+                      ? `Sesi: ${formatTanggalWaktu(sesi.mulai)}`
                       : "Jadwal belum ditetapkan"}
                   </span>
+                  {sesiPeringatan && (
+                    <span className="pil bg-amber-100 font-semibold text-amber-800">
+                      ⚠ Jadwal diubah admin
+                    </span>
+                  )}
+                  {sesiDiperbarui && (
+                    <span className="pil bg-emerald-50 font-semibold text-emerald-700">
+                      ℹ Info sesi diperbarui
+                    </span>
+                  )}
+                  {ruangan && (
+                    <span className="flex items-center gap-1 text-xs font-semibold text-emerald-700">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                      {ruangan}
+                    </span>
+                  )}
                   <span className="ml-auto text-xs font-semibold text-brand-700">
                     Lihat detail →
                   </span>

@@ -2,7 +2,8 @@ import "server-only";
 
 import type { IsiSesi } from "@/lib/auth/session";
 import { klienMilikSaya } from "@/lib/auth/dal";
-import { jamWIB, labelHariWIB } from "@/lib/jadwal";
+import { jamWIB, labelHariWIB, parsePreferensiJadwal } from "@/lib/jadwal";
+import { butuhPeringatanJam, jadwalBergeserDariPreferensi, jadwalDiubahAdmin } from "@/lib/jadwal";
 import { prisma } from "@/lib/prisma";
 
 export type JenisNotifikasi = "peringatan" | "info" | "sukses";
@@ -207,7 +208,85 @@ async function notifikasiKlien(sesi: IsiSesi): Promise<Notifikasi[]> {
       }),
     ]);
 
+  // Jadwal mendatang yang pernah diubah admin (jam digeser / ruangan
+  // ditetapkan). Satu-satunya penulis ulang jadwal adalah admin, sehingga
+  // `updatedAt > createdAt` berarti ada penyesuaian setelah pendaftaran —
+  // dilengkapi pemeriksaan teks catatan untuk baris lama. Dibedakan dua
+  // tingkat: jam bergeser (mendesak) vs info dilengkapi, jam sama (ruangan).
+  const jadwalTerkini = await prisma.jadwalSesi.findMany({
+    where: {
+      pendaftaran: { klienId: { in: ids } },
+      status: "TERJADWAL",
+      mulai: { gte: sekarang },
+    },
+    orderBy: { mulai: "asc" },
+    select: {
+      id: true,
+      mulai: true,
+      lokasi: true,
+      catatan: true,
+      createdAt: true,
+      updatedAt: true,
+      pendaftaranId: true,
+      pendaftaran: {
+        select: {
+          nomor: true,
+          kebutuhan: true,
+          layanan: { select: { nama: true } },
+        },
+      },
+    },
+  });
+
   const daftar: Notifikasi[] = [];
+
+  for (const j of jadwalTerkini) {
+    const diubah = jadwalDiubahAdmin(j);
+    if (!diubah) continue;
+    const pref = parsePreferensiJadwal(j.pendaftaran.kebutuhan);
+    // Nada mengikuti edit terakhir: "diubah" hanya bila edit terakhir
+    // menggeser jam. Edit info-only (ruangan) menonjolkan ruangannya.
+    const peringatan = butuhPeringatanJam(j, pref);
+    const bedaDariPilihan = pref
+      ? jadwalBergeserDariPreferensi(j.mulai, pref, false)
+      : false;
+    const labelHari = labelHariWIB(j.mulai, sekarang);
+    const ruangan = j.lokasi?.trim() || null;
+    if (peringatan) {
+      daftar.push({
+        id: `klien-jadwal-diubah-${j.id}`,
+        judul: `Jadwal ${j.pendaftaran.nomor} diubah admin — ${labelHari} pukul ${jamWIB(j.mulai)} WIB`,
+        isi: ruangan
+          ? `Waktu terbaru: ${labelHari} pukul ${jamWIB(j.mulai)} WIB (bukan lagi pilihan awal Anda). Ruangan kamu di: ${ruangan}. Buka detail untuk konfirmasi.`
+          : `Waktu terbaru: ${labelHari} pukul ${jamWIB(j.mulai)} WIB (bukan lagi pilihan awal Anda). Buka detail untuk konfirmasi.`,
+        href: `/dashboard/riwayat/${j.pendaftaranId}`,
+        jenis: "peringatan",
+        waktu: j.updatedAt.toISOString(),
+      });
+    } else if (ruangan) {
+      daftar.push({
+        id: `klien-jadwal-info-${j.id}`,
+        judul: `Ruangan sesi ${j.pendaftaran.nomor}: ${ruangan}`,
+        isi: bedaDariPilihan
+          ? `Waktu sesi: ${labelHari} pukul ${jamWIB(j.mulai)} WIB. Ruangan kamu di: ${ruangan}.`
+          : `Jam masih sesuai pilihan Anda (${labelHari} pukul ${jamWIB(j.mulai)} WIB). Ruangan kamu di: ${ruangan}.`,
+        href: `/dashboard/riwayat/${j.pendaftaranId}`,
+        jenis: "info",
+        waktu: j.updatedAt.toISOString(),
+      });
+    } else {
+      daftar.push({
+        id: `klien-jadwal-info-${j.id}`,
+        judul: `Info sesi ${j.pendaftaran.nomor} diperbarui admin`,
+        isi: bedaDariPilihan
+          ? `Waktu sesi: ${labelHari} pukul ${jamWIB(j.mulai)} WIB. Lihat detail untuk info terbaru.`
+          : `Jam masih sesuai pilihan Anda (${labelHari} pukul ${jamWIB(j.mulai)} WIB). Lihat detail untuk info terbaru.`,
+        href: `/dashboard/riwayat/${j.pendaftaranId}`,
+        jenis: "info",
+        waktu: j.updatedAt.toISOString(),
+      });
+    }
+  }
 
   for (const s of sesiMendekat) {
     const labelHari = labelHariWIB(s.mulai, sekarang);

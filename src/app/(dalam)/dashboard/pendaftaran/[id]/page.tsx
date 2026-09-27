@@ -18,6 +18,7 @@ import { PratinjauBukti } from "@/components/dashboard/PratinjauBukti";
 import { wajibKemampuan } from "@/lib/auth/dal";
 import { tahapBerikutnya, tahapSebelumnya } from "@/lib/alur";
 import { nilaiDatetimeLokal, parsePreferensiJadwal } from "@/lib/jadwal";
+import { butuhPeringatanJam } from "@/lib/jadwal";
 import { driveAktif } from "@/lib/gdrive";
 import { labelKategori, labelStatusPendaftaran } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
@@ -94,8 +95,23 @@ export default async function DetailPendaftaran({
 
   // Jadwal pertama (biasanya pilihan klien saat mendaftar) dipakai untuk
   // mengisi awal formulir agar admin tinggal menyesuaikan bila perlu.
+  // "Masih pilihan klien" hanya benar bila baris belum pernah diubah admin
+  // (updatedAt masih sama dengan createdAt) — bukan sekadar dari teks catatan,
+  // agar badge tidak menyesatkan setelah jam digeser.
   const jadwalAda = p.jadwal[0] ?? null;
-  const jadwalDariKlien = Boolean(jadwalAda?.catatan?.includes("pendaftar"));
+  const jadwalDiubahAdmin =
+    jadwalAda != null &&
+    (jadwalAda.updatedAt.getTime() > jadwalAda.createdAt.getTime() ||
+      (typeof jadwalAda.catatan === "string" &&
+        /diubah admin|ditetapkan admin/i.test(jadwalAda.catatan)));
+  // Nada mengikuti edit terakhir: "peringatan" hanya bila edit terakhir
+  // menggeser jam; edit info-only (ruangan) memakai nada netral.
+  const jadwalPeringatan =
+    jadwalAda != null &&
+    butuhPeringatanJam(jadwalAda, parsePreferensiJadwal(p.kebutuhan));
+  const jadwalDariKlien =
+    !jadwalDiubahAdmin &&
+    Boolean(jadwalAda?.catatan?.includes("pendaftar"));
   // Pilihan hari/jam klien pada formulir — dipakai bila baris jadwal belum ada.
   const preferensiJadwal =
     p.jadwal.length === 0 ? parsePreferensiJadwal(p.kebutuhan) : null;
@@ -380,6 +396,16 @@ export default async function DetailPendaftaran({
                     ✓ Jadwal pilihan klien — otomatis dari pendaftaran
                   </p>
                 )}
+                {jadwalPeringatan && (
+                  <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-[0.68rem] font-semibold text-amber-800">
+                    ⚠ Terakhir: jam diubah — klien melihat waktu terbaru + notifikasi
+                  </p>
+                )}
+                {!jadwalPeringatan && jadwalDiubahAdmin && (
+                  <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[0.68rem] font-semibold text-emerald-700">
+                    ℹ Terakhir: info dilengkapi (ruangan) — klien diberi tahu tanpa klaim jam diubah
+                  </p>
+                )}
                 <ul className="mt-4 space-y-3">
                   {p.jadwal.map((j) => (
                     <li key={j.id} className="rounded-xl border border-line p-4">
@@ -403,11 +429,30 @@ export default async function DetailPendaftaran({
               <input type="hidden" name="pendaftaranId" value={p.id} />
               <p className="rounded-xl bg-paper-2 px-4 py-2.5 text-xs leading-relaxed text-ink-soft sm:col-span-2">
                 {jadwalAda ? (
-                  <>
-                    Jadwal sudah terisi dari pilihan klien saat mendaftar.
-                    Formulir ini hanya untuk <strong>mengubah/mengoreksi</strong>{" "}
-                    bila diperlukan.
-                  </>
+                  jadwalPeringatan ? (
+                    <>
+                      Jam jadwal ini <strong>sudah pernah digeser</strong> dari
+                      pilihan awal klien. Setiap penyimpanan ulang akan
+                      memperbarui waktu yang dilihat klien beserta
+                      notifikasinya — pastikan jam dan ruangan sudah benar.
+                    </>
+                  ) : jadwalDiubahAdmin ? (
+                    <>
+                      Edit terakhir pada jadwal ini hanya{" "}
+                      <strong>melengkapi info</strong> (mis. ruangan) — jam
+                      tidak berubah. Menyimpan ulang dengan jam yang sama tidak
+                      akan memunculkan klaim &quot;diubah&quot; ke klien; yang
+                      ditonjolkan adalah ruangannya.
+                    </>
+                  ) : (
+                    <>
+                      Jadwal sudah terisi dari pilihan klien saat mendaftar.
+                      Formulir ini hanya untuk{" "}
+                      <strong>mengubah/mengoreksi</strong> bila diperlukan
+                      (mis. situasi darurat) — klien otomatis diberi tahu
+                      lewat notifikasi & halaman detailnya.
+                    </>
+                  )
                 ) : (
                   <>
                     Isi formulir ini hanya bila klien belum memilih jadwal, atau

@@ -194,3 +194,103 @@ export function parsePreferensiJadwal(kebutuhan: string | null | undefined): {
   if (!SLOT_WAKTU.some((s) => s.label === waktu)) return null;
   return { tanggal, waktu };
 }
+
+/**
+ * True bila baris jadwal pernah diubah admin setelah dibuat otomatis.
+ *
+ * Baris jadwal dibuat sekali dari pilihan pendaftar (`createdAt`), dan
+ * satu-satunya penulis ulang adalah `buatJadwal` admin — sehingga
+ * `updatedAt > createdAt` berarti admin pernah menyentuh jadwal tersebut
+ * (menggeser jam, menetapkan ruangan, atau mengganti psikolog). Pemeriksaan
+ * teks `catatan` dipakai sebagai jaring pengaman untuk baris yang dibuat
+ * sebelum penanda ini ada.
+ */
+export function jadwalDiubahAdmin(jadwal: {
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  catatan?: string | null;
+}): boolean {
+  if (
+    typeof jadwal.catatan === "string" &&
+    /diubah admin|ditetapkan admin|dikoreksi|disesuaikan/i.test(jadwal.catatan)
+  ) {
+    return true;
+  }
+  return (
+    new Date(jadwal.updatedAt).getTime() > new Date(jadwal.createdAt).getTime()
+  );
+}
+
+/**
+ * True bila jam jadwal BERGESER dari pilihan awal pendaftar.
+ *
+ * Lebih spesifik daripada `jadwalDiubahAdmin`: hanya true bila waktu mulai
+ * benar-benar berbeda dari preferensi tanggal/waktu saat mendaftar (atau bila
+ * tidak ada acuan preferensi sama sekali padahal baris pernah disentuh —
+ * kasus baris lama). Bila admin hanya menetapkan ruangan tanpa menggeser jam,
+ * hasilnya false sehingga label "Sesuai jadwal pilihan Anda" untuk jamnya
+ * tetap boleh tampil berdampingan dengan highlight ruangan.
+ */
+export function jadwalBergeserDariPreferensi(
+  mulai: Date | string,
+  preferensi: { tanggal: string; waktu: string } | null,
+  fallback = true,
+): boolean {
+  if (!preferensi) return fallback;
+  const awalJam = preferensi.waktu.split(" - ")[0]?.trim();
+  if (!awalJam) return fallback;
+  const m = new Date(mulai);
+  return tanggalWIB(m) !== preferensi.tanggal || jamWIB(m) !== awalJam;
+}
+
+/**
+ * True bila klien perlu diperingatkan bahwa JAM sesi berubah (nada "diubah").
+ *
+ * Nada diambil dari EDIT TERAKHIR admin (ditulis `buatJadwal` ke `catatan`):
+ * - ada tanda "Jadwal diubah admin — semula …" → true (edit terakhir
+ *   menggeser jam);
+ * - ada tanda info ("Ruangan ditetapkan admin" / "Info sesi diperbarui") →
+ *   false meski waktu masih berbeda dari preferensi: edit terakhir hanya
+ *   melengkapi info (mis. ruangan), jadi yang ditonjolkan adalah ruangannya,
+ *   bukan klaim "jadwal diubah";
+ * - tanpa tanda (baris warisan yang telanjur disentuh sebelum penanda ini
+ *   ada) → bandingkan waktu dengan preferensi awal pendaftar; bila tidak ada
+ *   preferensi sama sekali, sentuhan apa pun dianggap perubahan (aman).
+ */
+export function butuhPeringatanJam(
+  jadwal: {
+    mulai: Date | string;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+    catatan?: string | null;
+  },
+  preferensi: { tanggal: string; waktu: string } | null,
+): boolean {
+  const c = jadwal.catatan ?? "";
+  if (/jadwal diubah admin — semula/i.test(c)) return true;
+  if (
+    /ruangan ditetapkan admin|ruangan dikosongkan|info sesi diperbarui/i.test(c)
+  ) {
+    return false;
+  }
+  const disentuh =
+    new Date(jadwal.updatedAt).getTime() >
+    new Date(jadwal.createdAt).getTime();
+  if (!preferensi) return disentuh;
+  return disentuh && jadwalBergeserDariPreferensi(jadwal.mulai, preferensi, true);
+}
+
+/**
+ * True bila jadwal masih murni pilihan pendaftar (belum pernah diubah admin).
+ * Dipakai agar label "Sesuai jadwal yang Anda pilih saat mendaftar" tidak
+ * tampil lagi setelah admin menggeser jam — kasus yang selama ini
+ * menyesatkan karena `catatan` lama tidak pernah diperbarui saat edit.
+ */
+export function jadwalMasihPilihanPendaftar(jadwal: {
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  catatan?: string | null;
+}): boolean {
+  if (jadwalDiubahAdmin(jadwal)) return false;
+  return Boolean(jadwal.catatan?.includes("pilihan pendaftar"));
+}
