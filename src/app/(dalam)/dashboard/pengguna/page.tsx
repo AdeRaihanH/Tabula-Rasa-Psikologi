@@ -5,22 +5,33 @@ import {
   Th,
 } from "@/components/dashboard/ui";
 import { FormPengguna } from "@/components/dashboard/FormPengguna";
+import { Paginasi } from "@/components/dashboard/Paginasi";
 import { perbaruiPengguna, resetPassword } from "@/app/actions/pengguna";
 import { wajibKemampuan } from "@/lib/auth/dal";
 import { labelRole } from "@/lib/config";
+import { UKURAN_HALAMAN, hitungPaginasi } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 import { formatTanggal } from "@/lib/utils";
 
-export default async function HalamanPengguna() {
+export default async function HalamanPengguna({
+  searchParams,
+}: PageProps<"/dashboard/pengguna">) {
   const sesi = await wajibKemampuan("pengguna:kelola");
+  const sp = await searchParams;
+  const { hal, skip, take } = hitungPaginasi(sp?.hal);
 
-  const daftar = await prisma.user.findMany({
-    orderBy: [{ role: "asc" }, { nama: "asc" }],
-    include: {
-      profilPsikolog: { select: { spesialisasi: true, sipp: true } },
-      _count: { select: { pendaftaranSebagaiPsikolog: true } },
-    },
-  });
+  const [daftar, total] = await Promise.all([
+    prisma.user.findMany({
+      orderBy: [{ role: "asc" }, { nama: "asc" }],
+      skip,
+      take,
+      include: {
+        profilPsikolog: { select: { spesialisasi: true, sipp: true } },
+        _count: { select: { pendaftaranSebagaiPsikolog: true } },
+      },
+    }),
+    prisma.user.count(),
+  ]);
 
   return (
     <>
@@ -122,6 +133,13 @@ export default async function HalamanPengguna() {
             ))}
           </tbody>
         </Tabel>
+
+        <Paginasi
+          jalur="/dashboard/pengguna"
+          hal={hal}
+          total={total}
+          ukuran={UKURAN_HALAMAN}
+        />
 
         <div className="kartu border-dashed p-5">
           <p className="text-xs leading-relaxed text-ink-soft">

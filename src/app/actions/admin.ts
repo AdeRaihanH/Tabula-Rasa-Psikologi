@@ -108,47 +108,12 @@ export async function verifikasiPembayaran(formData: FormData) {
   revalidatePath(`/dashboard/riwayat/${bayar.pendaftaranId}`);
 }
 
-export async function catatPembayaran(formData: FormData) {
-  const sesi = await wajibKemampuan("pembayaran:verifikasi");
-  const pendaftaranId = String(formData.get("pendaftaranId") ?? "");
-  const jumlah = Number(formData.get("jumlah") ?? 0);
-  const metode = String(formData.get("metode") ?? "transfer");
-  const catatan = String(formData.get("catatan") ?? "").trim() || null;
-  if (!pendaftaranId || !jumlah) return;
-
-  await prisma.pembayaran.create({
-    data: {
-      pendaftaranId,
-      jumlah,
-      metode,
-      catatan,
-      status: "MENUNGGU",
-    },
-  });
-
-  // Tahap 1 — tagihan diterbitkan.
-  await majuOtomatis(pendaftaranId, "MENUNGGU_PEMBAYARAN");
-
-  await catat(
-    sesi.userId,
-    "CATAT_PEMBAYARAN",
-    "Pendaftaran",
-    pendaftaranId,
-    `Tagihan pembayaran ${jumlah} dicatat`,
-  );
-
-  revalidatePath(`/dashboard/pendaftaran/${pendaftaranId}`);
-  revalidatePath("/dashboard/pendaftaran");
-  revalidatePath("/dashboard");
-}
-
 export async function buatJadwal(formData: FormData) {
   const sesi = await wajibKemampuan("jadwal:kelola");
   const pendaftaranId = String(formData.get("pendaftaranId") ?? "");
   const psikologId = String(formData.get("psikologId") ?? "");
   const mulai = String(formData.get("mulai") ?? "");
   const selesai = String(formData.get("selesai") ?? "");
-  const metode = String(formData.get("metode") ?? "OFFLINE");
   const lokasi = String(formData.get("lokasi") ?? "").trim() || null;
   const tautan = String(formData.get("tautan") ?? "").trim() || null;
   if (!pendaftaranId || !psikologId || !mulai || !selesai) return;
@@ -165,7 +130,7 @@ export async function buatJadwal(formData: FormData) {
     psikologId,
     mulai: new Date(mulai),
     selesai: new Date(selesai),
-    metode: (metode === "ONLINE" ? "ONLINE" : "OFFLINE") as "ONLINE" | "OFFLINE",
+    metode: "OFFLINE" as const,
     lokasi,
     tautan,
     status: "TERJADWAL" as const,
@@ -209,19 +174,34 @@ export async function buatJadwal(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
-export async function ubahStatusJadwal(formData: FormData) {
+/**
+ * Membuatkan jadwal dari pilihan hari/jam yang klien isi saat mendaftar.
+ * Dipakai admin sebagai tombol "Buatkan dari pilihan klien" untuk pendaftaran
+ * lama yang belum punya baris jadwal.
+ */
+export async function buatJadwalDariPilihan(formData: FormData) {
   const sesi = await wajibKemampuan("jadwal:kelola");
-  const id = String(formData.get("id") ?? "");
-  const status = String(formData.get("status") ?? "");
-  if (!id || !status) return;
+  const pendaftaranId = String(formData.get("pendaftaranId") ?? "");
+  if (!pendaftaranId) return;
 
-  await prisma.jadwalSesi.update({
-    where: { id },
-    data: {
-      status: status as "TERJADWAL" | "BERLANGSUNG" | "SELESAI" | "DIBATALKAN",
-    },
-  });
+  const dibuat = await pastikanJadwalOtomatis(pendaftaranId);
 
-  await catat(sesi.userId, "UBAH_STATUS_JADWAL", "JadwalSesi", id, `Status → ${status}`);
+  await catat(
+    sesi.userId,
+    "BUAT_JADWAL_DARI_PILIHAN",
+    "JadwalSesi",
+    pendaftaranId,
+    dibuat
+      ? "Jadwal dibuat dari pilihan hari/jam pendaftar"
+      : "Jadwal tidak dibuat (pilihan tidak terbaca atau jadwal sudah ada)",
+  );
+
+  revalidatePath(`/dashboard/pendaftaran/${pendaftaranId}`);
+  revalidatePath("/dashboard/pendaftaran");
   revalidatePath("/dashboard/jadwal");
+  revalidatePath("/dashboard/asesmen");
+  revalidatePath("/dashboard/kasus");
+  revalidatePath("/dashboard/riwayat");
+  revalidatePath(`/dashboard/riwayat/${pendaftaranId}`);
+  revalidatePath("/dashboard");
 }

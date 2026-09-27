@@ -133,7 +133,7 @@ export function FormCekStatus({ sudahLogin = false }: { sudahLogin?: boolean }) 
             <div className="flex justify-between gap-4 border-b border-line pb-2.5">
               <dt className="text-muted">Metode</dt>
               <dd className="text-right font-medium text-ink">
-                {hasil.metode === "ONLINE" ? "Daring" : "Tatap muka"}
+                Tatap Muka
               </dd>
             </div>
             {hasil.jadwal && (

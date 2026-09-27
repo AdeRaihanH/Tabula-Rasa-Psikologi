@@ -55,7 +55,6 @@ export type HasilPendaftaran =
       ok: true;
       nomor: string;
       layanan: string;
-      metode: "ONLINE" | "OFFLINE";
       biaya: number | null;
       pembayaranId: string | null;
       rekening: Rekening;
@@ -110,7 +109,6 @@ export async function kirimPendaftaran(
   const telepon = bersih(formData.get("telepon"));
   const layananId = bersih(formData.get("layananId"));
   const psikologId = bersih(formData.get("psikologId"));
-  const metode = bersih(formData.get("metode")) ?? "OFFLINE";
   const consent = formData.get("informedConsent") === "on";
   const tanggalPertemuan = bersih(formData.get("tanggalPertemuan"));
   const waktuPertemuan = bersih(formData.get("waktuPertemuan"));
@@ -145,17 +143,6 @@ export async function kirimPendaftaran(
       return {
         ok: false,
         pesan: "Psikolog yang dipilih tidak tersedia. Silakan pilih kembali.",
-      };
-    }
-
-    const metodeDiminta: "ONLINE" | "OFFLINE" =
-      metode === "ONLINE" ? "ONLINE" : "OFFLINE";
-    if (!layanan.metode.includes(metodeDiminta)) {
-      return {
-        ok: false,
-        pesan: `Layanan ${layanan.nama} tidak menyediakan metode ${
-          metodeDiminta === "ONLINE" ? "daring" : "tatap muka"
-        }. Silakan pilih metode lain.`,
       };
     }
 
@@ -202,8 +189,8 @@ export async function kirimPendaftaran(
             data: { ...dataDiri, userId: sesi.userId },
           });
 
-    // Biaya ditentukan dari layanan + metode yang dipilih.
-    const biaya = hitungBiaya(layanan, metodeDiminta);
+    // Biaya ditentukan dari layanan (semua layanan Tatap Muka).
+    const biaya = hitungBiaya(layanan);
 
     const pendaftaran = await prisma.pendaftaran.create({
       data: {
@@ -211,7 +198,7 @@ export async function kirimPendaftaran(
         klienId: klien.id,
         layananId: layanan.id,
         psikologId: psikolog.id,
-        metode: metodeDiminta,
+        metode: "OFFLINE",
         kebutuhan: (() => {
           let keb = bersih(formData.get("kebutuhan")) ?? "";
           if (tanggalPertemuan || waktuPertemuan) {
@@ -230,15 +217,17 @@ export async function kirimPendaftaran(
     });
 
     // Jadwal dibuat otomatis dari tanggal + waktu yang dipilih pendaftar,
-    // sehingga admin/asisten tidak perlu menanyakan ulang. Kegagalan di sini
-    // tidak menggagalkan pendaftaran (admin bisa buat manual, dan verifikasi
-    // pembayaran mencoba lagi sebagai backfill).
-    if (tanggalPertemuan && waktuPertemuan) {
-      try {
-        await pastikanJadwalOtomatis(pendaftaran.id);
-      } catch (e) {
-        console.error("[kirimPendaftaran] gagal membuat jadwal otomatis:", e);
-      }
+    // sehingga admin, asisten, dan psikolog langsung melihat jadwal yang sama
+    // tanpa perlu menentukannya ulang. Nilai yang sudah divalidasi di atas
+    // diberikan eksplisit agar pembuatan jadwal tidak bergantung pada
+    // pembacaan ulang teks `kebutuhan`.
+    try {
+      await pastikanJadwalOtomatis(pendaftaran.id, {
+        tanggal: tanggalPertemuan,
+        waktu: waktuPertemuan,
+      });
+    } catch (e) {
+      console.error("[kirimPendaftaran] gagal membuat jadwal otomatis:", e);
     }
 
     // Tagihan dibuat otomatis bila harga layanan sudah ditetapkan, supaya
@@ -251,7 +240,7 @@ export async function kirimPendaftaran(
           jumlah: biaya,
           metode: "transfer",
           status: "MENUNGGU",
-          catatan: `Tagihan otomatis: ${layanan.nama} (${metodeDiminta === "ONLINE" ? "daring" : "tatap muka"})`,
+          catatan: `Tagihan otomatis: ${layanan.nama} (tatap muka)`,
         },
       });
       idPembayaran = pembayaranBaru.id;
@@ -266,7 +255,7 @@ export async function kirimPendaftaran(
         aksi: "PENDAFTARAN_BARU",
         entitas: "Pendaftaran",
         entitasId: pendaftaran.id,
-        detail: `Pendaftaran daring ${nomor} untuk ${layanan.nama} — psikolog ${psikolog.nama}${
+        detail: `Pendaftaran ${nomor} untuk ${layanan.nama} — psikolog ${psikolog.nama}${
           biaya ? ` — tagihan ${biaya}` : ""
         }`,
       },
@@ -287,7 +276,6 @@ export async function kirimPendaftaran(
       ok: true,
       nomor,
       layanan: layanan.nama,
-      metode: metodeDiminta,
       biaya,
       pembayaranId: idPembayaran,
       rekening: {
@@ -318,7 +306,7 @@ export type HasilCekStatus =
       tanggal: string;
       psikolog: string | null;
       jadwal: string | null;
-      metode: "ONLINE" | "OFFLINE";
+      metode: "OFFLINE";
       biaya: number | null;
       pembayaranId: string | null;
       pembayaranStatus: string | null;

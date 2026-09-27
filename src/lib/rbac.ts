@@ -13,7 +13,7 @@ export const infoZona: Record<
   ZONA_2: {
     nama: "Zona 2 — Operasional Asesmen",
     pemegang: "Asisten Psikolog",
-    isi: "Lembar tes, skor mentah, catatan pelaksanaan",
+    isi: "Konfirmasi pelaksanaan alat tes, catatan pelaksanaan",
     warna: "#b45309",
   },
   ZONA_3: {
@@ -33,21 +33,20 @@ export type Role = "ADMIN" | "ASISTEN" | "PSIKOLOG" | "KLIEN";
  * administratif klien.
  */
 export const hakAkses = {
-  // Zona 1
+  // Zona 1 — hanya admin. Pendaftaran memuat data diri klien, jadi psikolog &
+  // asisten tidak diberi akses agar isolasi antar-psikolog tetap terjaga.
   "klien:lihat": ["ADMIN"],
   "klien:kelola": ["ADMIN"],
   "jadwal:lihat": ["ADMIN", "ASISTEN", "PSIKOLOG"],
   "jadwal:kelola": ["ADMIN"],
-  "pendaftaran:lihat": ["ADMIN", "ASISTEN", "PSIKOLOG"],
+  "pendaftaran:lihat": ["ADMIN"],
   "pendaftaran:kelola": ["ADMIN"],
   "pembayaran:verifikasi": ["ADMIN"],
 
-  // Zona 2
-  "lembartes:lihat": ["ASISTEN", "PSIKOLOG"],
+  // Zona 2 — hanya asisten. Psikolog melihat pelaksanaan tes lewat halaman
+  // kasus miliknya sendiri (bukan daftar asesmen seluruh kasus).
+  "lembartes:lihat": ["ASISTEN"],
   "lembartes:kelola": ["ASISTEN"],
-  "skor:lihat": ["ASISTEN", "PSIKOLOG"],
-  "skor:kelola": ["ASISTEN"],
-  "alattes:kelola": ["ASISTEN", "ADMIN"],
 
   // Zona 3
   "laporan:lihat": ["PSIKOLOG"],
@@ -73,15 +72,6 @@ export function boleh(role: Role, kemampuan: Kemampuan): boolean {
   return (hakAkses[kemampuan] as readonly Role[]).includes(role);
 }
 
-/** Zona yang boleh diakses sebuah peran. */
-export function zonaUntuk(role: Role): Zona[] {
-  const zona: Zona[] = [];
-  if (boleh(role, "klien:lihat") || boleh(role, "jadwal:kelola")) zona.push("ZONA_1");
-  if (boleh(role, "lembartes:lihat")) zona.push("ZONA_2");
-  if (boleh(role, "laporan:lihat")) zona.push("ZONA_3");
-  return zona;
-}
-
 /** Rumah dashboard default per peran. */
 export function rumahDashboard(role: Role): string {
   switch (role) {
@@ -96,9 +86,4 @@ export function rumahDashboard(role: Role): string {
     default:
       return "/dashboard";
   }
-}
-
-/** Apakah peran termasuk staf internal (punya akses zona data klien). */
-export function peranInternal(role: Role): boolean {
-  return role === "ADMIN" || role === "ASISTEN" || role === "PSIKOLOG";
 }

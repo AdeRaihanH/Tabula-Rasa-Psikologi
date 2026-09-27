@@ -9,10 +9,15 @@ import { prisma } from "@/lib/prisma";
  * Dipakai saat pendaftaran dibuat DAN sebagai backfill saat pembayaran
  * diverifikasi — sehingga pendaftar lama (yang daftar sebelum fitur jadwal
  * otomatis ada) tetap dapat jadwalnya begitu admin menyetujui pembayaran.
+ *
+ * `opsi` boleh diisi tanggal/waktu yang sudah divalidasi agar jadwal tidak
+ * bergantung pada pembacaan ulang teks `kebutuhan`.
+ *
  * Mengembalikan true bila jadwal baru dibuat.
  */
 export async function pastikanJadwalOtomatis(
   pendaftaranId: string,
+  opsi?: { tanggal?: string | null; waktu?: string | null },
 ): Promise<boolean> {
   const p = await prisma.pendaftaran.findUnique({
     where: { id: pendaftaranId },
@@ -25,7 +30,10 @@ export async function pastikanJadwalOtomatis(
   });
   if (sudahAda > 0) return false;
 
-  const pref = parsePreferensiJadwal(p.kebutuhan);
+  const pref =
+    opsi?.tanggal && opsi?.waktu && /^\d{4}-\d{2}-\d{2}$/.test(opsi.tanggal)
+      ? { tanggal: opsi.tanggal, waktu: opsi.waktu }
+      : parsePreferensiJadwal(p.kebutuhan);
   if (!pref) return false;
 
   const slot = SLOT_WAKTU.find((s) => s.label === pref.waktu);

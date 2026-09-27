@@ -9,7 +9,9 @@ import {
   Th,
 } from "@/components/dashboard/ui";
 import { arsipkanPendaftaran, hapusArsip } from "@/app/actions/arsip";
+import { Paginasi } from "@/components/dashboard/Paginasi";
 import { wajibKemampuan } from "@/lib/auth/dal";
+import { UKURAN_HALAMAN, hitungPaginasi } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 import { infoZona } from "@/lib/rbac";
 import { formatTanggal } from "@/lib/utils";
@@ -21,22 +23,32 @@ const opsiRetensi = [
   { bulan: 120, label: "10 tahun" },
 ];
 
-export default async function HalamanArsip() {
+export default async function HalamanArsip({
+  searchParams,
+}: PageProps<"/dashboard/arsip">) {
   await wajibKemampuan("arsip:kelola");
+  const sp = await searchParams;
+  const halSiap = hitungPaginasi(sp?.hal);
+  const halArsip = hitungPaginasi(sp?.halArsip);
 
-  const [siapArsip, arsip] = await Promise.all([
+  const whereSiap = { status: "SELESAI" as const, arsip: null };
+
+  const [siapArsip, totalSiap, arsip, totalArsip] = await Promise.all([
     prisma.pendaftaran.findMany({
-      where: { status: "SELESAI", arsip: null },
+      where: whereSiap,
       orderBy: { updatedAt: "desc" },
-      take: 50,
+      skip: halSiap.skip,
+      take: halSiap.take,
       include: {
         klien: { select: { nama: true } },
         layanan: { select: { nama: true } },
       },
     }),
+    prisma.pendaftaran.count({ where: whereSiap }),
     prisma.arsipData.findMany({
       orderBy: { diarsipkanPada: "desc" },
-      take: 100,
+      skip: halArsip.skip,
+      take: halArsip.take,
       include: {
         pendaftaran: {
           select: {
@@ -47,6 +59,7 @@ export default async function HalamanArsip() {
         },
       },
     }),
+    prisma.arsipData.count(),
   ]);
 
   const sekarang = new Date();
@@ -60,7 +73,7 @@ export default async function HalamanArsip() {
 
       <section className="mb-8">
         <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.08em] text-ink-soft">
-          Siap diarsipkan ({siapArsip.length})
+          Siap diarsipkan ({totalSiap})
         </h2>
 
         {siapArsip.length === 0 ? (
@@ -111,11 +124,20 @@ export default async function HalamanArsip() {
             ))}
           </div>
         )}
+
+        <Paginasi
+          jalur="/dashboard/arsip"
+          hal={halSiap.hal}
+          total={totalSiap}
+          ukuran={UKURAN_HALAMAN}
+          namaParam="hal"
+          cari={{ halArsip: halArsip.hal > 1 ? String(halArsip.hal) : undefined }}
+        />
       </section>
 
       <section>
         <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.08em] text-ink-soft">
-          Arsip tersimpan ({arsip.length})
+          Arsip tersimpan ({totalArsip})
         </h2>
 
         {arsip.length === 0 ? (
@@ -199,6 +221,15 @@ export default async function HalamanArsip() {
             </tbody>
           </Tabel>
         )}
+
+        <Paginasi
+          jalur="/dashboard/arsip"
+          hal={halArsip.hal}
+          total={totalArsip}
+          ukuran={UKURAN_HALAMAN}
+          namaParam="halArsip"
+          cari={{ hal: halSiap.hal > 1 ? String(halSiap.hal) : undefined }}
+        />
       </section>
 
       <div className="kartu mt-6 border-dashed p-5">

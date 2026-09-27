@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL ?? "https://tabularasa.id",
   ),
   title: {
-    default: `${siteConfig.nama} — ${siteConfig.tagline}`,
+    default: siteConfig.nama,
     template: `%s · ${siteConfig.nama}`,
   },
   description: siteConfig.deskripsi,

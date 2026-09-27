@@ -1,5 +1,6 @@
 import { Footer } from "@/components/publik/Footer";
 import { Header } from "@/components/publik/Header";
+import { KemajuanGulir, TombolKeAtas } from "@/components/publik/KendaliGulir";
 import { sesiSaatIni } from "@/lib/auth/dal";
 import { ambilIdentitas } from "@/lib/data-publik";
 import { ambilNotifikasi } from "@/lib/notifikasi";
@@ -17,6 +18,12 @@ export default async function LayoutPublik({ children }: LayoutProps<"/">) {
 
   return (
     <>
+      {/* Tanpa JavaScript, konten yang dianimasikan tetap terlihat. */}
+      <noscript>
+        <style>{`.muncul{opacity:1 !important;transform:none !important}`}</style>
+      </noscript>
+
+      <KemajuanGulir />
       <Header
         identitas={identitas}
         sesi={
@@ -28,6 +35,7 @@ export default async function LayoutPublik({ children }: LayoutProps<"/">) {
       />
       <main className="flex-1">{children}</main>
       <Footer />
+      <TombolKeAtas />
     </>
   );
 }

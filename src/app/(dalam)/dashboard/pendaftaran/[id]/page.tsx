@@ -7,16 +7,17 @@ import {
 } from "@/components/dashboard/ui";
 import {
   buatJadwal,
+  buatJadwalDariPilihan,
   tetapkanPsikolog,
   verifikasiPembayaran,
 } from "@/app/actions/admin";
-import { cekSyaratTahap } from "@/app/actions/alur";
+import { cekSyaratTahap } from "@/lib/alur-otomatis";
 import { PanelTahap } from "@/components/dashboard/PanelTahap";
 import { PanelDrive, UnggahBukti } from "@/components/dashboard/PanelDrive";
 import { PratinjauBukti } from "@/components/dashboard/PratinjauBukti";
 import { wajibKemampuan } from "@/lib/auth/dal";
 import { tahapBerikutnya, tahapSebelumnya } from "@/lib/alur";
-import { nilaiDatetimeLokal } from "@/lib/jadwal";
+import { nilaiDatetimeLokal, parsePreferensiJadwal } from "@/lib/jadwal";
 import { driveAktif } from "@/lib/gdrive";
 import { labelKategori, labelStatusPendaftaran } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
@@ -94,6 +95,10 @@ export default async function DetailPendaftaran({
   // Jadwal pertama (biasanya pilihan klien saat mendaftar) dipakai untuk
   // mengisi awal formulir agar admin tinggal menyesuaikan bila perlu.
   const jadwalAda = p.jadwal[0] ?? null;
+  const jadwalDariKlien = Boolean(jadwalAda?.catatan?.includes("pendaftar"));
+  // Pilihan hari/jam klien pada formulir — dipakai bila baris jadwal belum ada.
+  const preferensiJadwal =
+    p.jadwal.length === 0 ? parsePreferensiJadwal(p.kebutuhan) : null;
 
   const tahapBerikut = tahapBerikutnya(p.status);
   const syarat = tahapBerikut
@@ -162,7 +167,7 @@ export default async function DetailPendaftaran({
               <Baris label="Layanan" nilai={p.layanan.nama} />
               <Baris
                 label="Metode"
-                nilai={p.metode === "ONLINE" ? "Daring" : "Tatap muka"}
+                nilai="Tatap Muka"
               />
               <Baris
                 label="Informed consent"
@@ -346,34 +351,70 @@ export default async function DetailPendaftaran({
             </h2>
 
             {p.jadwal.length === 0 ? (
-              <p className="mt-3 text-sm text-muted">Belum ada jadwal.</p>
+              <div className="mt-3 space-y-3">
+                <p className="text-sm text-muted">Belum ada jadwal.</p>
+                {preferensiJadwal && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800">
+                    Klien sudah memilih{" "}
+                    <strong>
+                      {formatTanggal(
+                        new Date(`${preferensiJadwal.tanggal}T00:00:00+07:00`),
+                      )}{" "}
+                      · {preferensiJadwal.waktu}
+                    </strong>{" "}
+                    saat mendaftar, tetapi baris jadwal belum terbentuk (pendaftar
+                    lama). Buatkan otomatis dari pilihan tersebut.
+                    <form action={buatJadwalDariPilihan} className="mt-3">
+                      <input type="hidden" name="pendaftaranId" value={p.id} />
+                      <button className="tombol tombol-utama !py-2 !text-xs">
+                        Buatkan dari pilihan klien
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </div>
             ) : (
-              <ul className="mt-4 space-y-3">
-                {p.jadwal.map((j) => (
-                  <li key={j.id} className="rounded-xl border border-line p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-sm font-semibold text-ink">
-                        {formatTanggalWaktu(j.mulai)}
-                      </span>
-                      <BadgeStatus status={j.status} label={j.status} />
-                    </div>
-                    <p className="mt-1 text-xs text-muted">
-                      {j.psikolog.nama} · {j.metode === "ONLINE" ? "Daring" : "Tatap muka"}
-                      {j.lokasi ? ` · ${j.lokasi}` : ""}
-                    </p>
-                  </li>
-                ))}
-              </ul>
+              <>
+                {jadwalDariKlien && (
+                  <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[0.68rem] font-semibold text-emerald-700">
+                    ✓ Jadwal pilihan klien — otomatis dari pendaftaran
+                  </p>
+                )}
+                <ul className="mt-4 space-y-3">
+                  {p.jadwal.map((j) => (
+                    <li key={j.id} className="rounded-xl border border-line p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-ink">
+                          {formatTanggalWaktu(j.mulai)}
+                        </span>
+                        <BadgeStatus status={j.status} label={j.status} />
+                      </div>
+                      <p className="mt-1 text-xs text-muted">
+                        {j.psikolog.nama} · Tatap Muka
+                        {j.lokasi ? ` · ${j.lokasi}` : ""}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
 
             <form action={buatJadwal} className="mt-5 grid gap-3 border-t border-line pt-5 sm:grid-cols-2">
               <input type="hidden" name="pendaftaranId" value={p.id} />
-              {jadwalAda && (
-                <p className="rounded-xl bg-paper-2 px-4 py-2.5 text-xs leading-relaxed text-ink-soft sm:col-span-2">
-                  Klien sudah memilih jadwal saat mendaftar. Menyimpan formulir
-                  ini akan <strong>memperbarui</strong> jadwal tersebut.
-                </p>
-              )}
+              <p className="rounded-xl bg-paper-2 px-4 py-2.5 text-xs leading-relaxed text-ink-soft sm:col-span-2">
+                {jadwalAda ? (
+                  <>
+                    Jadwal sudah terisi dari pilihan klien saat mendaftar.
+                    Formulir ini hanya untuk <strong>mengubah/mengoreksi</strong>{" "}
+                    bila diperlukan.
+                  </>
+                ) : (
+                  <>
+                    Isi formulir ini hanya bila klien belum memilih jadwal, atau
+                    untuk menetapkan jadwal secara manual.
+                  </>
+                )}
+              </p>
               <div className="sm:col-span-2">
                 <label className="label" htmlFor="psikologId">
                   Psikolog
@@ -418,28 +459,14 @@ export default async function DetailPendaftaran({
                 />
               </div>
               <div>
-                <label className="label" htmlFor="metode-jadwal">
-                  Metode
-                </label>
-                <select
-                  id="metode-jadwal"
-                  name="metode"
-                  className="input"
-                  defaultValue={jadwalAda?.metode ?? p.metode}
-                >
-                  <option value="OFFLINE">Tatap muka</option>
-                  <option value="ONLINE">Daring</option>
-                </select>
-              </div>
-              <div>
                 <label className="label" htmlFor="lokasi">
-                  Lokasi / tautan
+                  Lokasi
                 </label>
                 <input
                   id="lokasi"
                   name="lokasi"
                   className="input"
-                  placeholder="Ruang 1 / link meeting"
+                  placeholder="Ruang 1, Biro Tabula Rasa"
                   defaultValue={jadwalAda?.lokasi ?? ""}
                 />
               </div>
@@ -518,7 +545,7 @@ export default async function DetailPendaftaran({
               <h2 className="text-sm font-bold text-ink">Zona 2 & 3 terkunci</h2>
             </div>
             <p className="mt-3 text-xs leading-relaxed text-ink-soft">
-              Lembar tes dan skor mentah (Zona 2) hanya dapat diakses asisten
+              Konfirmasi pelaksanaan tes (Zona 2) hanya dapat diakses asisten
               psikolog. Laporan hasil dan interpretasi (Zona 3) hanya dapat
               diakses psikolog penanggung jawab. Admin tidak memiliki akses ke
               kedua zona tersebut.

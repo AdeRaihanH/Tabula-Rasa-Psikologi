@@ -14,7 +14,7 @@ function angkaAtauNull(v: FormDataEntryValue | null) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-/** Menyimpan harga layanan per metode beserta status aktifnya. */
+/** Menyimpan harga layanan (tatap muka) beserta status aktifnya. */
 export async function simpanLayanan(
   _sebelumnya: HasilLayanan,
   formData: FormData,
@@ -26,13 +26,12 @@ export async function simpanLayanan(
   const layanan = await prisma.layanan.findUnique({ where: { id } });
   if (!layanan) return { ok: false, pesan: "Layanan tidak ditemukan." };
 
-  const hargaOnline = angkaAtauNull(formData.get("hargaOnline"));
   const hargaOffline = angkaAtauNull(formData.get("hargaOffline"));
   const aktif = formData.get("aktif") === "on";
 
   await prisma.layanan.update({
     where: { id },
-    data: { hargaOnline, hargaOffline, aktif },
+    data: { hargaOffline, aktif },
   });
 
   await prisma.auditLog.create({
@@ -41,7 +40,7 @@ export async function simpanLayanan(
       aksi: "PERBARUI_LAYANAN",
       entitas: "Layanan",
       entitasId: id,
-      detail: `Harga ${layanan.nama}: daring ${hargaOnline ?? "-"}, tatap muka ${hargaOffline ?? "-"}, ${aktif ? "aktif" : "nonaktif"}`,
+      detail: `Harga ${layanan.nama}: ${hargaOffline ?? "-"}, ${aktif ? "aktif" : "nonaktif"}`,
     },
   });
 

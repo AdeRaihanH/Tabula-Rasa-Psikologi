@@ -21,9 +21,8 @@ export const navDashboard: Record<Role, ItemNav[]> = {
     { href: "/dashboard/pengaturan", label: "Pengaturan Situs", ikon: "atur" },
   ],
   ASISTEN: [
-    { href: "/dashboard/asesmen", label: "Lembar Tes", zona: "ZONA_2", ikon: "lembar" },
+    { href: "/dashboard/asesmen", label: "Konfirmasi Tes", zona: "ZONA_2", ikon: "lembar" },
     { href: "/dashboard/jadwal", label: "Jadwal Sesi", zona: "ZONA_1", ikon: "kalender" },
-    { href: "/dashboard/alattes", label: "Master Alat Tes", zona: "ZONA_2", ikon: "daftar" },
     { href: "/dashboard/profil", label: "Profil Saya", ikon: "orang" },
   ],
   PSIKOLOG: [

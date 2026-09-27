@@ -20,7 +20,6 @@ export async function cekSyaratTahap(
     include: {
       pembayaran: { select: { status: true } },
       jadwal: { select: { id: true } },
-      lembarTes: { select: { id: true, skor: { select: { id: true } } } },
       laporan: { select: { status: true } },
     },
   });
@@ -61,14 +60,13 @@ export async function cekSyaratTahap(
       return { ok: true, pesan: "" };
 
     case "PENGOLAHAN_DATA": {
-      if (p.lembarTes.length === 0) {
-        return { ok: false, pesan: "Belum ada lembar tes yang dikerjakan." };
-      }
-      const belumAdaSkor = p.lembarTes.filter((l) => l.skor.length === 0);
-      if (belumAdaSkor.length > 0) {
+      // Psikolog hanya boleh menyusun interpretasi setelah asisten
+      // mengonfirmasi bahwa klien sudah melaksanakan tes di biro.
+      if (!p.konfirmasiTesPada) {
         return {
           ok: false,
-          pesan: `${belumAdaSkor.length} lembar tes belum memiliki skor mentah. Isi skor terlebih dahulu.`,
+          pesan:
+            "Asisten psikolog belum mengonfirmasi pelaksanaan tes klien.",
         };
       }
       return { ok: true, pesan: "" };
@@ -90,44 +88,31 @@ export async function cekSyaratTahap(
 }
 
 /**
- * Syarat finalisasi laporan Zona 3: asesmen harus benar-benar sudah dikerjakan.
- * Minimal ada satu lembar tes dan seluruhnya memiliki skor mentah.
+ * Syarat menyusun laporan Zona 3: asisten harus sudah mengonfirmasi bahwa
+ * klien melaksanakan tes di biro.
  */
 export async function syaratFinalkan(
   pendaftaranId: string,
-): Promise<{ ok: boolean; pesan: string; jumlahLembar: number; tanpaSkor: number }> {
-  const lembar = await prisma.lembarTes.findMany({
-    where: { pendaftaranId },
-    select: { id: true, skor: { select: { id: true } } },
+): Promise<{ ok: boolean; pesan: string; jumlahAlat: number }> {
+  const p = await prisma.pendaftaran.findUnique({
+    where: { id: pendaftaranId },
+    select: {
+      konfirmasiTesPada: true,
+      layanan: { select: { _count: { select: { checklist: true } } } },
+    },
   });
+  if (!p) return { ok: false, pesan: "Pendaftaran tidak ditemukan.", jumlahAlat: 0 };
 
-  const tanpaSkor = lembar.filter((l) => l.skor.length === 0).length;
-
-  if (lembar.length === 0) {
+  if (!p.konfirmasiTesPada) {
     return {
       ok: false,
       pesan:
-        "Belum ada lembar tes. Asisten psikolog perlu menambahkan lembar tes dan mengisi skor mentah terlebih dahulu.",
-      jumlahLembar: 0,
-      tanpaSkor: 0,
+        "Asisten psikolog belum mengonfirmasi pelaksanaan tes klien.",
+      jumlahAlat: 0,
     };
   }
 
-  if (tanpaSkor > 0) {
-    return {
-      ok: false,
-      pesan: `${tanpaSkor} lembar tes belum memiliki skor mentah.`,
-      jumlahLembar: lembar.length,
-      tanpaSkor,
-    };
-  }
-
-  return {
-    ok: true,
-    pesan: "",
-    jumlahLembar: lembar.length,
-    tanpaSkor: 0,
-  };
+  return { ok: true, pesan: "", jumlahAlat: p.layanan._count.checklist };
 }
 
 /**

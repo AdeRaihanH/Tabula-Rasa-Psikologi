@@ -97,20 +97,31 @@ export async function perbaruiPengguna(formData: FormData) {
 
   if (id === sesi.userId && !aktif) return;
 
+  const sebelum = await prisma.user.findUnique({
+    where: { id },
+    select: { role: true },
+  });
+  if (!sebelum) return;
+
   const user = await prisma.user.update({
     where: { id },
     data: { nama, role, telepon, aktif },
   });
 
-  // Akun yang dinonaktifkan langsung kehilangan semua sesinya.
-  if (!aktif) await cabutSemuaSesi(id);
+  // Akun yang dinonaktifkan ATAU perannya berubah langsung kehilangan semua
+  // sesinya — JWT lama masih membawa peran sebelumnya, jadi harus dipaksa
+  // masuk ulang agar hak aksesnya benar-benar mengikuti peran baru.
+  const peranBerubah = sebelum.role !== role;
+  if (!aktif || peranBerubah) await cabutSemuaSesi(id);
 
   await catat(
     sesi.userId,
     "PERBARUI_PENGGUNA",
     "User",
     id,
-    `${user.nama} → peran ${role}, ${aktif ? "aktif" : "nonaktif (sesi dicabut)"}`,
+    `${user.nama} → peran ${role}, ${aktif ? "aktif" : "nonaktif"}${
+      !aktif || peranBerubah ? " (sesi dicabut)" : ""
+    }`,
   );
 
   revalidatePath("/dashboard/pengguna");

@@ -5,39 +5,50 @@ import {
   JudulHalaman,
   Kosong,
 } from "@/components/dashboard/ui";
+import { Paginasi } from "@/components/dashboard/Paginasi";
 import { filterPendaftaranKlien, wajibKlien } from "@/lib/auth/dal";
 import { labelStatusPendaftaran } from "@/lib/config";
 import { nomorTahap, TAHAP } from "@/lib/alur";
 import { keAngka } from "@/lib/pembayaran";
+import { UKURAN_HALAMAN, hitungPaginasi } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 import { formatRupiah, formatTanggal, formatTanggalWaktu } from "@/lib/utils";
 
-export default async function HalamanRiwayatKlien() {
+export default async function HalamanRiwayatKlien({
+  searchParams,
+}: PageProps<"/dashboard/riwayat">) {
   const sesi = await wajibKlien();
+  const sp = await searchParams;
+  const { hal, skip, take } = hitungPaginasi(sp?.hal);
   const where = await filterPendaftaranKlien(sesi);
 
-  const daftar = await prisma.pendaftaran.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    include: {
-      layanan: { select: { nama: true } },
-      psikolog: { select: { nama: true } },
-      pembayaran: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        // Jangan ambil isi buktiUrl (bisa belasan MB base64) di daftar —
-        // cukup tahu ada/tidak lewat query ringan di bawah.
-        // `catatan` kecil (alasan penolakan) aman ikut diambil agar klien
-        // langsung tahu kenapa ditolak tanpa membuka detail.
-        select: { id: true, jumlah: true, status: true, catatan: true },
+  const [daftar, total] = await Promise.all([
+    prisma.pendaftaran.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+      include: {
+        layanan: { select: { nama: true } },
+        psikolog: { select: { nama: true } },
+        pembayaran: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          // Jangan ambil isi buktiUrl (bisa belasan MB base64) di daftar —
+          // cukup tahu ada/tidak lewat query ringan di bawah.
+          // `catatan` kecil (alasan penolakan) aman ikut diambil agar klien
+          // langsung tahu kenapa ditolak tanpa membuka detail.
+          select: { id: true, jumlah: true, status: true, catatan: true },
+        },
+        jadwal: {
+          orderBy: { mulai: "asc" },
+          take: 1,
+          select: { mulai: true },
+        },
       },
-      jadwal: {
-        orderBy: { mulai: "asc" },
-        take: 1,
-        select: { mulai: true },
-      },
-    },
-  });
+    }),
+    prisma.pendaftaran.count({ where }),
+  ]);
 
   // Peta pendaftaranId -> ada bukti (tanpa memuat isi berkas).
   const buktiAdaSet = new Set(
@@ -52,12 +63,20 @@ export default async function HalamanRiwayatKlien() {
     ).map((b) => b.pendaftaranId),
   );
 
-  const perluBayar = daftar.filter(
-    (p) =>
-      p.pembayaran[0] &&
-      p.pembayaran[0].status !== "TERVERIFIKASI" &&
-      nomorTahap(p.status) < nomorTahap("TERJADWAL"),
-  ).length;
+  // Hitungan seluruh riwayat (bukan hanya halaman ini).
+  const perluBayar = await prisma.pendaftaran.count({
+    where: {
+      AND: [
+        where,
+        {
+          status: {
+            in: ["BARU", "SKRINING", "MENUNGGU_PEMBAYARAN", "TERVERIFIKASI"],
+          },
+        },
+        { pembayaran: { some: { status: { not: "TERVERIFIKASI" } } } },
+      ],
+    },
+  });
 
   return (
     <>
@@ -122,7 +141,7 @@ export default async function HalamanRiwayatKlien() {
                     <p className="mt-1.5 text-sm text-ink-soft">{p.layanan.nama}</p>
                     <p className="mt-0.5 text-xs text-muted">
                       {p.psikolog?.nama ?? "Psikolog belum ditetapkan"} ·{" "}
-                      {p.metode === "ONLINE" ? "Daring" : "Tatap muka"} · daftar{" "}
+                      Tatap Muka · daftar{" "}
                       {formatTanggal(p.createdAt)}
                     </p>
                   </div>
@@ -183,6 +202,12 @@ export default async function HalamanRiwayatKlien() {
         </div>
       )}
 
+      <Paginasi
+        jalur="/dashboard/riwayat"
+        hal={hal}
+        total={total}
+        ukuran={UKURAN_HALAMAN}
+      />
     </>
   );
 }

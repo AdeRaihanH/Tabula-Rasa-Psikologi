@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { Muncul } from "@/components/publik/gerak";
 import { ambilIdentitas } from "@/lib/data-publik";
 import { jumlahLangkahKata } from "@/lib/config";
 
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
 const prinsip = [
   {
     judul: "Pemisahan tugas",
-    isi: "Admin mengurus administrasi, asisten mengurus instrumen dan skor, psikolog menyusun interpretasi. Tidak ada peran yang memegang seluruh rantai data.",
+    isi: "Admin mengurus administrasi, asisten mengonfirmasi pelaksanaan tes, psikolog menyusun interpretasi. Tidak ada peran yang memegang seluruh rantai data.",
   },
   {
     judul: "Isolasi antar-psikolog",
@@ -55,23 +56,29 @@ export default async function HalamanKontak() {
     <>
       <section className="border-b border-line bg-paper-2">
         <div className="wadah py-14 lg:py-16">
-          <span className="label-kecil">Kontak</span>
-          <h1 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight text-ink sm:text-4xl lg:text-5xl">
-            Mari bicarakan kebutuhan Anda
-          </h1>
-          <p className="mt-5 max-w-2xl text-ink-soft">
-            Untuk pertanyaan umum, kerja sama institusi, maupun penjadwalan
-            sesi, tim kami siap membantu pada jam operasional.
-          </p>
+          <Muncul className="max-w-3xl">
+            <span className="label-kecil">Kontak</span>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+              Mari bicarakan kebutuhan Anda
+            </h1>
+            <p className="mt-5 text-ink-soft">
+              Untuk pertanyaan umum, kerja sama institusi, maupun penjadwalan
+              sesi, tim kami siap membantu pada jam operasional.
+            </p>
+          </Muncul>
         </div>
       </section>
 
       <section className="wadah grid gap-10 py-14 lg:grid-cols-2">
-        <div>
+        <Muncul arah="kiri">
           <h2 className="text-xl font-bold text-ink">Informasi kontak</h2>
           <dl className="mt-6 space-y-4">
-            {kanal.map((k) => (
-              <div key={k.label} className="kartu flex items-center justify-between gap-4 p-5">
+            {kanal.map((k, i) => (
+              <Muncul
+                key={k.label}
+                tunda={i * 80}
+                className="kartu kartu-hidup flex items-center justify-between gap-4 p-5"
+              >
                 <div>
                   <dt className="text-xs font-semibold uppercase tracking-[0.1em] text-muted">
                     {k.label}
@@ -86,7 +93,7 @@ export default async function HalamanKontak() {
                 >
                   Buka
                 </a>
-              </div>
+              </Muncul>
             ))}
           </dl>
 
@@ -99,9 +106,9 @@ export default async function HalamanKontak() {
             </p>
             <p className="mt-1 text-sm text-ink-soft">{identitas.jamOperasional}</p>
           </div>
-        </div>
+        </Muncul>
 
-        <div>
+        <Muncul arah="kanan" tunda={100}>
           <h2 className="text-xl font-bold text-ink">Mulai dari sini</h2>
           <p className="mt-3 text-sm leading-relaxed text-ink-soft">
             Cara tercepat untuk memulai layanan adalah melalui formulir
@@ -110,7 +117,7 @@ export default async function HalamanKontak() {
           </p>
 
           <div className="mt-6 space-y-3">
-            <Link href="/daftar" className="kartu block p-6 transition-all hover:border-brand-300">
+            <Link href="/daftar" className="kartu kartu-hidup group block p-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h3 className="font-bold text-ink">Formulir Pendaftaran</h3>
@@ -118,11 +125,11 @@ export default async function HalamanKontak() {
                     Untuk individu, sekolah, maupun korporasi.
                   </p>
                 </div>
-                <span className="text-brand-600">→</span>
+                <span className="text-brand-600 transition-transform group-hover:translate-x-1">→</span>
               </div>
             </Link>
 
-            <Link href="/alur" className="kartu block p-6 transition-all hover:border-brand-300">
+            <Link href="/alur" className="kartu kartu-hidup group block p-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h3 className="font-bold text-ink">Pelajari Alur Layanan</h3>
@@ -130,11 +137,11 @@ export default async function HalamanKontak() {
                     {jumlahLangkahKata} langkah dari pendaftaran hingga hasil tes.
                   </p>
                 </div>
-                <span className="text-brand-600">→</span>
+                <span className="text-brand-600 transition-transform group-hover:translate-x-1">→</span>
               </div>
             </Link>
 
-            <Link href="/cek-status" className="kartu block p-6 transition-all hover:border-brand-300">
+            <Link href="/cek-status" className="kartu kartu-hidup group block p-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h3 className="font-bold text-ink">Cek Status Pendaftaran</h3>
@@ -143,31 +150,33 @@ export default async function HalamanKontak() {
                     email.
                   </p>
                 </div>
-                <span className="text-brand-600">→</span>
+                <span className="text-brand-600 transition-transform group-hover:translate-x-1">→</span>
               </div>
             </Link>
           </div>
-        </div>
+        </Muncul>
       </section>
 
       {/* PRINSIP KERAHASIAAN */}
       <section className="border-t border-line bg-paper-2 py-14">
         <div className="wadah">
-          <span className="label-kecil">Kerahasiaan Data</span>
-          <h2 className="mt-3 text-2xl font-bold tracking-tight text-ink">
-            Empat prinsip yang kami pegang
-          </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft">
-            Data psikologi bersifat sangat pribadi. Empat prinsip berikut kami
-            terapkan pada setiap layanan, tanpa terkecuali.
-          </p>
+          <Muncul className="max-w-2xl">
+            <span className="label-kecil">Kerahasiaan Data</span>
+            <h2 className="mt-3 text-2xl font-bold tracking-tight text-ink">
+              Empat prinsip yang kami pegang
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+              Data psikologi bersifat sangat pribadi. Empat prinsip berikut kami
+              terapkan pada setiap layanan, tanpa terkecuali.
+            </p>
+          </Muncul>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            {prinsip.map((p) => (
-              <div key={p.judul} className="kartu p-6">
+            {prinsip.map((p, i) => (
+              <Muncul key={p.judul} tunda={i * 80} className="kartu kartu-hidup p-6">
                 <h3 className="font-bold text-ink">{p.judul}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-ink-soft">{p.isi}</p>
-              </div>
+              </Muncul>
             ))}
           </div>
         </div>

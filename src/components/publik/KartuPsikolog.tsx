@@ -26,8 +26,8 @@ export function KartuPsikolog({
   ringkas?: boolean;
 }) {
   return (
-    <article className="kartu flex flex-col items-center p-6 text-center">
-      <span className="relative block h-32 w-32 shrink-0 overflow-hidden rounded-full ring-4 ring-brand-50">
+    <article className="kartu kartu-hidup group flex w-full flex-col items-center p-6 text-center">
+      <span className="relative block h-32 w-32 shrink-0 overflow-hidden rounded-full ring-4 ring-brand-50 transition-transform duration-300 group-hover:scale-105">
         {p.fotoUrl ? (
           <Image
             src={p.fotoUrl}

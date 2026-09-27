@@ -21,17 +21,13 @@ export default async function HalamanLayanan() {
     nama: l.nama,
     slug: l.slug,
     kategori: labelKategori[l.kategori] ?? l.kategori,
-    metode: l.metode,
     durasiMenit: l.durasiMenit,
-    hargaOnline: keAngka(l.hargaOnline),
-    hargaOffline: keAngka(l.hargaOffline),
+    hargaOffline: keAngka(l.hargaOffline) ?? keAngka(l.harga),
     aktif: l.aktif,
     jumlahPendaftar: l._count.pendaftaran,
   }));
 
-  const tanpaHarga = data.filter(
-    (d) => d.hargaOnline === null && d.hargaOffline === null,
-  ).length;
+  const tanpaHarga = data.filter((d) => d.hargaOffline === null).length;
 
   return (
     <>

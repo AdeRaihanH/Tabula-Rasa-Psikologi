@@ -9,9 +9,7 @@ export type DataLayanan = {
   nama: string;
   slug: string;
   kategori: string;
-  metode: string[];
   durasiMenit: number | null;
-  hargaOnline: number | null;
   hargaOffline: number | null;
   aktif: boolean;
   jumlahPendaftar: number;
@@ -35,9 +33,6 @@ export function FormHargaLayanan({ data }: { data: DataLayanan }) {
     simpanLayanan,
     undefined,
   );
-
-  const bisaOnline = data.metode.includes("ONLINE");
-  const bisaOffline = data.metode.includes("OFFLINE");
 
   return (
     <form action={aksi} className="kartu p-5">
@@ -64,44 +59,22 @@ export function FormHargaLayanan({ data }: { data: DataLayanan }) {
 
       <input type="hidden" name="id" value={data.id} />
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div>
-          <label className="label" htmlFor={`online-${data.id}`}>
-            Harga daring (Rp)
-          </label>
-          <input
-            id={`online-${data.id}`}
-            name="hargaOnline"
-            inputMode="numeric"
-            disabled={!bisaOnline}
-            defaultValue={data.hargaOnline ?? ""}
-            placeholder={bisaOnline ? "375000" : "tidak tersedia"}
-            className="input disabled:bg-paper-2 disabled:text-muted"
-          />
-          {!bisaOnline && (
-            <p className="mt-1 text-[0.68rem] text-muted">
-              Layanan ini tidak menyediakan metode daring.
-            </p>
-          )}
-        </div>
+      <div className="mt-4 grid gap-3">
         <div>
           <label className="label" htmlFor={`offline-${data.id}`}>
-            Harga tatap muka (Rp)
+            Harga layanan (Rp)
           </label>
           <input
             id={`offline-${data.id}`}
             name="hargaOffline"
             inputMode="numeric"
-            disabled={!bisaOffline}
             defaultValue={data.hargaOffline ?? ""}
-            placeholder={bisaOffline ? "545000" : "tidak tersedia"}
-            className="input disabled:bg-paper-2 disabled:text-muted"
+            placeholder="545000"
+            className="input"
           />
-          {!bisaOffline && (
-            <p className="mt-1 text-[0.68rem] text-muted">
-              Layanan ini hanya tatap muka.
-            </p>
-          )}
+          <p className="mt-1 text-[0.68rem] text-muted">
+            Seluruh layanan dilaksanakan Tatap Muka.
+          </p>
         </div>
       </div>
 

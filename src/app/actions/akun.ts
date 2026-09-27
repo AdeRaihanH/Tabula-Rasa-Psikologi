@@ -18,7 +18,6 @@ import {
   terisiTerlaluCepat,
 } from "@/lib/keamanan/rate-limit";
 import { prisma } from "@/lib/prisma";
-import { boleh } from "@/lib/rbac";
 
 export type HasilAkun = { ok: boolean; pesan: string; galat?: Record<string, string> };
 
@@ -277,16 +276,4 @@ export async function unggahBuktiKlien(
           : "Gagal mengunggah bukti. Silakan coba lagi.",
     };
   }
-}
-
-/** Cek cepat apakah sebuah pendaftaran milik klien yang login. */
-export async function pastikanMilikKlien(pendaftaranId: string) {
-  const sesi = await wajibKlien();
-  if (!boleh(sesi.role, "pendaftaran:milik")) return false;
-  const where = await filterPendaftaranKlien(sesi);
-  const ada = await prisma.pendaftaran.findFirst({
-    where: { AND: [{ id: pendaftaranId }, where] },
-    select: { id: true },
-  });
-  return Boolean(ada);
 }

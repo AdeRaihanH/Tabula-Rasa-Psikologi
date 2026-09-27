@@ -28,8 +28,10 @@ export const sesiSaatIni = cache(async (): Promise<IsiSesi | null> => {
   if (!isi) return null;
 
   const h = await headers();
-  const valid = await sesiTercatat(isi.sid, sidikPerangkat(h));
-  return valid ? isi : null;
+  const tercatat = await sesiTercatat(isi.sid, sidikPerangkat(h));
+  if (!tercatat) return null;
+  // Pakai nama terkini dari database agar perubahan nama segera terlihat.
+  return { ...isi, nama: tercatat.nama };
 });
 
 /** Wajib login. Mengembalikan sesi atau mengalihkan ke /masuk. */
@@ -53,24 +55,6 @@ export async function wajibKemampuan(kemampuan: Kemampuan): Promise<IsiSesi> {
   const sesi = await wajibMasuk();
   if (!boleh(sesi.role, kemampuan)) redirect("/dashboard");
   return sesi;
-}
-
-/**
- * Batas isolasi psikolog: seorang psikolog hanya boleh menyentuh kasus yang
- * ditugaskan kepadanya. Mengembalikan filter `where` yang aman.
- */
-export function filterKasusPsikolog(sesi: IsiSesi) {
-  if (sesi.role === "PSIKOLOG") return { psikologId: sesi.userId };
-  return {};
-}
-
-/** Pastikan seorang psikolog memang pemegang kasus ini. */
-export function milikPsikolog(
-  sesi: IsiSesi,
-  pendaftaran: { psikologId: string | null },
-) {
-  if (sesi.role !== "PSIKOLOG") return true;
-  return pendaftaran.psikologId === sesi.userId;
 }
 
 /**
@@ -126,17 +110,4 @@ export async function filterPendaftaranKlien(sesi: IsiSesi) {
       ...(user?.email ? [{ klien: { email: user.email } }] : []),
     ],
   };
-}
-
-/** True bila pendaftaran memang milik klien yang login. */
-export async function milikKlien(
-  sesi: IsiSesi,
-  pendaftaranId: string,
-): Promise<boolean> {
-  const where = await filterPendaftaranKlien(sesi);
-  const ada = await prisma.pendaftaran.findFirst({
-    where: { AND: [{ id: pendaftaranId }, where] },
-    select: { id: true },
-  });
-  return Boolean(ada);
 }

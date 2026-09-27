@@ -75,10 +75,8 @@ export default async function HalamanDaftar({
             nama: l.nama,
             kategori: l.kategori,
             slug: l.slug,
-            hargaOnline: hargaPerMetode(l).online,
             hargaOffline: hargaPerMetode(l).offline,
             durasiMenit: l.durasiMenit,
-            metode: l.metode,
           }))}
           psikolog={psikolog.map((p) => ({
             id: p.userId,

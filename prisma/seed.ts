@@ -25,9 +25,7 @@ const layanan = [
     deskripsi:
       "Tes IQ dilakukan oleh psikolog berizin praktik menggunakan alat tes terstandar sesuai usia. Hasil disajikan dalam laporan resmi bertanda tangan, dilengkapi sesi konsultasi hasil agar dapat dipahami dan ditindaklanjuti.\n\nUmumnya diperlukan untuk pendaftaran sekolah, penjurusan, seleksi kerja, maupun pemetaan kemampuan individu.",
     durasiMenit: 180,
-    hargaOnline: 375000,
     hargaOffline: 545000,
-    metode: ["ONLINE", "OFFLINE"] as const,
     unggulan: true,
     urutan: 1,
   },
@@ -40,9 +38,7 @@ const layanan = [
     deskripsi:
       "Asesmen minat dan bakat membantu mengenali kecenderungan seseorang sehingga pengambilan keputusan jurusan, studi lanjut, atau arah karier menjadi lebih terarah.\n\nCocok untuk siswa yang memilih jurusan, mahasiswa, maupun profesional yang sedang menata ulang karier. Disertai sesi konsultasi hasil.",
     durasiMenit: 150,
-    hargaOnline: 375000,
     hargaOffline: 545000,
-    metode: ["ONLINE", "OFFLINE"] as const,
     unggulan: true,
     urutan: 2,
   },
@@ -56,7 +52,6 @@ const layanan = [
       "Asesmen kesiapan sekolah menilai aspek kognitif, motorik, bahasa, sosial, dan kemandirian anak sebagai pertimbangan masuk jenjang sekolah dasar.\n\nDilakukan secara tatap muka dengan observasi langsung, dan hasilnya dibahas bersama orang tua.",
     durasiMenit: 120,
     hargaOffline: 545000,
-    metode: ["OFFLINE"] as const,
     unggulan: true,
     urutan: 3,
   },
@@ -71,7 +66,6 @@ const layanan = [
     deskripsi:
       "Layanan PIO mencakup asesmen rekrutmen dan promosi, wawancara berbasis perilaku (BEI), pemetaan potensi dan talenta, analisis jabatan, hingga penyusunan kamus kompetensi.\n\nRuang lingkup, jumlah peserta, dan metode pelaksanaan disusun bersama tim HRD dan dituangkan dalam proposal serta kesepakatan kerja sama.",
     durasiMenit: null,
-    metode: ["ONLINE", "OFFLINE"] as const,
     unggulan: true,
     urutan: 4,
   },
@@ -107,10 +101,11 @@ async function main() {
       tagline: "Ruang untuk bertumbuh, lembar yang belum tertulis.",
       deskripsi:
         "Biro psikologi yang menyediakan tes dan asesmen psikologi untuk individu, sekolah, serta layanan Psikologi Industri & Organisasi untuk perusahaan.",
-      telepon: "0812-0000-0000",
-      whatsapp: "6281200000000",
+      telepon: "082229145081",
+      whatsapp: "6282229145081",
       email: "halo@tabularasa.id",
-      alamat: "Jl. Contoh No. 1, Kota Anda",
+      alamat:
+        "Jl. Kapas, Semaki, Kec. Umbulharjo, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55166",
       jamOperasional: "Senin–Sabtu, 08.00–20.00 WIB",
       driveFolderId: FOLDER_UTAMA,
       driveClientFolderId: FOLDER_KLIEN,
@@ -127,7 +122,7 @@ async function main() {
     where: { email: "admin@tabularasa.id" },
     update: {},
     create: {
-      nama: "Administrator",
+      nama: "Are",
       email: "admin@tabularasa.id",
       passwordHash: password,
       role: "ADMIN",
@@ -139,7 +134,7 @@ async function main() {
     where: { email: "asisten@tabularasa.id" },
     update: {},
     create: {
-      nama: "Rina Asisten",
+      nama: "Safira",
       email: "asisten@tabularasa.id",
       passwordHash: password,
       role: "ASISTEN",
@@ -242,10 +237,7 @@ async function main() {
   }
 
   for (const l of layanan) {
-    const harga = {
-      hargaOnline: l.hargaOnline ?? null,
-      hargaOffline: l.hargaOffline ?? null,
-    };
+    const harga = { hargaOffline: l.hargaOffline ?? null };
     await prisma.layanan.upsert({
       where: { slug: l.slug },
       update: harga,
@@ -256,7 +248,6 @@ async function main() {
         ringkasan: l.ringkasan,
         deskripsi: l.deskripsi,
         durasiMenit: l.durasiMenit,
-        metode: [...l.metode],
         unggulan: l.unggulan ?? false,
         urutan: l.urutan,
         ...harga,
@@ -271,6 +262,47 @@ async function main() {
       create: a,
     });
   }
+
+  // ---------- Checklist alat tes per layanan ----------
+  // Alat tes apa saja yang harus dikerjakan klien untuk tiap layanan.
+  // Asisten psikolog mencentangnya sebagai konfirmasi pelaksanaan di biro.
+  const checklist: { slug: string; kode: string; wajib: boolean }[] = [
+    { slug: "tes-iq", kode: "IST", wajib: true },
+    { slug: "tes-iq", kode: "CFIT", wajib: false },
+    { slug: "tes-minat-bakat", kode: "RMIB", wajib: true },
+    { slug: "tes-minat-bakat", kode: "EPPS", wajib: true },
+    { slug: "tes-kesiapan-sekolah", kode: "DAP", wajib: true },
+    { slug: "tes-kesiapan-sekolah", kode: "BAUM", wajib: true },
+    { slug: "tes-kesiapan-sekolah", kode: "SSCT", wajib: false },
+    { slug: "pio", kode: "DISC", wajib: true },
+    { slug: "pio", kode: "PAPI", wajib: true },
+    { slug: "pio", kode: "BEI", wajib: true },
+  ];
+
+  const urutanPerLayanan = new Map<string, number>();
+  for (const c of checklist) {
+    const lay = await prisma.layanan.findUnique({ where: { slug: c.slug } });
+    const alat = await prisma.alatTes.findUnique({ where: { kode: c.kode } });
+    if (!lay || !alat) continue;
+    const urutan = urutanPerLayanan.get(c.slug) ?? 0;
+    urutanPerLayanan.set(c.slug, urutan + 1);
+    await prisma.layananAlatTes.upsert({
+      where: { layananId_alatTesId: { layananId: lay.id, alatTesId: alat.id } },
+      update: { urutan, wajib: c.wajib },
+      create: {
+        layananId: lay.id,
+        alatTesId: alat.id,
+        urutan,
+        wajib: c.wajib,
+      },
+    });
+  }
+
+  // Nomor kontak terbaru dari klien.
+  await prisma.pengaturanSitus.update({
+    where: { id: "utama" },
+    data: { telepon: "082229145081", whatsapp: "6282229145081" },
+  });
 
   console.log("Seed selesai.");
   console.log("Login demo (password sama: TabulaRasa123!):");

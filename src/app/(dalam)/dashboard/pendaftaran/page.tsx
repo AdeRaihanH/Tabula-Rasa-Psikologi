@@ -8,17 +8,18 @@ import {
   Td,
   Th,
 } from "@/components/dashboard/ui";
+import { Paginasi } from "@/components/dashboard/Paginasi";
 import { wajibKemampuan } from "@/lib/auth/dal";
 import { labelStatusPendaftaran } from "@/lib/config";
+import { UKURAN_HALAMAN, hitungPaginasi } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 import { formatRupiah, formatTanggal } from "@/lib/utils";
 
+// Hanya status yang benar-benar dilalui alur 5 tahap (tanpa tahap lama
+// BARU/SKRINING/TERJADWAL yang sudah dilebur).
 const urutanStatus = [
-  "BARU",
-  "SKRINING",
   "MENUNGGU_PEMBAYARAN",
   "TERVERIFIKASI",
-  "TERJADWAL",
   "PELAKSANAAN",
   "PENGOLAHAN_DATA",
   "SELESAI",
@@ -31,12 +32,16 @@ export default async function HalamanPendaftaran({
   await wajibKemampuan("pendaftaran:lihat");
   const sp = await searchParams;
   const filter = typeof sp?.status === "string" ? sp.status : "";
+  const { hal, skip, take } = hitungPaginasi(sp?.hal);
 
-  const [daftar, hitung, buktiMasuk] = await Promise.all([
+  const where = filter ? { status: filter as never } : undefined;
+
+  const [daftar, totalTampil, hitung, buktiMasuk] = await Promise.all([
     prisma.pendaftaran.findMany({
-      where: filter ? { status: filter as never } : undefined,
+      where,
       orderBy: { createdAt: "desc" },
-      take: 100,
+      skip,
+      take,
       include: {
         klien: { select: { nama: true, telepon: true, institusi: true } },
         layanan: { select: { nama: true } },
@@ -46,6 +51,7 @@ export default async function HalamanPendaftaran({
         },
       },
     }),
+    prisma.pendaftaran.count({ where }),
     prisma.pendaftaran.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.pembayaran.count({
       where: { status: "MENUNGGU", buktiUrl: { not: null } },
@@ -74,7 +80,7 @@ export default async function HalamanPendaftaran({
     <>
       <JudulHalaman
         judul="Pendaftaran"
-        keterangan="Kelola pendaftaran masuk: skrining, verifikasi pembayaran, penugasan psikolog, dan penjadwalan."
+        keterangan="Kelola pendaftaran masuk: verifikasi pembayaran, penugasan psikolog, dan penjadwalan."
       />
 
       {buktiMasuk > 0 && (
@@ -147,7 +153,7 @@ export default async function HalamanPendaftaran({
                   </Td>
                   <Td className="max-w-[13rem] truncate">{p.layanan.nama}</Td>
                   <Td className="text-xs">
-                    {p.metode === "ONLINE" ? "Daring" : "Tatap muka"}
+                    Tatap Muka
                   </Td>
                   <Td className="text-xs">
                     {bayar ? (
@@ -185,6 +191,14 @@ export default async function HalamanPendaftaran({
           </tbody>
         </Tabel>
       )}
+
+      <Paginasi
+        jalur="/dashboard/pendaftaran"
+        hal={hal}
+        total={totalTampil}
+        ukuran={UKURAN_HALAMAN}
+        cari={{ status: filter || undefined }}
+      />
     </>
   );
 }

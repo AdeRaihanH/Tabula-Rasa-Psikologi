@@ -1,66 +1,60 @@
 import Link from "next/link";
 
-import {
-  BadgeStatus,
-  BadgeZona,
-  JudulHalaman,
-  Kosong,
-  Tabel,
-  Td,
-  Th,
-} from "@/components/dashboard/ui";
+import type { Prisma } from "@/generated/prisma/client";
+import { BadgeStatus, BadgeZona, JudulHalaman, Kosong, Tabel, Td, Th } from "@/components/dashboard/ui";
+import { Paginasi } from "@/components/dashboard/Paginasi";
 import { wajibKemampuan } from "@/lib/auth/dal";
 import { labelStatusPendaftaran } from "@/lib/config";
 import { parsePreferensiJadwal } from "@/lib/jadwal";
+import { UKURAN_HALAMAN, hitungPaginasi } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 import { formatTanggal, formatTanggalWaktu } from "@/lib/utils";
 
-export default async function HalamanAsesmen() {
+export default async function HalamanAsesmen({
+  searchParams,
+}: PageProps<"/dashboard/asesmen">) {
   await wajibKemampuan("lembartes:lihat");
+  const sp = await searchParams;
+  const { hal, skip, take } = hitungPaginasi(sp?.hal);
 
-  // Asisten bekerja pada kasus yang pembayarannya sudah terverifikasi
-  // (atau status lanjutannya). Jadwal otomatis dari pilihan pendaftar ikut
-  // ditampilkan agar asisten tahu hari/jam yang diminta klien. Kasus yang
-  // belum bayar sengaja TIDAK tampil di sini.
-  const daftar = await prisma.pendaftaran.findMany({
-    where: {
-      OR: [
-        {
-          status: {
-            in: ["TERVERIFIKASI", "TERJADWAL", "PELAKSANAAN", "PENGOLAHAN_DATA"],
-          },
-        },
-        { pembayaran: { some: { status: "TERVERIFIKASI" } } },
-      ],
-    },
-    orderBy: { updatedAt: "desc" },
-    take: 100,
-    include: {
-      klien: { select: { nama: true } },
-      layanan: { select: { nama: true } },
-      lembarTes: {
-        select: {
-          id: true,
-          status: true,
-          tautan: true,
-          skor: { select: { id: true } },
+  const where: Prisma.PendaftaranWhereInput = {
+    AND: [
+      {
+        status: {
+          in: ["TERVERIFIKASI", "PELAKSANAAN", "PENGOLAHAN_DATA"],
         },
       },
-      jadwal: { orderBy: { mulai: "asc" }, take: 1, select: { mulai: true } },
-    },
-  });
+      { pembayaran: { some: { status: "TERVERIFIKASI" } } },
+    ],
+  };
+
+  const [daftar, total] = await Promise.all([
+    prisma.pendaftaran.findMany({
+      where,
+      orderBy: { updatedAt: "desc" },
+      skip,
+      take,
+      include: {
+        klien: { select: { nama: true } },
+        layanan: { select: { nama: true } },
+        konfirmasiTesOleh: { select: { nama: true } },
+        jadwal: { orderBy: { mulai: "asc" }, take: 1, select: { mulai: true } },
+      },
+    }),
+    prisma.pendaftaran.count({ where }),
+  ]);
 
   return (
     <>
       <JudulHalaman
-        judul="Lembar Tes & Skor Mentah"
-        keterangan="Zona 2 — operasional asesmen. Kelola instrumen tes dan masukkan skor mentah hasil pelaksanaan."
+        judul="Konfirmasi Pelaksanaan Tes"
+        keterangan="Zona 2 — operasional asesmen. Konfirmasi bahwa klien sudah melaksanakan tes secara Tatap Muka di biro."
         aksi={<BadgeZona zona="ZONA_2" />}
       />
 
       {daftar.length === 0 ? (
         <Kosong
-          judul="Belum ada kasus untuk diasesmen"
+          judul="Belum ada kasus untuk dikonfirmasi"
           keterangan="Kasus muncul di sini setelah pembayaran klien terverifikasi oleh admin."
         />
       ) : (
@@ -71,18 +65,14 @@ export default async function HalamanAsesmen() {
               <Th>Klien</Th>
               <Th>Layanan</Th>
               <Th>Jadwal Pilihan Klien</Th>
-              <Th>Lembar Tes</Th>
-              <Th>Skor</Th>
+              <Th>Konfirmasi</Th>
               <Th>Status</Th>
               <Th />
             </tr>
           </thead>
           <tbody>
             {daftar.map((p) => {
-              const totalSkor = p.lembarTes.reduce((a, l) => a + l.skor.length, 0);
-              const selesai = p.lembarTes.filter((l) => l.status === "SELESAI").length;
-              const dibagikan = p.lembarTes.filter((l) => l.tautan).length;
-              const belumAdaTes = p.lembarTes.length === 0;
+              const sudah = Boolean(p.konfirmasiTesPada);
               const preferensi =
                 !p.jadwal[0] ? parsePreferensiJadwal(p.kebutuhan) : null;
               return (
@@ -115,17 +105,16 @@ export default async function HalamanAsesmen() {
                     )}
                   </Td>
                   <Td className="text-xs">
-                    {p.lembarTes.length} lembar
-                    {p.lembarTes.length > 0 && (
-                      <span className="block text-muted">{selesai} selesai</span>
-                    )}
-                    {dibagikan > 0 && (
-                      <span className="block font-medium text-emerald-700">
-                        {dibagikan} tautan dibagikan
+                    {sudah ? (
+                      <span className="font-semibold text-emerald-700">
+                        ✓ Sudah
+                      </span>
+                    ) : (
+                      <span className="font-semibold text-amber-700">
+                        Belum
                       </span>
                     )}
                   </Td>
-                  <Td className="text-xs">{totalSkor} baris</Td>
                   <Td>
                     <BadgeStatus
                       status={p.status}
@@ -136,12 +125,12 @@ export default async function HalamanAsesmen() {
                     <Link
                       href={`/dashboard/asesmen/${p.id}`}
                       className={
-                        belumAdaTes
-                          ? "tombol tombol-utama !px-3 !py-1.5 !text-xs whitespace-nowrap"
-                          : "text-xs font-semibold text-brand-700 hover:underline"
+                        sudah
+                          ? "text-xs font-semibold text-brand-700 hover:underline"
+                          : "tombol tombol-utama !px-3 !py-1.5 !text-xs whitespace-nowrap"
                       }
                     >
-                      {belumAdaTes ? "Kirim Tes →" : "Kelola →"}
+                      {sudah ? "Lihat →" : "Konfirmasi →"}
                     </Link>
                   </Td>
                 </tr>
@@ -150,6 +139,13 @@ export default async function HalamanAsesmen() {
           </tbody>
         </Tabel>
       )}
+
+      <Paginasi
+        jalur="/dashboard/asesmen"
+        hal={hal}
+        total={total}
+        ukuran={UKURAN_HALAMAN}
+      />
     </>
   );
 }

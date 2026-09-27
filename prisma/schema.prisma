@@ -1,7 +1,7 @@
 // Tabula Rasa — Skema Data Biro Psikologi
 // Klasifikasi kerahasiaan (zona):
 //   ZONA_1  admin      -> data diri klien, jadwal sesi
-//   ZONA_2  asisten    -> lembar tes, skor mentah
+//   ZONA_2  asisten    -> konfirmasi pelaksanaan alat tes
 //   ZONA_3  psikolog   -> laporan hasil & interpretasi (hanya psikolog pemegang kasus)
 
 generator client {
@@ -26,7 +26,6 @@ enum KategoriLayanan {
 }
 
 enum MetodeLayanan {
-  ONLINE
   OFFLINE
 }
 
@@ -53,13 +52,6 @@ enum StatusSesi {
   BERLANGSUNG
   SELESAI
   DIBATALKAN
-}
-
-enum StatusLembarTes {
-  MENUNGGU
-  DIKERJAKAN
-  SKOR_DIISI
-  SELESAI
 }
 
 enum StatusLaporan {
@@ -90,8 +82,8 @@ model User {
   profilPsikolog  ProfilPsikolog?
   klien           Klien?
   pendaftaranSebagaiPsikolog Pendaftaran[] @relation("PendaftaranPsikolog")
+  konfirmasiTesSebagaiAsisten Pendaftaran[] @relation("KonfirmasiTesAsisten")
   sesiSebagaiPsikolog JadwalSesi[]     @relation("SesiPsikolog")
-  lembarSebagaiAsisten LembarTes[]     @relation("LembarAsisten")
   laporanSebagaiPsikolog LaporanHasil[] @relation("LaporanPsikolog")
   verifikasiPembayaran Pembayaran[]    @relation("VerifikatorPembayaran")
   auditLog        AuditLog[]
@@ -172,7 +164,6 @@ model Layanan {
   ringkasan    String
   deskripsi    String?
   harga        Decimal?        @db.Decimal(12, 2)
-  hargaOnline  Decimal?        @db.Decimal(12, 2)
   hargaOffline Decimal?        @db.Decimal(12, 2)
   satuanHarga  String          @default("sesi")
   durasiMenit  Int?
@@ -184,6 +175,7 @@ model Layanan {
   updatedAt    DateTime        @updatedAt
 
   pendaftaran Pendaftaran[]
+  checklist   LayananAlatTes[]
 
   @@index([kategori])
   @@map("layanan")
@@ -205,16 +197,20 @@ model Pendaftaran {
   informedConsent Boolean          @default(false)
   catatanInternal String?
   folderDriveUrl String?
+  /// Konfirmasi asisten psikolog bahwa klien sudah melaksanakan tes Tatap Muka
+  /// di biro. Ini satu-satunya tindakan asisten pada asesmen.
+  konfirmasiTesPada   DateTime?
+  konfirmasiTesOlehId String?
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
   klien     Klien      @relation(fields: [klienId], references: [id], onDelete: Cascade)
   layanan   Layanan    @relation(fields: [layananId], references: [id])
   psikolog  User?      @relation("PendaftaranPsikolog", fields: [psikologId], references: [id], onDelete: SetNull)
+  konfirmasiTesOleh User? @relation("KonfirmasiTesAsisten", fields: [konfirmasiTesOlehId], references: [id], onDelete: SetNull)
 
   pembayaran Pembayaran[]
   jadwal     JadwalSesi[]
-  lembarTes  LembarTes[]
   laporan    LaporanHasil?
   arsip      ArsipData?
 
@@ -260,14 +256,12 @@ model JadwalSesi {
   pendaftaran Pendaftaran @relation(fields: [pendaftaranId], references: [id], onDelete: Cascade)
   psikolog    User        @relation("SesiPsikolog", fields: [psikologId], references: [id])
 
-  lembarTes LembarTes[]
-
   @@index([psikologId])
   @@index([mulai])
   @@map("jadwal_sesi")
 }
 
-// ---------- ZONA 2: instrumen & skor mentah ----------
+// ---------- ZONA 2: instrumen & konfirmasi pelaksanaan ----------
 
 model AlatTes {
   id          String   @id @default(cuid())
@@ -279,53 +273,28 @@ model AlatTes {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  lembarTes LembarTes[]
+  layananAlatTes LayananAlatTes[]
 
   @@map("alat_tes")
 }
 
-model LembarTes {
-  id            String           @id @default(cuid())
-  pendaftaranId String
-  jadwalSesiId  String?
-  alatTesId     String
-  asistenId     String?
-  status        StatusLembarTes  @default(MENUNGGU)
-  catatan       String?
-  // Distribusi pengerjaan ke klien: tautan tes eksternal (mis. Google Form)
-  // + instruksi singkat. Klien melihat nama alat, tautan, dan instruksi saja —
-  // isi soal dan skor tetap di Zona 2.
-  tautan        String?
-  instruksi     String?
-  dikerjakanPada DateTime?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+// ---------- Checklist alat tes per layanan ----------
 
-  pendaftaran Pendaftaran @relation(fields: [pendaftaranId], references: [id], onDelete: Cascade)
-  jadwalSesi  JadwalSesi? @relation(fields: [jadwalSesiId], references: [id], onDelete: SetNull)
-  alatTes     AlatTes     @relation(fields: [alatTesId], references: [id])
-  asisten     User?       @relation("LembarAsisten", fields: [asistenId], references: [id], onDelete: SetNull)
+/// Alat tes apa saja yang harus dikerjakan klien untuk sebuah layanan.
+/// Dipakai asisten sebagai daftar periksa saat pelaksanaan di biro.
+model LayananAlatTes {
+  id        String  @id @default(cuid())
+  layananId String
+  alatTesId String
+  urutan    Int     @default(0)
+  wajib     Boolean @default(true)
 
-  skor SkorMentah[]
+  layanan Layanan @relation(fields: [layananId], references: [id], onDelete: Cascade)
+  alatTes AlatTes @relation(fields: [alatTesId], references: [id], onDelete: Cascade)
 
-  @@index([pendaftaranId])
-  @@map("lembar_tes")
-}
-
-model SkorMentah {
-  id          String   @id @default(cuid())
-  lembarTesId String
-  aspek       String
-  skor        Decimal  @db.Decimal(12, 2)
-  satuan      String?
-  catatan     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  lembarTes LembarTes @relation(fields: [lembarTesId], references: [id], onDelete: Cascade)
-
-  @@index([lembarTesId])
-  @@map("skor_mentah")
+  @@unique([layananId, alatTesId])
+  @@index([layananId])
+  @@map("layanan_alat_tes")
 }
 
 // ---------- ZONA 3: laporan hasil & interpretasi ----------
@@ -340,6 +309,13 @@ model LaporanHasil {
   kesimpulan    String?
   status        StatusLaporan @default(DRAFT)
   difinalkanPada DateTime?
+  /// Dokumen Word hasil interpretasi yang diunggah otomatis ke Drive psikolog
+  /// penanggung jawab saat laporan difinalkan. Hanya psikolog pemegang kasus
+  /// yang dapat melihat tautannya (folder Drive-nya sendiri, tidak dibagikan).
+  dokumenUrl    String?
+  dokumenId     String?
+  dokumenNama   String?
+  dokumenPada   DateTime?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

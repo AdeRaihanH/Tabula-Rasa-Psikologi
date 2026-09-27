@@ -4,10 +4,11 @@ export const siteConfig = {
   tagline: "Ruang untuk bertumbuh, lembar yang belum tertulis.",
   deskripsi:
     "Biro psikologi yang menyediakan tes dan asesmen psikologi untuk individu, sekolah, serta layanan Psikologi Industri & Organisasi (PIO) untuk perusahaan.",
-  telepon: "0812-0000-0000",
-  whatsapp: "6281200000000",
+  telepon: "082229145081",
+  whatsapp: "6282229145081",
   email: "halo@tabularasa.id",
-  alamat: "Jl. Contoh No. 1, Kota Anda",
+  alamat:
+    "Jl. Kapas, Semaki, Kec. Umbulharjo, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55166",
   jamOperasional: "Senin–Sabtu, 08.00–20.00 WIB",
   tahunBerdiri: 2015,
 } as const;
@@ -41,11 +42,8 @@ export const anchorKategori: Record<string, string> = {
 };
 
 export const labelStatusPendaftaran: Record<string, string> = {
-  BARU: "Pendaftaran Baru",
-  SKRINING: "Skrining Kebutuhan",
   MENUNGGU_PEMBAYARAN: "Menunggu Pembayaran",
   TERVERIFIKASI: "Terverifikasi",
-  TERJADWAL: "Terjadwal",
   PELAKSANAAN: "Pelaksanaan",
   PENGOLAHAN_DATA: "Pengolahan Data",
   SELESAI: "Selesai",
@@ -73,7 +71,7 @@ export const alurLayanan = [
   {
     nomor: "03",
     judul: "Pelaksanaan tes",
-    isi: "Kerjakan tes lewat tautan dari asisten, sesuai jadwal Anda.",
+    isi: "Datang ke biro sesuai jadwal; asisten mendampingi tes Anda secara Tatap Muka.",
   },
   {
     nomor: "04",

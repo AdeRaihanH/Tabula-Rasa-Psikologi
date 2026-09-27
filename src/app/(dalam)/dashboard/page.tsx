@@ -63,8 +63,10 @@ export default async function RingkasanDashboard() {
     },
     {
       zona: "ZONA_2" as const,
-      jumlah: await prisma.lembarTes.count(),
-      satuan: "lembar tes",
+      jumlah: await prisma.pendaftaran.count({
+        where: { konfirmasiTesPada: { not: null } },
+      }),
+      satuan: "tes terkonfirmasi",
     },
     {
       zona: "ZONA_3" as const,

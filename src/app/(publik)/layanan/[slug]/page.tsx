@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { Muncul } from "@/components/publik/gerak";
 import { ambilLayanan, ambilLayananSlug } from "@/lib/data-publik";
-import { anchorKategori, labelKategori, siteConfig } from "@/lib/config";
+import { anchorKategori, alurLayanan, labelKategori, siteConfig } from "@/lib/config";
 import { hargaPerMetode } from "@/lib/pembayaran";
 import { formatRupiah } from "@/lib/utils";
 
@@ -38,27 +39,10 @@ export default async function DetailLayanan({
 
   const poin = [
     { label: "Durasi", nilai: layanan.durasiMenit ? `${layanan.durasiMenit} menit` : "Menyesuaikan" },
+    { label: "Metode", nilai: "Tatap Muka" },
     {
-      label: "Metode",
-      nilai: layanan.metode
-        .map((m) => (m === "ONLINE" ? "Daring" : "Tatap muka"))
-        .join(" / "),
-    },
-    {
-      label: "Biaya daring",
-      nilai: layanan.metode.includes("ONLINE")
-        ? harga.online
-          ? formatRupiah(harga.online)
-          : "Hubungi kami"
-        : "Tidak tersedia",
-    },
-    {
-      label: "Biaya tatap muka",
-      nilai: layanan.metode.includes("OFFLINE")
-        ? harga.offline
-          ? formatRupiah(harga.offline)
-          : "Hubungi kami"
-        : "Tidak tersedia",
+      label: "Biaya",
+      nilai: harga.offline ? formatRupiah(harga.offline) : "Hubungi kami",
     },
   ];
 
@@ -66,30 +50,32 @@ export default async function DetailLayanan({
     <>
       <section className="border-b border-line bg-paper-2">
         <div className="wadah py-12">
-          <nav className="flex flex-wrap items-center gap-2 text-xs text-muted">
-            <Link href="/layanan" className="hover:text-brand-700">
-              Layanan
-            </Link>
-            <span>/</span>
-            <Link
-              href={`/layanan#${anchorKategori[layanan.kategori]}`}
-              className="hover:text-brand-700"
-            >
-              {labelKategori[layanan.kategori] ?? layanan.kategori}
-            </Link>
-          </nav>
+          <Muncul>
+            <nav className="flex flex-wrap items-center gap-2 text-xs text-muted">
+              <Link href="/layanan" className="hover:text-brand-700">
+                Layanan
+              </Link>
+              <span>/</span>
+              <Link
+                href={`/layanan#${anchorKategori[layanan.kategori]}`}
+                className="hover:text-brand-700"
+              >
+                {labelKategori[layanan.kategori] ?? layanan.kategori}
+              </Link>
+            </nav>
 
-          <h1 className="mt-5 max-w-3xl text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            {layanan.nama}
-          </h1>
-          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ink-soft">
-            {layanan.ringkasan}
-          </p>
+            <h1 className="mt-5 max-w-3xl text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+              {layanan.nama}
+            </h1>
+            <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ink-soft">
+              {layanan.ringkasan}
+            </p>
+          </Muncul>
         </div>
       </section>
 
       <div className="wadah grid gap-10 py-14 lg:grid-cols-[1.6fr_1fr]">
-        <article>
+        <Muncul sebagai="article" arah="kiri">
           <h2 className="text-xl font-bold text-ink">Tentang layanan ini</h2>
           <p className="mt-4 whitespace-pre-line leading-relaxed text-ink-soft">
             {layanan.deskripsi ?? layanan.ringkasan}
@@ -99,25 +85,26 @@ export default async function DetailLayanan({
             Bagaimana alurnya?
           </h2>
           <ol className="mt-4 space-y-4">
-            {[
-              "Pendaftaran dan skrining kebutuhan oleh admin.",
-              "Persetujuan, informed consent, dan pembayaran.",
-              "Penjadwalan bersama psikolog yang sesuai.",
-              "Pelaksanaan asesmen atau sesi.",
-              "Pengolahan data dan penyusunan laporan.",
-              "Penyerahan hasil beserta umpan balik.",
-            ].map((t, i) => (
-              <li key={t} className="flex gap-4">
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
-                  {i + 1}
+            {alurLayanan.map((a, i) => (
+              <Muncul
+                key={a.nomor}
+                sebagai="li"
+                tunda={i * 70}
+                className="group flex gap-4"
+              >
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-bold text-brand-700 transition-colors group-hover:bg-brand-600 group-hover:text-white">
+                  {a.nomor}
                 </span>
-                <p className="pt-0.5 text-sm leading-relaxed text-ink-soft">{t}</p>
-              </li>
+                <p className="pt-0.5 text-sm leading-relaxed text-ink-soft">
+                  <span className="font-semibold text-ink">{a.judul}.</span>{" "}
+                  {a.isi}
+                </p>
+              </Muncul>
             ))}
           </ol>
-        </article>
+        </Muncul>
 
-        <aside className="lg:sticky lg:top-24 lg:self-start">
+        <Muncul sebagai="aside" arah="kanan" tunda={120} className="lg:sticky lg:top-24 lg:self-start">
           <div className="kartu p-6">
             <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-muted">
               Ringkasan
@@ -171,7 +158,7 @@ export default async function DetailLayanan({
               </ul>
             </div>
           )}
-        </aside>
+        </Muncul>
       </div>
     </>
   );

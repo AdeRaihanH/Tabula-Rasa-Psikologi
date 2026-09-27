@@ -2,7 +2,7 @@ import "server-only";
 
 import type { IsiSesi } from "@/lib/auth/session";
 import { klienMilikSaya } from "@/lib/auth/dal";
-import { nomorTahap } from "@/lib/alur";
+import { jamWIB, labelHariWIB } from "@/lib/jadwal";
 import { prisma } from "@/lib/prisma";
 
 export type JenisNotifikasi = "peringatan" | "info" | "sukses";
@@ -39,35 +39,19 @@ export async function ambilNotifikasi(sesi: IsiSesi): Promise<Notifikasi[]> {
 }
 
 async function notifikasiAdmin(): Promise<Notifikasi[]> {
-  const [
-    baru,
-    tagihanMenunggu,
-    buktiMenunggu,
-    siapArsip,
-    tanpaPsikolog,
-  ] = await Promise.all([
-    prisma.pendaftaran.count({ where: { status: "BARU" } }),
-    prisma.pembayaran.count({ where: { status: "MENUNGGU" } }),
-    prisma.pembayaran.count({
-      where: { status: "MENUNGGU", buktiUrl: { not: null } },
-    }),
-    prisma.pendaftaran.count({ where: { status: "SELESAI", arsip: null } }),
-    prisma.pendaftaran.count({
-      where: { psikologId: null, status: { notIn: ["SELESAI", "DIBATALKAN"] } },
-    }),
-  ]);
+  const [tagihanMenunggu, buktiMenunggu, siapArsip, tanpaPsikolog] =
+    await Promise.all([
+      prisma.pembayaran.count({ where: { status: "MENUNGGU" } }),
+      prisma.pembayaran.count({
+        where: { status: "MENUNGGU", buktiUrl: { not: null } },
+      }),
+      prisma.pendaftaran.count({ where: { status: "SELESAI", arsip: null } }),
+      prisma.pendaftaran.count({
+        where: { psikologId: null, status: { notIn: ["SELESAI", "DIBATALKAN"] } },
+      }),
+    ]);
 
   const daftar: Notifikasi[] = [];
-
-  if (baru > 0) {
-    daftar.push({
-      id: "admin-baru",
-      judul: `${baru} pendaftaran baru`,
-      isi: "Perlu skrining kebutuhan sebelum diproses lebih lanjut.",
-      href: "/dashboard/pendaftaran?status=BARU",
-      jenis: "info",
-    });
-  }
 
   if (buktiMenunggu > 0) {
     daftar.push({
@@ -114,40 +98,22 @@ async function notifikasiAdmin(): Promise<Notifikasi[]> {
 }
 
 async function notifikasiAsisten(): Promise<Notifikasi[]> {
-  const [perluTes, perluSkor] = await Promise.all([
-    prisma.pendaftaran.count({
-      where: {
-        status: { in: ["TERJADWAL", "PELAKSANAAN"] },
-        lembarTes: { none: {} },
-      },
-    }),
-    prisma.lembarTes.count({
-      where: {
-        status: { in: ["MENUNGGU", "DIKERJAKAN"] },
-        skor: { none: {} },
-      },
-    }),
-  ]);
+  const perluKonfirmasi = await prisma.pendaftaran.count({
+    where: {
+      status: { in: ["TERVERIFIKASI", "PELAKSANAAN"] },
+      konfirmasiTesPada: null,
+    },
+  });
 
   const daftar: Notifikasi[] = [];
 
-  if (perluTes > 0) {
+  if (perluKonfirmasi > 0) {
     daftar.push({
-      id: "asisten-perlu-tes",
-      judul: `${perluTes} kasus belum punya lembar tes`,
-      isi: "Sesi sudah terjadwal — siapkan lembar tesnya.",
+      id: "asisten-perlu-konfirmasi",
+      judul: `${perluKonfirmasi} kasus menunggu konfirmasi`,
+      isi: "Konfirmasi bahwa klien sudah melaksanakan tes di biro.",
       href: "/dashboard/asesmen",
       jenis: "peringatan",
-    });
-  }
-
-  if (perluSkor > 0) {
-    daftar.push({
-      id: "asisten-perlu-skor",
-      judul: `${perluSkor} lembar tes belum ada skor`,
-      isi: "Isi skor mentah agar psikolog dapat menyusun laporan.",
-      href: "/dashboard/asesmen",
-      jenis: "info",
     });
   }
 
@@ -174,7 +140,7 @@ async function notifikasiPsikolog(userId: string): Promise<Notifikasi[]> {
     daftar.push({
       id: "psikolog-perlu-laporan",
       judul: `${perluLaporan} kasus siap dibuatkan laporan`,
-      isi: "Skor mentah sudah lengkap dan menunggu interpretasi Anda.",
+      isi: "Pelaksanaan tes sudah dikonfirmasi asisten dan menunggu interpretasi Anda.",
       href: "/dashboard/kasus",
       jenis: "peringatan",
     });
@@ -198,30 +164,62 @@ async function notifikasiKlien(sesi: IsiSesi): Promise<Notifikasi[]> {
   const ids = daftarKlien.map((k) => k.id);
   if (ids.length === 0) return [];
 
-  const [ditolak, belumBayar, selesai, jadwal] = await Promise.all([
-    prisma.pembayaran.count({
-      where: { pendaftaran: { klienId: { in: ids } }, status: "DITOLAK" },
-    }),
-    prisma.pembayaran.count({
-      where: {
-        pendaftaran: { klienId: { in: ids } },
-        status: "MENUNGGU",
-        buktiUrl: null,
-      },
-    }),
-    prisma.pendaftaran.count({
-      where: { klienId: { in: ids }, status: "SELESAI" },
-    }),
-    prisma.jadwalSesi.count({
-      where: {
-        pendaftaran: { klienId: { in: ids } },
-        status: "TERJADWAL",
-        mulai: { gte: new Date() },
-      },
-    }),
-  ]);
+  const sekarang = new Date();
+  const batasReminder = new Date(sekarang.getTime() + 24 * 60 * 60 * 1000);
+
+  const [ditolak, belumBayar, selesai, jadwalJauh, sesiMendekat] =
+    await Promise.all([
+      prisma.pembayaran.count({
+        where: { pendaftaran: { klienId: { in: ids } }, status: "DITOLAK" },
+      }),
+      prisma.pembayaran.count({
+        where: {
+          pendaftaran: { klienId: { in: ids } },
+          status: "MENUNGGU",
+          buktiUrl: null,
+        },
+      }),
+      prisma.pendaftaran.count({
+        where: { klienId: { in: ids }, status: "SELESAI" },
+      }),
+      prisma.jadwalSesi.count({
+        where: {
+          pendaftaran: { klienId: { in: ids } },
+          status: "TERJADWAL",
+          mulai: { gte: batasReminder },
+        },
+      }),
+      prisma.jadwalSesi.findMany({
+        where: {
+          pendaftaran: { klienId: { in: ids } },
+          status: "TERJADWAL",
+          mulai: { gte: sekarang, lt: batasReminder },
+        },
+        orderBy: { mulai: "asc" },
+        select: {
+          id: true,
+          mulai: true,
+          pendaftaranId: true,
+          pendaftaran: {
+            select: { nomor: true, layanan: { select: { nama: true } } },
+          },
+        },
+      }),
+    ]);
 
   const daftar: Notifikasi[] = [];
+
+  for (const s of sesiMendekat) {
+    const labelHari = labelHariWIB(s.mulai, sekarang);
+    daftar.push({
+      id: `klien-reminder-${s.id}`,
+      judul: `Pengingat: tes ${labelHari} pukul ${jamWIB(s.mulai)} WIB`,
+      isi: `Tes "${s.pendaftaran.layanan.nama}" (${s.pendaftaran.nomor}) akan dilaksanakan ${labelHari}. Mohon datang tepat waktu ke biro.`,
+      href: `/dashboard/riwayat/${s.pendaftaranId}`,
+      jenis: "peringatan",
+      waktu: s.mulai.toISOString(),
+    });
+  }
 
   if (ditolak > 0) {
     daftar.push({
@@ -243,10 +241,10 @@ async function notifikasiKlien(sesi: IsiSesi): Promise<Notifikasi[]> {
     });
   }
 
-  if (jadwal > 0) {
+  if (jadwalJauh > 0) {
     daftar.push({
       id: "klien-jadwal",
-      judul: `${jadwal} sesi akan datang`,
+      judul: `${jadwalJauh} sesi akan datang`,
       isi: "Lihat jadwal dan detail sesi Anda.",
       href: "/dashboard/riwayat",
       jenis: "info",
@@ -265,11 +263,3 @@ async function notifikasiKlien(sesi: IsiSesi): Promise<Notifikasi[]> {
 
   return daftar;
 }
-
-/** Jumlah pemberitahuan yang berjenis peringatan (untuk bulatan merah). */
-export function jumlahPenting(daftar: Notifikasi[]) {
-  return daftar.filter((n) => n.jenis === "peringatan").length;
-}
-
-/** Status tahap untuk penyaringan cepat di halaman terkait. */
-export const tahapMenunggu = nomorTahap("MENUNGGU_PEMBAYARAN");

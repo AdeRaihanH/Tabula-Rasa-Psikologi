@@ -4,19 +4,12 @@ import { revalidatePath } from "next/cache";
 
 import { wajibMasuk } from "@/lib/auth/dal";
 import { cekSyaratTahap, type HasilSyarat } from "@/lib/alur-otomatis";
-import {
-  TAHAP,
-  nomorTahap,
-  tahapBerikutnya,
-  tahapSebelumnya,
-} from "@/lib/alur";
+import { tahapBerikutnya, tahapSebelumnya } from "@/lib/alur";
 import { prisma } from "@/lib/prisma";
 import { boleh } from "@/lib/rbac";
 import type { StatusPendaftaran } from "@/generated/prisma/enums";
 
 export type HasilTahap = HasilSyarat;
-
-export { cekSyaratTahap };
 
 async function catat(
   userId: string,
@@ -174,18 +167,4 @@ export async function batalkanPendaftaran(
 
   bersihkanJalur(id);
   return { ok: true, pesan: "Pendaftaran dibatalkan." };
-}
-
-/** Ringkasan posisi alur untuk ditampilkan di UI. */
-export async function ringkasAlur(pendaftaranId: string) {
-  const p = await prisma.pendaftaran.findUnique({
-    where: { id: pendaftaranId },
-    select: { status: true },
-  });
-  if (!p) return null;
-  return {
-    status: p.status,
-    nomor: nomorTahap(p.status),
-    total: TAHAP.length,
-  };
 }

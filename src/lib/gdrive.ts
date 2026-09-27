@@ -90,12 +90,6 @@ export function driveAktif() {
   return kredensialOAuth() !== null || kredensialSA() !== null;
 }
 
-export function modeGoogle(): "oauth" | "service-account" | "nonaktif" {
-  if (kredensialOAuth()) return "oauth";
-  if (kredensialSA()) return "service-account";
-  return "nonaktif";
-}
-
 /**
  * Hanya mode OAuth (akun biro) yang boleh MEMBUAT berkas/folder/spreadsheet.
  * Service account tidak punya kuota penyimpanan sehingga selalu ditolak.

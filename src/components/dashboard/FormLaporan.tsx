@@ -7,8 +7,7 @@ import { simpanLaporan, type HasilLaporan } from "@/app/actions/laporan";
 export function FormLaporan({
   pendaftaranId,
   awal,
-  jumlahLembar,
-  jumlahLembarTanpaSkor,
+  jumlahAlatTes,
 }: {
   pendaftaranId: string;
   awal: {
@@ -17,15 +16,17 @@ export function FormLaporan({
     kesimpulan: string;
     rekomendasi: string;
   };
-  jumlahLembar: number;
-  jumlahLembarTanpaSkor: number;
+  /** Jumlah alat tes yang sudah dikonfirmasi asisten psikolog. */
+  jumlahAlatTes: number;
 }) {
   const [hasil, aksi, pending] = useActionState<HasilLaporan, FormData>(
     simpanLaporan,
     undefined,
   );
 
-  const siapFinal = jumlahLembar > 0 && jumlahLembarTanpaSkor === 0;
+  // Psikolog hanya boleh mengisi interpretasi setelah asisten mengonfirmasi
+  // bahwa klien sudah melaksanakan tes di biro.
+  const siapDiisi = jumlahAlatTes > 0;
 
   return (
     <form action={aksi} className="mt-5 space-y-4">
@@ -43,13 +44,12 @@ export function FormLaporan({
         </div>
       )}
 
-      {!siapFinal && (
+      {!siapDiisi && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800">
-          <span className="font-semibold">Belum bisa difinalkan.</span>{" "}
-          {jumlahLembar === 0
-            ? "Belum ada lembar tes. Asisten psikolog harus menambahkan lembar tes dan mengisi skor mentah terlebih dahulu."
-            : `${jumlahLembarTanpaSkor} lembar tes belum memiliki skor mentah. Lengkapi skor terlebih dahulu.`}{" "}
-          Anda masih dapat menyimpan sebagai draft.
+          <span className="font-semibold">Belum bisa diisi.</span> Asisten
+          psikolog belum mengonfirmasi pelaksanaan tes untuk klien ini.
+          Interpretasi baru dapat disusun setelah tes dilaksanakan di biro dan
+          dikonfirmasi asisten.
         </div>
       )}
 
@@ -64,6 +64,7 @@ export function FormLaporan({
           className="input"
           defaultValue={awal.ringkasan}
           placeholder="Gambaran umum hasil asesmen."
+          disabled={!siapDiisi}
         />
       </div>
 
@@ -77,7 +78,8 @@ export function FormLaporan({
           rows={6}
           className="input"
           defaultValue={awal.interpretasi}
-          placeholder="Analisis dan interpretasi berdasarkan skor mentah serta observasi."
+          placeholder="Analisis dan interpretasi berdasarkan hasil asesmen serta observasi."
+          disabled={!siapDiisi}
         />
       </div>
 
@@ -92,6 +94,7 @@ export function FormLaporan({
           className="input"
           defaultValue={awal.kesimpulan}
           placeholder="Kesimpulan akhir asesmen."
+          disabled={!siapDiisi}
         />
       </div>
 
@@ -106,6 +109,7 @@ export function FormLaporan({
           className="input"
           defaultValue={awal.rekomendasi}
           placeholder="Saran tindak lanjut untuk klien atau institusi."
+          disabled={!siapDiisi}
         />
       </div>
 
@@ -114,7 +118,7 @@ export function FormLaporan({
           type="submit"
           name="finalkan"
           value="0"
-          disabled={pending}
+          disabled={pending || !siapDiisi}
           className="tombol tombol-garis flex-1 disabled:opacity-60"
         >
           {pending ? "Menyimpan…" : "Simpan sebagai draft"}
@@ -123,11 +127,11 @@ export function FormLaporan({
           type="submit"
           name="finalkan"
           value="1"
-          disabled={pending || !siapFinal}
+          disabled={pending || !siapDiisi}
           title={
-            siapFinal
+            siapDiisi
               ? "Finalkan laporan"
-              : "Lengkapi lembar tes dan skor mentah terlebih dahulu"
+              : "Menunggu konfirmasi pelaksanaan tes dari asisten psikolog"
           }
           className="tombol tombol-utama flex-1 disabled:opacity-50"
         >
@@ -137,8 +141,9 @@ export function FormLaporan({
 
       <p className="text-[0.68rem] leading-relaxed text-muted">
         Finalisasi menandai kasus <span className="font-semibold">Selesai</span>{" "}
-        (tahap 8) dan mencatat tindakan pada log audit. Hanya Anda, psikolog
-        penanggung jawab, yang dapat membuka dan mengubah laporan ini.
+        dan otomatis membuat dokumen Word yang diunggah ke Drive Anda. Hanya
+        Anda, psikolog penanggung jawab, yang dapat membuka dan mengubah
+        laporan ini.
       </p>
     </form>
   );

@@ -1,19 +1,14 @@
 /**
  * Perhitungan biaya layanan.
  *
- * Harga diambil dari layanan sesuai metode yang dipilih:
- *   ONLINE  → `hargaOnline`
- *   OFFLINE → `hargaOffline`
- * Bila harga khusus metode belum diisi, dipakai `harga` sebagai cadangan.
+ * Seluruh layanan dilaksanakan **Tatap Muka**, jadi biaya diambil dari
+ * `hargaOffline`; `harga` (umum) dipakai sebagai cadangan bila belum diisi.
  */
 
 export type Harga = {
   harga?: unknown;
-  hargaOnline?: unknown;
   hargaOffline?: unknown;
 };
-
-export type Metode = "ONLINE" | "OFFLINE";
 
 /** Mengubah nilai Decimal/string/null dari Prisma menjadi number atau null. */
 export function keAngka(nilai: unknown): number | null {
@@ -22,15 +17,13 @@ export function keAngka(nilai: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Biaya layanan untuk metode tertentu, atau null bila belum ditetapkan. */
-export function hitungBiaya(layanan: Harga, metode: Metode): number | null {
-  const khusus = metode === "ONLINE" ? layanan.hargaOnline : layanan.hargaOffline;
-  return keAngka(khusus) ?? keAngka(layanan.harga);
+/** Biaya layanan tatap muka, atau null bila belum ditetapkan. */
+export function hitungBiaya(layanan: Harga): number | null {
+  return keAngka(layanan.hargaOffline) ?? keAngka(layanan.harga);
 }
 
-/** Ringkasan harga per metode untuk ditampilkan di kartu layanan. */
+/** Ringkasan harga layanan untuk ditampilkan di kartu layanan. */
 export function hargaPerMetode(layanan: Harga) {
-  const online = keAngka(layanan.hargaOnline) ?? keAngka(layanan.harga);
   const offline = keAngka(layanan.hargaOffline) ?? keAngka(layanan.harga);
-  return { online, offline };
+  return { offline };
 }

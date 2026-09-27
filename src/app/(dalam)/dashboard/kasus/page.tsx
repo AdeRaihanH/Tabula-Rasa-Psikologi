@@ -11,33 +11,45 @@ import {
 } from "@/components/dashboard/ui";
 import { wajibPeran } from "@/lib/auth/dal";
 import { labelStatusPendaftaran } from "@/lib/config";
+import { Paginasi } from "@/components/dashboard/Paginasi";
+import { UKURAN_HALAMAN, hitungPaginasi } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 import { formatTanggalWaktu } from "@/lib/utils";
 
-export default async function HalamanKasus() {
+export default async function HalamanKasus({
+  searchParams,
+}: PageProps<"/dashboard/kasus">) {
   const sesi = await wajibPeran("PSIKOLOG");
+  const sp = await searchParams;
+  const { hal, skip, take } = hitungPaginasi(sp?.hal);
+  const where = { psikologId: sesi.userId };
 
-  const [daftar, profil] = await Promise.all([
+  const [daftar, total, belumLaporan, draft, final, profil] = await Promise.all([
     prisma.pendaftaran.findMany({
-      where: { psikologId: sesi.userId },
+      where,
       orderBy: { updatedAt: "desc" },
+      skip,
+      take,
       include: {
         klien: { select: { nama: true } },
         layanan: { select: { nama: true } },
         laporan: { select: { status: true } },
-        lembarTes: { select: { id: true, status: true } },
         jadwal: { orderBy: { mulai: "desc" }, take: 1, select: { mulai: true } },
       },
+    }),
+    prisma.pendaftaran.count({ where }),
+    prisma.pendaftaran.count({ where: { ...where, laporan: null } }),
+    prisma.pendaftaran.count({
+      where: { ...where, laporan: { status: "DRAFT" } },
+    }),
+    prisma.pendaftaran.count({
+      where: { ...where, laporan: { status: "FINAL" } },
     }),
     prisma.profilPsikolog.findUnique({
       where: { userId: sesi.userId },
       select: { spreadsheetUrl: true, driveFolderUrl: true },
     }),
   ]);
-
-  const belumLaporan = daftar.filter((p) => !p.laporan).length;
-  const draft = daftar.filter((p) => p.laporan?.status === "DRAFT").length;
-  const final = daftar.filter((p) => p.laporan?.status === "FINAL").length;
 
   return (
     <>
@@ -118,7 +130,7 @@ export default async function HalamanKasus() {
               <Th>Klien</Th>
               <Th>Layanan</Th>
               <Th>Sesi Terakhir</Th>
-              <Th>Lembar Tes</Th>
+              <Th>Pelaksanaan Tes</Th>
               <Th>Laporan</Th>
               <Th>Status Kasus</Th>
               <Th />
@@ -140,7 +152,15 @@ export default async function HalamanKasus() {
                 <Td className="whitespace-nowrap text-xs">
                   {p.jadwal[0] ? formatTanggalWaktu(p.jadwal[0].mulai) : "—"}
                 </Td>
-                <Td className="text-xs">{p.lembarTes.length} lembar</Td>
+                <Td className="text-xs">
+                  {p.konfirmasiTesPada ? (
+                    <span className="font-semibold text-emerald-700">
+                      ✓ Terkonfirmasi
+                    </span>
+                  ) : (
+                    <span className="text-muted">Belum</span>
+                  )}
+                </Td>
                 <Td>
                   {p.laporan ? (
                     <BadgeStatus status={p.laporan.status} label={p.laporan.status} />
@@ -167,6 +187,13 @@ export default async function HalamanKasus() {
           </tbody>
         </Tabel>
       )}
+
+      <Paginasi
+        jalur="/dashboard/kasus"
+        hal={hal}
+        total={total}
+        ukuran={UKURAN_HALAMAN}
+      />
     </>
   );
 }

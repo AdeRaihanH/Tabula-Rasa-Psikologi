@@ -39,16 +39,17 @@ export async function GET(
       pendaftaranId: true,
     },
   });
-  if (!bayar?.buktiUrl) {
+  if (!bayar) {
     return NextResponse.json(
-      { pesan: "Bukti belum diunggah." },
+      { pesan: "Bukti tidak ditemukan." },
       { status: 404 },
     );
   }
 
-  // Otorisasi: staf dengan akses pendaftaran, atau klien pemilik.
+  // Otorisasi diperiksa SEBELUM mengungkap isi/keberadaan berkas:
+  // admin (Zona 1) boleh melihat semua; klien hanya miliknya sendiri.
   if (boleh(sesi.role, "pendaftaran:lihat")) {
-    // ADMIN / ASISTEN / PSIKOLOG boleh melihat (sama seperti halaman detail).
+    // ADMIN.
   } else if (sesi.role === "KLIEN") {
     const where = await filterPendaftaranKlien(sesi);
     const milik = await prisma.pendaftaran.findFirst({
@@ -60,6 +61,13 @@ export async function GET(
     }
   } else {
     return NextResponse.json({ pesan: "Tidak berhak." }, { status: 403 });
+  }
+
+  if (!bayar.buktiUrl) {
+    return NextResponse.json(
+      { pesan: "Bukti belum diunggah." },
+      { status: 404 },
+    );
   }
 
   const url = bayar.buktiUrl;

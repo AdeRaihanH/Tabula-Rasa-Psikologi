@@ -64,7 +64,6 @@ const warnaStatus: Record<string, { bg: string; fg: string }> = {
   DIBATALKAN: { bg: "#fef2f2", fg: "#b91c1c" },
   MENUNGGU: { bg: "#fffbeb", fg: "#b45309" },
   DIKERJAKAN: { bg: "#eef2ff", fg: "#4338ca" },
-  SKOR_DIISI: { bg: "#f5f3ff", fg: "#6d28d9" },
   DITOLAK: { bg: "#fef2f2", fg: "#b91c1c" },
   DRAFT: { bg: "#f8fafc", fg: "#475569" },
   FINAL: { bg: "#f0fdf4", fg: "#15803d" },

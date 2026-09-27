@@ -139,11 +139,6 @@ export async function cabutSemuaSesi(userId: string) {
   await prisma.sesiLogin.deleteMany({ where: { userId } });
 }
 
-/** Mencabut satu sesi berdasarkan ID-nya. */
-export async function cabutSesi(sid: string) {
-  await prisma.sesiLogin.deleteMany({ where: { token: sid } });
-}
-
 /**
  * Mencabut semua sesi pengguna KECUALI sesi yang sedang dipakai. Dipakai saat
  * pengguna mengganti kata sandinya sendiri: perangkat lain dipaksa masuk ulang,
@@ -160,15 +155,24 @@ export async function ambilTokenSesi() {
   return cookieStore.get(NAMA_COOKIE)?.value;
 }
 
-/** True bila sesi masih tercatat di database dan belum kedaluwarsa. */
+/**
+ * Memeriksa keberadaan sesi di database. Bila valid, mengembalikan nama akun
+ * yang **terkini** (bukan yang tersimpan di dalam token) supaya perubahan nama
+ * langsung tampil di antarmuka tanpa perlu login ulang.
+ */
 export async function sesiTercatat(sid: string, sidik: string) {
   const baris = await prisma.sesiLogin.findUnique({
     where: { token: sid },
-    select: { id: true, expiresAt: true, userAgent: true },
+    select: {
+      id: true,
+      expiresAt: true,
+      userAgent: true,
+      user: { select: { nama: true } },
+    },
   });
-  if (!baris) return false;
-  if (baris.expiresAt <= new Date()) return false;
+  if (!baris) return null;
+  if (baris.expiresAt <= new Date()) return null;
   // Ikat ke perangkat: cookie yang dipakai di peramban lain ditolak.
-  if (baris.userAgent && baris.userAgent !== sidik) return false;
-  return true;
+  if (baris.userAgent && baris.userAgent !== sidik) return null;
+  return { nama: baris.user.nama };
 }

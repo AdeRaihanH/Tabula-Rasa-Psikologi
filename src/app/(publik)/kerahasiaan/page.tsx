@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { Muncul } from "@/components/publik/gerak";
 import { hakAkses, infoZona, type Kemampuan, type Zona } from "@/lib/rbac";
 
 export const metadata: Metadata = {
@@ -32,11 +33,8 @@ const grupKemampuan: Array<{ zona: Zona; kemampuan: Array<[Kemampuan, string]> }
   {
     zona: "ZONA_2",
     kemampuan: [
-      ["lembartes:lihat", "Melihat lembar tes"],
-      ["lembartes:kelola", "Mengelola lembar tes"],
-      ["skor:lihat", "Melihat skor mentah"],
-      ["skor:kelola", "Mengisi / mengubah skor mentah"],
-      ["alattes:kelola", "Mengelola master alat tes"],
+      ["lembartes:lihat", "Melihat konfirmasi pelaksanaan tes"],
+      ["lembartes:kelola", "Mengonfirmasi pelaksanaan tes"],
     ],
   },
   {
@@ -53,24 +51,29 @@ export default function HalamanKerahasiaan() {
     <>
       <section className="border-b border-line bg-paper-2">
         <div className="wadah py-14 lg:py-16">
-          <span className="label-kecil">Sistem Kerahasiaan Data</span>
-          <h1 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight text-ink sm:text-4xl lg:text-5xl">
-            Klasifikasi data berlapis dan matriks hak akses
-          </h1>
-          <p className="mt-5 max-w-2xl text-ink-soft">
-            Data psikologi bersifat sangat pribadi. Karena itu kami membaginya
-            ke dalam tiga zona, masing-masing dengan pemegang akses yang
-            berbeda.
-          </p>
+          <Muncul className="max-w-3xl">
+            <span className="label-kecil">Sistem Kerahasiaan Data</span>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+              Klasifikasi data berlapis dan matriks hak akses
+            </h1>
+            <p className="mt-5 text-ink-soft">
+              Data psikologi bersifat sangat pribadi. Karena itu kami membaginya
+              ke dalam tiga zona, masing-masing dengan pemegang akses yang
+              berbeda.
+            </p>
+          </Muncul>
         </div>
       </section>
 
       {/* ZONA */}
       <section className="wadah py-14">
         <div className="grid gap-4 lg:grid-cols-3">
-          {(["ZONA_1", "ZONA_2", "ZONA_3"] as Zona[]).map((z) => (
-            <div key={z} className="kartu overflow-hidden">
-              <div className="h-1.5 w-full" style={{ background: infoZona[z].warna }} />
+          {(["ZONA_1", "ZONA_2", "ZONA_3"] as Zona[]).map((z, i) => (
+            <Muncul key={z} tunda={i * 110} arah="zoom" className="kartu-hidup kartu group overflow-hidden">
+              <div
+                className="h-1.5 w-full transition-all duration-300 group-hover:h-2"
+                style={{ background: infoZona[z].warna }}
+              />
               <div className="p-6">
                 <h2 className="text-lg font-bold text-ink">{infoZona[z].nama}</h2>
                 <p className="mt-1 text-xs font-semibold uppercase tracking-[0.1em] text-muted">
@@ -80,7 +83,7 @@ export default function HalamanKerahasiaan() {
                   {infoZona[z].isi}
                 </p>
               </div>
-            </div>
+            </Muncul>
           ))}
         </div>
       </section>
@@ -88,16 +91,18 @@ export default function HalamanKerahasiaan() {
       {/* MATRIKS */}
       <section className="border-y border-line bg-white py-14">
         <div className="wadah">
-          <h2 className="text-2xl font-bold tracking-tight text-ink">
-            Matriks hak akses
-          </h2>
-          <p className="mt-3 max-w-2xl text-ink-soft">
-            Tanda centang menunjukkan peran yang memiliki kewenangan tersebut.
-          </p>
+          <Muncul className="max-w-2xl">
+            <h2 className="text-2xl font-bold tracking-tight text-ink">
+              Matriks hak akses
+            </h2>
+            <p className="mt-3 text-ink-soft">
+              Tanda centang menunjukkan peran yang memiliki kewenangan tersebut.
+            </p>
+          </Muncul>
 
           <div className="mt-8 space-y-8">
-            {grupKemampuan.map((grup) => (
-              <div key={grup.zona}>
+            {grupKemampuan.map((grup, gi) => (
+              <Muncul key={grup.zona} tunda={gi * 100}>
                 <div className="flex items-center gap-2">
                   <span
                     className="h-2.5 w-2.5 rounded-full"
@@ -127,7 +132,10 @@ export default function HalamanKerahasiaan() {
                     </thead>
                     <tbody>
                       {grup.kemampuan.map(([kode, label]) => (
-                        <tr key={kode} className="border-b border-line last:border-0">
+                        <tr
+                          key={kode}
+                          className="border-b border-line transition-colors last:border-0 hover:bg-brand-50/60"
+                        >
                           <td className="py-2.5 pr-4 text-ink-soft">{label}</td>
                           {peran.map((p) => {
                             const punya = (hakAkses[kode] as readonly string[]).includes(p);
@@ -156,7 +164,7 @@ export default function HalamanKerahasiaan() {
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </Muncul>
             ))}
           </div>
         </div>
@@ -164,7 +172,7 @@ export default function HalamanKerahasiaan() {
 
       {/* CTA */}
       <section className="wadah py-14">
-        <div className="kartu flex flex-col items-center justify-between gap-5 bg-brand-800 p-8 text-white sm:flex-row">
+        <Muncul className="kartu flex flex-col items-center justify-between gap-5 bg-brand-800 p-8 text-white sm:flex-row">
           <div>
             <h2 className="text-lg font-bold">Punya pertanyaan tentang data Anda?</h2>
             <p className="mt-1.5 text-sm text-white/70">
@@ -174,7 +182,7 @@ export default function HalamanKerahasiaan() {
           <Link href="/kontak" className="tombol tombol-sand shrink-0">
             Hubungi Kami
           </Link>
-        </div>
+        </Muncul>
       </section>
     </>
   );

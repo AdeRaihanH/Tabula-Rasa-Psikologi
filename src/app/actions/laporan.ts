@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { majuOtomatis, syaratFinalkan } from "@/lib/alur-otomatis";
 import { wajibKemampuan } from "@/lib/auth/dal";
+import { arsipkanDokumenLaporan } from "@/lib/laporan-arsip";
 import { prisma } from "@/lib/prisma";
 
 export type HasilLaporan = { ok: boolean; pesan: string } | undefined;
@@ -21,12 +22,11 @@ async function catat(
 }
 
 /**
- * Menyimpan laporan Zona 3. Psikolog hanya boleh menyentuh kasus miliknya —
- * dijaga di dua lapis: peran (laporan:kelola) dan kepemilikan kasus.
+ * Isolasi: psikolog hanya boleh menyentuh kasus miliknya — dijaga di dua
+ * lapis: peran (laporan:kelola) dan kepemilikan kasus.
  *
- * Finalisasi hanya boleh dilakukan bila asesmen benar-benar sudah dikerjakan:
- * minimal ada satu lembar tes dan seluruh lembar tes memiliki skor mentah.
- * Dengan begitu status tidak bisa melompat langsung ke "Selesai".
+ * Gerbang konfirmasi: interpretasi baru boleh disusun setelah asisten
+ * psikolog mengonfirmasi bahwa klien sudah melaksanakan tes di biro.
  */
 export async function simpanLaporan(
   _sebelumnya: HasilLaporan,
@@ -55,15 +55,11 @@ export async function simpanLaporan(
     return { ok: false, pesan: "Kasus ini bukan milik Anda." };
   }
 
-  // Syarat finalisasi.
-  if (finalkan) {
-    const syarat = await syaratFinalkan(pendaftaranId);
-    if (!syarat.ok) {
-      return {
-        ok: false,
-        pesan: `Laporan belum dapat difinalkan: ${syarat.pesan}`,
-      };
-    }
+  // Isolasi + gerbang konfirmasi: psikolog hanya boleh menyusun interpretasi
+  // setelah asisten mengonfirmasi klien sudah melaksanakan tes.
+  const syarat = await syaratFinalkan(pendaftaranId);
+  if (!syarat.ok) {
+    return { ok: false, pesan: syarat.pesan };
   }
 
   const data = {
@@ -98,6 +94,19 @@ export async function simpanLaporan(
     `Laporan kasus ${pendaftaran.nomor} disimpan (Zona 3)`,
   );
 
+  let pesanDokumen = "";
+  if (finalkan) {
+    try {
+      const arsip = await arsipkanDokumenLaporan(pendaftaranId);
+      pesanDokumen = arsip.ok
+        ? " Dokumen Word laporan otomatis diunggah ke Drive Anda."
+        : ` ${arsip.pesan}`;
+    } catch {
+      pesanDokumen =
+        " Dokumen Word dibuat, namun unggah ke Drive gagal — Anda tetap dapat mengunduhnya dari halaman ini.";
+    }
+  }
+
   revalidatePath(`/dashboard/kasus/${pendaftaranId}`);
   revalidatePath("/dashboard/kasus");
   revalidatePath(`/dashboard/pendaftaran/${pendaftaranId}`);
@@ -108,7 +117,7 @@ export async function simpanLaporan(
   return {
     ok: true,
     pesan: finalkan
-      ? "Laporan difinalkan. Kasus berstatus Selesai dan siap diarsipkan."
+      ? `Laporan difinalkan. Kasus berstatus Selesai dan siap diarsipkan.${pesanDokumen}`
       : "Draft laporan tersimpan. Kasus masuk tahap Pelaporan Hasil.",
   };
 }

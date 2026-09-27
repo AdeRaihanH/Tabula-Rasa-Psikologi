@@ -1082,3 +1082,588 @@ disimpan sebagai **teks** di kolom `Pendaftaran.kebutuhan` dengan penanda
 | Perubahan metode & lokasi | tersimpan |
 
 `tsc` ✅ · `eslint` ✅ · `next build` ✅
+
+---
+
+## Revisi Kedua Belas: Tes Sepenuhnya Tatap Muka + Konfirmasi Asisten + Dokumen Word
+
+### 79. Latar Belakang
+
+Klien memastikan **semua tes dilaksanakan Tatap Muka di biro** (tidak ada
+daring), dan menegaskan bahwa **tes dikerjakan langsung di biro, bukan melalui
+web**. Alur finalnya:
+
+1. Pasien daftar akun → pilih layanan → pilih jadwal → bayar → unggah bukti.
+2. Admin memverifikasi pembayaran.
+3. Pasien **datang ke biro** sesuai jadwal dan mengerjakan tes langsung bersama
+   asisten psikolog.
+4. Asisten psikolog **hanya mengeceklis/mengonfirmasi** bahwa klien sudah
+   melaksanakan alat tes sesuai layanan — **tidak ada pengisian skor di sistem**.
+5. Psikolog penanggung jawab baru dapat menyusun interpretasi **setelah**
+   konfirmasi asisten itu ada.
+6. Interpretasi otomatis menjadi **dokumen Word** yang diunggah ke Drive
+   psikolog bersangkutan.
+
+### 80. Daring Dihapus
+
+- Enum `MetodeLayanan` kini hanya `OFFLINE` (migrasi
+  `20260927130000_offline_checklist_konversi`).
+- Kolom `Layanan.hargaOnline` dihapus (migrasi `20260927131000_hapus_harga_online`);
+  `hitungBiaya(layanan)` dan `hargaPerMetode()` menyederhana ke satu harga.
+- Bank soal daring (`soal_tes`, `jawaban_tes`, enum `JenisSoal`) dibuang.
+- UI daring dihapus: pilihan metode di formulir pendaftaran, input tautan
+  pengerjaan di halaman asesmen, dan tombol "Kerjakan Tes Sekarang" di portal
+  klien. Klien kini melihat daftar alat tes + statusnya saja.
+- Istilah **"tatap muka di biro" diseragamkan menjadi "Tatap Muka"** di seluruh
+  halaman.
+- Halaman publik (`/layanan`, `/biaya`, `/layanan/[slug]`, `/faq`, `/alur`)
+  menyebut Tatap Muka dan harga tunggal.
+
+### 81. Skoring Dihapus Total
+
+Sesuai arahan klien, seluruh fitur skoring dibuang:
+
+- Tabel `skor_mentah` dan `konversi_skor` **dihapus** (migrasi
+  `20260927150000_hapus_skoring`), termasuk modul `src/lib/skoring.ts` dan aksi
+  `simpanSkor`.
+- Kolom `lembar_tes.tautan` & `lembar_tes.instruksi` (sisa mode daring) ikut
+  dihapus.
+- Enum `StatusLembarTes` menyusut menjadi `MENUNGGU`, `DIKERJAKAN`, `SELESAI`
+  (migrasi `20260927151000_status_lembar_tes`); data lama `SKOR_DIISI`
+  dipetakan ke `SELESAI`.
+- Kemampuan RBAC `skor:lihat` dan `skor:kelola` dihapus.
+- Halaman daftar asesmen berubah dari "Lembar Tes & Skor Mentah" menjadi
+  **"Konfirmasi Pelaksanaan Tes"**.
+
+### 82. Checklist Konfirmasi Alat Tes per Layanan
+
+Model `LayananAlatTes` (`layanan_alat_tes`) memetakan layanan → alat tes yang
+wajib/opsional. Di `/dashboard/asesmen/[id]` asisten melihat **Konfirmasi
+Pelaksanaan Tes** dan menekan *Konfirmasi selesai* untuk tiap alat yang sudah
+dikerjakan klien (membuat `LembarTes` berstatus `SELESAI`). Membatalkan centang
+menghapus konfirmasi tersebut.
+
+Checklist seed: Tes IQ → IST, CFIT · Minat Bakat → RMIB, EPPS · Kesiapan
+Sekolah → DAP, BAUM, SSCT · PIO → DISC, PAPI, BEI.
+
+Ringkasan status di halaman menampilkan "Baru X dari Y alat tes dikonfirmasi";
+bila lengkap, psikolog dapat menyusun interpretasi.
+
+### 83. Gerbang Konfirmasi untuk Psikolog
+
+`cekSyaratTahap(PENGOLAHAN_DATA)` dan `syaratFinalkan()` kini hanya menuntut
+**minimal satu alat tes yang sudah dikonfirmasi asisten**. Aksi `simpanLaporan`
+memeriksa syarat ini **sebelum** menyimpan draft maupun finalisasi, sehingga
+psikolog tidak dapat mengisi interpretasi untuk klien yang belum dilayani.
+`FormLaporan` menonaktifkan seluruh isian + tombol saat konfirmasi belum ada,
+dengan pesan "Belum bisa diisi".
+
+### 84. Dokumen Word Otomatis ke Drive Psikolog
+
+- `src/lib/laporan-doc.ts` — menyusun `.docx` (paket `docx`) berisi identitas
+  klien, **tabel alat tes yang dilaksanakan**, ringkasan, interpretasi,
+  kesimpulan, rekomendasi, dan tanda tangan psikolog. Tidak ada lagi tabel skor.
+- `src/lib/laporan-arsip.ts` — `arsipkanDokumenLaporan()` dipanggil otomatis
+  saat laporan difinalkan; mengunggah dokumen ke `driveFolderId` **psikolog
+  penanggung jawab** dan mencatat `dokumenUrl/dokumenId/dokumenNama/dokumenPada`
+  pada `laporan_hasil` (migrasi `20260927140000_dokumen_laporan`).
+- Bila kredensial/folder belum siap, finalisasi tetap berhasil; dokumen tetap
+  dapat diunduh dari aplikasi.
+
+### 85. Isolasi Zona 3
+
+Rute `/dashboard/kasus/[id]/dokumen` hanya dapat diakses psikolog penanggung
+jawab. Admin, asisten, dan psikolog lain ditolak (403); percobaan psikolog lain
+dicatat sebagai `AKSES_DOKUMEN_DITOLAK`. Tombol *Buka di Drive ↗* memakai tautan
+folder pribadi psikolog yang tidak dibagikan, sehingga admin/asisten tidak dapat
+membukanya.
+
+### 86. Nomor Telepon
+
+Nomor telepon/WhatsApp biro diubah menjadi **082229145081** (WhatsApp
+`6282229145081`) di `siteConfig` dan seed `PengaturanSitus`.
+
+### 87. Hasil Uji
+
+| Uji | Hasil |
+| --- | --- |
+| HTTP: konfirmasi asisten, gerbang psikolog, dokumen Word, isolasi | **26/26 lulus** |
+
+Termasuk:
+
+- Halaman asisten **tidak** memuat input `aspek`/`skor`/`nilai`/`kategori`.
+- Sebelum konfirmasi: psikolog melihat pesan "Belum bisa diisi" dan isian
+  dinonaktifkan; setelah asisten mengonfirmasi, isian terbuka.
+- Dokumen Word tetap dibuat, memuat nama klien + alat yang dilaksanakan +
+  interpretasi, dan **tidak** memuat tabel skor mentah.
+- Unduh dokumen oleh psikolog lain → 403.
+
+`tsc` ✅ · `eslint` ✅ · `next build` ✅ (36 rute, termasuk rute
+`/dashboard/kasus/[id]/dokumen`)
+
+> **Catatan operasional:** setelah migrasi yang menghapus tabel/kolom, dev
+> server **wajib di-restart** dan cache `.next` dibersihkan. Tanpa itu Prisma
+> Client lama masih merujuk `skor_mentah` / `lembar_tes.tautan` dan halaman
+> mengembalikan 500.
+
+---
+
+## Revisi Ketiga Belas: Jadwal Pendaftaran Tersambung ke Semua Dashboard
+
+### 88. Masalah
+
+Jadwal tes yang dipilih klien saat mendaftar tidak tersambung ke dashboard
+admin, asisten, dan psikolog — ketiganya menampilkan "Belum ada jadwal" dan
+admin diminta menentukan jadwal lagi.
+
+**Akar masalah:** pemilihan tanggal/waktu di formulir pendaftaran bersifat
+**opsional**. `validasiJadwal()` mengembalikan `{ ok: true }` bila keduanya
+kosong, sehingga klien bisa mengirim pendaftaran tanpa jadwal. Akibatnya
+`pastikanJadwalOtomatis()` tidak pernah dipanggil dan tidak ada baris
+`JadwalSesi`. Ditambah lagi, beberapa pendaftaran lama punya preferensi
+tersimpan di `kebutuhan` tetapi baris jadwalnya belum pernah dibuat.
+
+### 89. Jadwal Dijadikan Wajib
+
+- `validasiJadwal()` di `src/lib/jadwal.ts` kini **menolak** bila tanggal atau
+  waktu belum dipilih ("Pilih tanggal dan waktu kedatangan Anda ke biro.").
+- Formulir pendaftaran menandai kedua kolom wajib (`required`) dan memberi
+  tanda `*` pada label.
+- Server tetap memvalidasi ulang, jadi permintaan tanpa jadwal ditolak.
+
+### 90. Jadwal Selalu Dibuat Saat Mendaftar
+
+`pastikanJadwalOtomatis(pendaftaranId, opsi?)` menerima tanggal/waktu eksplisit
+yang sudah divalidasi, sehingga pembuatan jadwal tidak lagi bergantung pada
+pembacaan ulang teks `kebutuhan`. `kirimPendaftaran` memanggilnya **tanpa
+syarat** setelah pendaftaran tersimpan, jadi jadwal pilihan klien selalu
+terbentuk dan langsung terlihat oleh admin, asisten, dan psikolog.
+
+### 91. Tampilan Admin Diperjelas
+
+Halaman detail pendaftaran (admin):
+
+- Jadwal yang ada diberi lencana **"✓ Jadwal pilihan klien — otomatis dari
+  pendaftaran"**.
+- Formulir jadwal diberi keterangan bahwa ia hanya untuk **mengubah/mengoreksi**,
+  bukan menetapkan dari nol.
+- Bila baris jadwal belum ada tetapi klien sudah memilih jadwal, muncul blok
+  peringatan berisi pilihannya dan tombol **"Buatkan dari pilihan klien"**
+  (aksi baru `buatJadwalDariPilihan`).
+
+### 92. Backfill Data Lama
+
+Pendaftaran lama yang sudah punya preferensi jadwal tetapi belum punya baris
+`JadwalSesi` dibuatkan jadwalnya. Dua pendaftaran terisi; sisa dua tidak punya
+preferensi sama sekali (data uji lama) sehingga dibiarkan untuk admin.
+
+### 93. Hasil Uji
+
+**22/22 lulus**, mencakup:
+
+- Validasi jadwal wajib (tanpa/tanggal saja/waktu saja → ditolak; lengkap →
+  diterima; tanggal lampau → ditolak).
+- Formulir `/daftar` menandai tanggal & waktu sebagai `required`.
+- Rantai pendaftaran → jadwal tercipta dan **tidak dobel**.
+- Tanggal yang sama tampil di **admin**, **asisten**, **psikolog**, dan halaman
+  Jadwal; admin tidak lagi diminta menetapkan jadwal dari nol.
+
+`tsc` ✅ · `eslint` ✅ · `next build` ✅
+
+---
+
+## Revisi Keempat Belas: Audit Keterhubungan Fitur, Role, Route, API & Database
+
+### 94. Latar Belakang
+
+Diminta memastikan seluruh fitur dan peran benar-benar terhubung, tidak ada bug,
+serta route, API, dan database saling terhubung. Dilakukan audit menyeluruh:
+inventarisasi 34 halaman + 2 rute API + 15 berkas server action + 20 model
+Prisma, lalu pengujian otomatis 3 rangkaian (RBAC/isolasi, alur end-to-end,
+integritas database).
+
+### 95. Bug yang Ditemukan & Diperbaiki
+
+**a. Kebocoran data lintas-peran (Zona 1).** `pendaftaran:lihat` dimiliki
+ADMIN, ASISTEN, dan PSIKOLOG. Akibatnya asisten dan psikolog dapat membuka
+`/dashboard/pendaftaran` dan `/dashboard/pendaftaran/[id]` — memuat data diri
+klien lengkap (nama, telepon, alamat, pembayaran) milik psikolog lain. Ini
+melanggar isolasi antar-psikolog. **Perbaikan:** `pendaftaran:lihat` kini
+**hanya ADMIN**.
+
+**b. Kebocoran Zona 2 lintas-peran.** `lembartes:lihat` dimiliki ASISTEN dan
+PSIKOLOG, sehingga psikolog dapat membuka `/dashboard/asesmen` (daftar seluruh
+kasus) dan `/dashboard/asesmen/[id]` milik psikolog lain. **Perbaikan:**
+`lembartes:lihat` dan `alattes:kelola` kini **hanya ASISTEN**. Psikolog melihat
+pelaksanaan tes lewat halaman kasusnya sendiri.
+
+**c. Admin dapat menembus Zona 2.** `alattes:kelola` memberi ADMIN akses ke
+`/dashboard/alattes`. **Perbaikan:** dihapus — konsisten dengan prinsip
+pemisahan tugas.
+
+**d. API bukti membocorkan keberadaan berkas sebelum otorisasi.**
+`/api/bukti/[id]` memeriksa `buktiUrl` lebih dulu sehingga pengguna tak berhak
+mendapat 404 (menandakan tagihan ada) alih-alih 403. **Perbaikan:** otorisasi
+diperiksa lebih dulu.
+
+**e. Server action tanpa otorisasi.** `ringkasAlur()` dan re-export
+`cekSyaratTahap` dari `src/app/actions/alur.ts` dapat dipanggil siapa pun
+(termasuk tanpa login) dan mengembalikan status kasus berdasarkan ID.
+**Perbaikan:** `ringkasAlur` dihapus; `cekSyaratTahap` diimpor langsung dari
+`src/lib/alur-otomatis.ts` oleh halaman yang membutuhkannya.
+
+**f. Sesi tidak mengikuti perubahan peran.** Saat admin mengubah peran pengguna,
+JWT lama masih membawa peran sebelumnya hingga kedaluwarsa. **Perbaikan:**
+`perbaruiPengguna` mencabut semua sesi pengguna bila perannya berubah (bukan
+hanya saat dinonaktifkan).
+
+**g. Tautan log audit untuk semua peran.** Footer dashboard menampilkan tautan
+`/dashboard/audit` kepada asisten/psikolog/klien yang tidak berhak.
+**Perbaikan:** tautan hanya tampil untuk pemilik `audit:lihat` (admin).
+
+**h. Rantai asisten → psikolog tidak tersambung.** Setelah asisten
+mengonfirmasi seluruh alat tes, status tetap `PELAKSANAAN`, sehingga notifikasi
+"kasus siap dibuatkan laporan" untuk psikolog tidak pernah muncul.
+**Perbaikan:** fungsi baru `majuJikaChecklistLengkap()` di
+`src/lib/alur-otomatis.ts`; dipanggil `toggleChecklistAlatTes` dan
+`tambahLembarTes`. Bila seluruh checklist layanan sudah dikonfirmasi, kasus
+otomatis naik ke `PENGOLAHAN_DATA` dan psikolog langsung dinotifikasi.
+
+**i. Sisa artefak skoring.** Warna badge `SKOR_DIISI` dan label nav asisten
+"Lembar Tes" masih tertinggal. **Perbaikan:** badge dihapus; label menjadi
+"Konfirmasi Tes".
+
+### 96. Matriks Hak Akses Final
+
+| Kemampuan | Admin | Asisten | Psikolog | Klien |
+| --- | :-: | :-: | :-: | :-: |
+| `klien:lihat` / `klien:kelola` | ✅ | | | |
+| `pendaftaran:lihat` / `:kelola` | ✅ | | | |
+| `pembayaran:verifikasi` | ✅ | | | |
+| `jadwal:lihat` | ✅ | ✅ | ✅ | |
+| `jadwal:kelola` | ✅ | | | |
+| `lembartes:lihat` / `:kelola` | | ✅ | | |
+| `alattes:kelola` | | ✅ | | |
+| `laporan:lihat` / `:kelola` | | | ✅ | |
+| `audit:lihat`, `pengguna:kelola`, `layanan:kelola`, `pengaturan:kelola`, `arsip:kelola`, `psikolog:kelola` | ✅ | | | |
+| `pendaftaran:milik`, `pembayaran:unggah` | | | | ✅ |
+| `profil:kelola` | ✅ | | ✅ | ✅ |
+
+`jadwal:lihat` untuk psikolog difilter ke sesi miliknya sendiri.
+
+### 97. Hasil Uji
+
+| Rangkaian | Cakupan | Hasil |
+| --- | --- | --- |
+| RBAC & isolasi (HTTP) | 12 halaman publik, matriks 4 peran × ~14 rute, isolasi antar-psikolog, API bukti, unduh dokumen | **99/99** |
+| Alur end-to-end | daftar → jadwal otomatis → tagihan → verifikasi → konfirmasi asisten → laporan → dokumen Word → arsip → jejak audit | **23/23** |
+| Integritas database | migrasi, enum, tabel/kolom lama hilang, relasi, seed, kasus macet | **22/22** |
+
+Termasuk: psikolog B tidak dapat membuka kasus/asesmen psikolog A; psikolog B
+tidak melihat klien/jadwal psikolog A; admin & asisten tidak dapat membuka
+Zona 2/3; unduh dokumen hanya oleh psikolog pemilik (lain → 403); kata sandi
+demo terverifikasi bcrypt.
+
+`tsc` ✅ · `eslint` ✅ · `next build` ✅ · 13 migrasi terpasang, tidak ada yang
+menggantung.
+
+> **Catatan:** master alat tes (`/dashboard/alattes`) dan daftar checklist
+> layanan (`LayananAlatTes`) masih bersifat baca-saja di UI — keduanya diisi
+> lewat seed. Bila biro ingin mengubahnya sendiri, perlu ditambahkan form
+> pengelolaan (belum termasuk lingkup audit ini).
+
+---
+
+## Revisi Kelima Belas: Penyederhanaan Peran Asisten & Pembersihan Kode
+
+### 98. Asisten Benar-benar Hanya Konfirmasi
+
+Master Alat Tes dihapus dari peran asisten:
+
+- Halaman `/dashboard/alattes` **dihapus**.
+- Kemampuan `alattes:kelola` **dihapus** dari `src/lib/rbac.ts`.
+- Menu "Master Alat Tes" dihapus dari navigasi asisten.
+- Baris `alattes:kelola` dihapus dari matriks `/kerahasiaan`.
+
+Navigasi asisten kini tinggal: **Konfirmasi Tes · Jadwal Sesi · Profil Saya**.
+
+### 99. Alur Baku 5 Tahap Ditegakkan
+
+Teks alur diselaraskan persis dengan alur baku klien (tanpa tahap skrining):
+
+| # | Judul | Isi |
+| --- | --- | --- |
+| 01 | Pendaftaran & pembayaran | Isi formulir, pilih jadwal, lalu unggah bukti pembayaran. |
+| 02 | Verifikasi pembayaran | Admin memeriksa bukti dan mengonfirmasi jadwal tes Anda. |
+| 03 | Pelaksanaan tes | Datang ke biro sesuai jadwal; asisten mendampingi tes Anda secara Tatap Muka. |
+| 04 | Pelaporan hasil | Psikolog menyusun laporan hasil asesmen Anda. |
+| 05 | Selesai & umpan balik | Terima laporan pada sesi umpan balik bersama psikolog. |
+
+Yang dibersihkan agar konsisten:
+
+- Halaman detail layanan (`/layanan/[slug]`) memakai `alurLayanan` yang sama
+  (sebelumnya menulis 6 langkah sendiri dengan "skrining").
+- Blok "proses" di `/layanan` diselaraskan dengan 5 tahap.
+- Teks "skrining kebutuhan" dihapus dari formulir pendaftaran, notifikasi
+  admin, keterangan halaman pendaftaran, dan notifikasi.
+- Filter status di `/dashboard/pendaftaran` tidak lagi menampilkan tahap lama
+  (`BARU`, `SKRINING`, `TERJADWAL`) — hanya 5 tahap + Dibatalkan.
+- Label status lama dihapus dari `labelStatusPendaftaran`.
+- Data lama dinormalkan di database: 9 baris `BARU` + 1 baris `SKRINING` →
+  `MENUNGGU_PEMBAYARAN` (tidak ada lagi status di luar alur 5 tahap).
+
+### 100. Dead Code Dihapus
+
+Fungsi yang diekspor tetapi tidak pernah dirujuk:
+
+| Berkas | Yang dihapus |
+| --- | --- |
+| `src/app/actions/admin.ts` | `catatPembayaran`, `ubahStatusJadwal` |
+| `src/app/actions/akun.ts` | `pastikanMilikKlien` (+ impor `boleh`) |
+| `src/app/actions/alur.ts` | `ringkasAlur`, re-export `cekSyaratTahap` |
+| `src/lib/alur.ts` | `sudahMencapai` |
+| `src/lib/auth/dal.ts` | `filterKasusPsikolog`, `milikPsikolog`, `milikKlien` |
+| `src/lib/auth/session.ts` | `cabutSesi` |
+| `src/lib/gdrive.ts` | `modeGoogle` |
+| `src/lib/gsheets.ts` | `sheetsAktif` (+ impor `driveAktif`) |
+| `src/lib/keamanan/rate-limit.ts` | `hapusBatas` |
+| `src/lib/notifikasi.ts` | `jumlahPenting`, `tahapMenunggu` (+ impor `nomorTahap`) |
+| `src/lib/rbac.ts` | `zonaUntuk`, `peranInternal` |
+| `src/components/dashboard/ui.tsx` | warna badge `SKOR_DIISI` |
+
+### 101. Berkas & Aset Tidak Terpakai Dihapus
+
+- **Aset publik** (8 berkas, tidak dirujuk di mana pun): `file.svg`,
+  `globe.svg`, `next.svg`, `vercel.svg`, `window.svg` (boilerplate Next.js),
+  serta `logo-icon.png`, `logo-tabula-rasa.jpg`, `logo-tabula-rasa.png`
+  (varian logo yang tidak dipakai). Hanya `logo-tabula-rasa 2.png` yang dipakai.
+- **Skrip sekali jalan** dihapus (`cek-migrasi.ts`, `cek-skema-soal.ts`,
+  `cek-jadwal.ts`, `backfill-jadwal.ts`, `normalisasi-status.ts`, dan skrip uji
+  sementara). Yang tersisa hanya `scripts/oauth-consent.ts` (alat setup
+  permanen).
+- **Dependensi** `@types/bcryptjs@2.4.6` dihapus — `bcryptjs@3` sudah membawa
+  tipe bawaannya sendiri.
+
+### 102. Optimasi Gambar Psikolog
+
+Foto profil psikolog berukuran sangat besar (satu foto 6000×4000 px, **4 MB**).
+Seluruh foto di `public/psikolog/` dikompresi ulang dengan `sharp` (maks 800 px,
+kualitas 85, mozjpeg) — aman karena hanya ditampilkan sebagai avatar 128 px
+lewat `next/image`:
+
+| Berkas | Sebelum | Sesudah |
+| --- | --- | --- |
+| `anugrah-mujaddidah-kadim.jpeg` | 4032 KB | 24 KB |
+| `anissa-salsabila.jpeg` | 697 KB | 61 KB |
+| `nadia-rafa-aziza.jpeg` | 188 KB | 85 KB |
+| `amanda-fadhia-feriqhalisyah.jpeg` | 91 KB | 39 KB |
+| `aprillia-anggorowati.jpeg` | 79 KB | 52 KB |
+
+Total `public/` turun dari **±5,2 MB → 353 KB** (±93% lebih ringan).
+
+### 103. Hasil Verifikasi
+
+- `tsc` ✅ · `eslint` ✅ · `next build` ✅
+- Halaman publik: `/`, `/layanan`, `/layanan/tes-iq`, `/biaya`, `/tim`, `/alur`,
+  `/kerahasiaan`, `/kontak`, `/faq`, `/cek-status`, `/daftar-akun`, `/masuk` →
+  semua **200**; `/dashboard` tanpa login → **307** ke `/masuk`.
+- `/alur` menampilkan tepat **5 langkah** dengan judul & isi sesuai alur baku;
+  kata "skrining" tidak lagi muncul di halaman publik.
+- Foto psikolog tetap tersaji (HTTP 200).
+
+> **Catatan:** `catatPembayaran` (admin mencatat tagihan manual) ikut terhapus
+> karena memang tidak pernah terhubung ke UI — tagihan selalu terbit otomatis
+> saat pendaftaran. Bila biro perlu menambah tagihan manual (mis. layanan PIO
+> yang harganya lewat proposal), fungsi ini perlu dibuat ulang beserta
+> formulirnya di halaman detail pendaftaran.
+
+---
+
+## Revisi Keenam Belas: Pengingat Tes Mendekati Hari/Jam di Dashboard Klien
+
+### 104. Latar Belakang
+
+Dari kebutuhan awal klien, klien harus mendapat **notifikasi reminder saat
+sudah mendekati hari atau jam** pada layanan yang dipilih (tes offline di
+biro). Sebelumnya `notifikasiKlien` hanya menampilkan hitungan "sesi akan
+datang" (`mulai >= sekarang`) tanpa konteks waktu. Fitur reminder belum ada.
+
+### 105. Implementasi
+
+- Helper waktu baru di `src/lib/jadwal.ts`:
+  - `jamWIB(tanggal)` — jam "HH.mm" menurut WIB.
+  - `tanggalWIB(tanggal)` — tanggal "YYYY-MM-DD" menurut WIB.
+  - `labelHariWIB(tanggal, sekarang)` — "hari ini" / "besok" / "lusa" / tanggal
+    panjang bahasa Indonesia.
+- `notifikasiKlien()` di `src/lib/notifikasi.ts` kini mengambil sesi `TERJADWAL`
+  yang jatuh dalam **24 jam ke depan** (`mulai` antara sekarang dan +24 jam) dan
+  membuat satu pemberitahuan per sesi:
+
+  - Judul: `Pengingat: tes <hari> pukul <HH.mm> WIB`.
+  - Isi: menyebut nama layanan + nomor pendaftaran + ajakan datang tepat waktu.
+  - Tautan langsung ke `/dashboard/riwayat/[id]`.
+  - Jenis `peringatan` (memunculkan bulatan merah pada lonceng).
+
+- Hitungan "sesi akan datang" (jenis `info`) kini hanya menghitung sesi yang
+  jatuh **lebih dari 24 jam** dari sekarang, sehingga tidak tumpang-tindih
+  dengan pengingat.
+
+Tidak ada perubahan skema database — reminder dihitung langsung dari
+`JadwalSesi`, konsisten dengan prinsip notifikasi "dihitung dari kondisi data
+terkini" (tanpa tabel penandaan baca).
+
+### 106. Verifikasi
+
+`tsc` ✅ · `eslint` ✅ · `next build` ✅ (35 rute)
+
+> **Catatan operasional:** build sempat gagal karena dev server (`npm run dev`)
+> masih berjalan dan mengunci folder `.next/dev`, lalu menghasilkan berkas tipe
+> `routes.d.ts` yang rusak. Solusinya sama seperti §60: hentikan dev server →
+> hapus `.next` → build ulang.
+
+---
+
+## Revisi Ketujuh Belas: Konfirmasi Tes Menjadi Satu Tombol ACC
+
+### 107. Latar Belakang
+
+Sebelumnya halaman asisten masih menampilkan **checklist per alat tes**
+(IST, CFIT, dst.) dengan tombol *Konfirmasi selesai* / *Batal centang* per item,
+serta ringkasan "Konfirmasi Tes 2/2". Klien menegaskan asisten **tidak perlu
+menjelaskan tes apanya** — cukup **meng-ACC** bahwa klien sudah melaksanakan
+tes secara offline di biro.
+
+### 108. Satu Tindakan Tunggal
+
+Konfirmasi tidak lagi per alat tes, melainkan satu tindakan pada pendaftaran:
+
+- Kolom baru `Pendaftaran.konfirmasiTesPada` + `konfirmasiTesOlehId`
+  (migrasi `20260927160000_konfirmasi_tes_tunggal`).
+- Aksi baru `konfirmasiPelaksanaanTes()` di `src/app/actions/asesmen.ts`:
+  satu tombol untuk mengonfirmasi (dan satu tombol untuk membatalkan).
+  Sekali konfirmasi, kasus langsung naik ke tahap **Pelaporan Hasil**
+  (`PENGOLAHAN_DATA`) sehingga psikolog menerima notifikasi.
+- Halaman `/dashboard/asesmen/[id]` kini menampilkan:
+  - daftar alat tes layanan **hanya sebagai keterangan** (tanpa centang),
+  - status konfirmasi + nama asisten + waktu konfirmasi,
+  - **satu tombol** "Konfirmasi klien sudah melaksanakan tes".
+  Formulir "tambah alat tes lain" dan "ubah status lembar" dihapus.
+- `PanelTahap` (yang punya tombol "Selesaikan tahap ini") diganti `AlurStatus`
+  baca-saja di halaman asisten — agar asisten tidak punya aksi tahap lain.
+- Daftar `/dashboard/asesmen` menampilkan kolom **Konfirmasi** (✓ Sudah /
+  Belum) — bukan lagi hitungan lembar tes.
+
+### 109. Tabel `lembar_tes` Dihapus
+
+Karena pencatatan per alat tes tidak lagi dipakai, seluruh jejaknya dibuang
+(migrasi `20260927161000_hapus_lembar_tes`):
+
+- Tabel `lembar_tes` + enum `StatusLembarTes` dihapus dari database.
+- Model `LembarTes` dan relasinya dihapus dari `prisma/schema.prisma`.
+- Aksi `toggleChecklistAlatTes`, `tambahLembarTes`, `ubahStatusLembarTes`
+  dihapus; fungsi `majuJikaChecklistLengkap()` dihapus (tidak diperlukan lagi).
+- Gerbang tahap `PENGOLAHAN_DATA` dan `syaratFinalkan()` kini memeriksa
+  `konfirmasiTesPada` (bukan jumlah lembar tes).
+- Dokumen Word memuat alat tes dari **checklist layanan** (`LayananAlatTes`),
+  bukan dari lembar tes.
+- Halaman kasus psikolog, portal klien, dashboard ringkasan (kartu Zona 2),
+  dan daftar kasus psikolog disesuaikan ke status konfirmasi.
+- Backfill migrasi: pendaftaran yang sudah punya lembar tes dianggap sudah
+  dikonfirmasi (`konfirmasiTesPada` diisi dari `lembar_tes`).
+
+### 110. Hasil Verifikasi
+
+| Rangkaian | Cakupan | Hasil |
+| --- | --- | --- |
+| Konfirmasi tunggal | halaman asisten (satu tombol, tanpa centang per alat, tanpa aksi tahap), daftar asesmen, gerbang psikolog, konfirmasi → terbuka, portal klien, tabel lama hilang | **23/23** |
+| Regresi RBAC & isolasi | 12 halaman publik + matriks 4 peran × ~14 rute + isolasi antar-psikolog + unduh dokumen | **72/72** |
+
+`tsc` ✅ · `eslint` ✅ · `next build` ✅ · 15 migrasi terpasang.
+
+> **Catatan operasional penting:** jangan menjalankan `npm run build` saat dev
+> server aktif — build menimpa `.next` dan membuat **semua rute dev
+> mengembalikan 404** (sempat terjadi saat verifikasi). Urutannya: hentikan dev
+> server → build → jalankan dev lagi.
+
+---
+
+## Revisi Kedelapan Belas: Template Word Laporan dengan Logo & Data Diri Klien
+
+### 111. Latar Belakang
+
+Klien meminta dokumen Word hasil interpretasi dibuat **lebih rapi**, memuat
+**logo Tabula Rasa** dan **data diri klien** yang lengkap, bukan sekadar tabel
+identitas singkat.
+
+### 112. Perubahan `src/lib/laporan-doc.ts`
+
+Template dirombak dengan tetap memakai paket `docx`:
+
+- **Logo biro** disematkan di kop dokumen (`logo-tabula-rasa 2.png` dari
+  `public/`, dibaca lewat `fs` pada saat pembuatan dokumen). Logo asli
+  389×512 px ditampilkan setinggi 128 px. Bila berkas logo tidak ditemukan,
+  dokumen tetap dibuat tanpa gambar (graceful degradation).
+- **Kop dokumen**: logo (rata tengah) → nama biro (terracotta, besar) → judul
+  "LAPORAN HASIL ASESMEN PSIKOLOGI" → nomor kasus.
+- **Data diri klien** diperluas menjadi 9 field, disusun dua pasang per baris
+  agar ringkas: Nama Klien, Tanggal Lahir, Jenis Kelamin, Email, Telepon/WA,
+  Institusi/Asal, Layanan, Psikolog, Tanggal Pemeriksaan. Kolom label diberi
+  latar krem (`#F4ECE0`) sesuai palet earth tone.
+- **Tabel alat tes** diberi baris judul dengan latar terracotta `#945034` dan
+  teks putih.
+- Konsistensi warna dengan situs (terracotta `#945034`, `#42231A`, krem).
+
+`src/lib/laporan-arsip.ts` ikut diperluas: `bangunDataDokumen()` kini memilih
+`email`, `telepon`, `institusi`, dan `alamat` dari `Klien` sehingga seluruh
+data diri masuk ke dokumen.
+
+### 113. Verifikasi
+
+`tsc` ✅ · `eslint` ✅ · uji pembuatan buffer (dokumen tersusun, logo tersemat
+sebagai `word/media/*.png` di dalam `.docx`).
+
+---
+
+## Revisi Kesembilan Belas: Paginasi Tabel Berdata Banyak
+
+### 114. Latar Belakang
+
+Beberapa tabel dashboard menampilkan seluruh baris sekaligus (`take: 100` /
+`take: 200` / tanpa batas), sehingga lambat dan sulit dipindai begitu data
+bertambah. Ditambahkan **paginasi** agar tiap halaman menampilkan maksimal 20
+baris.
+
+### 115. Implementasi
+
+- `src/lib/pagination.ts` — helper murni: `UKURAN_HALAMAN` (20),
+  `halamanDari()` (baca `?hal=` dengan aman), `hitungPaginasi()` (menghasilkan
+  `hal`/`skip`/`take`), `jumlahHalaman()`.
+- `src/components/dashboard/Paginasi.tsx` — komponen navigasi berbasis tautan
+  (`?hal=N`), menampilkan "Menampilkan X–Y dari Z data", tombol Sebelumnya /
+  Berikutnya, dan deret nomor halaman (dengan elipsis). Parameter query lain
+  (mis. filter status) dipertahankan; mendukung `namaParam` untuk halaman yang
+  punya dua paginasi sekaligus.
+
+Diterapkan pada halaman daftar:
+
+| Halaman | Perlakuan |
+| --- | --- |
+| `/dashboard/pendaftaran` | paginasi + filter status dipertahankan; total dihitung `count()` |
+| `/dashboard/asesmen` | paginasi; total dihitung `count()` |
+| `/dashboard/klien` | paginasi; total dihitung `count()` |
+| `/dashboard/kasus` | paginasi + statistik (belum laporan/draft/final) dipindah ke `count()` agar tetap akurat lintas halaman |
+| `/dashboard/riwayat` (klien) | paginasi + hitungan "perlu bayar" dipindah ke `count()` |
+| `/dashboard/jadwal` | dua paginasi terpisah: "Jadwal mendatang" (`hal`) dan "Riwayat sesi" (`halLalu`) |
+| `/dashboard/arsip` | dua paginasi terpisah: "Siap diarsipkan" (`hal`) dan "Arsip tersimpan" (`halArsip`); judul bagian memakai total |
+| `/dashboard/audit` | paginasi (sebelumnya `take: 200`) |
+| `/dashboard/pengguna` | paginasi |
+
+### 116. Hasil Verifikasi
+
+`tsc` ✅ · `eslint` ✅ · `next build` ✅ · uji HTTP: 11 halaman admin + asisten +
+psikolog + klien semuanya **200**; `/dashboard/audit` menampilkan "Menampilkan
+1–20 dari 170 data" + tombol "Berikutnya"; `?hal=999` (di luar rentang) tetap
+200 tanpa galat.
+
+---
+

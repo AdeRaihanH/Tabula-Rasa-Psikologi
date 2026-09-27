@@ -3,10 +3,15 @@ import type { Role } from "@/lib/rbac";
 /**
  * Alur layanan 5 tahap (DIBATALKAN di luar alur).
  *
- * Disederhanakan dari 8 tahap: skrining dilebur ke tahap 1 (tagihan otomatis
- * terbit saat daftar), penjadwalan otomatis mengikuti pilihan pendaftar
- * sehingga tidak menjadi tahap tersendiri, dan pengolahan data + pelaporan
- * digabung menjadi "Pelaporan Hasil".
+ * Alur baku yang berlaku:
+ *   1. Pendaftaran & Pembayaran
+ *   2. Verifikasi Pembayaran
+ *   3. Pelaksanaan Tes (Tatap Muka di biro)
+ *   4. Pelaporan Hasil
+ *   5. Selesai & Umpan Balik
+ *
+ * Skrining dan penjadwalan bukan tahap tersendiri: tagihan terbit otomatis saat
+ * mendaftar, dan jadwal dibuat otomatis dari pilihan pendaftar.
  */
 export const statusAlur = [
   "MENUNGGU_PEMBAYARAN",
@@ -32,7 +37,7 @@ export const TAHAP: Tahap[] = [
     kode: "MENUNGGU_PEMBAYARAN",
     nomor: 1,
     judul: "Pendaftaran & Pembayaran",
-    isi: "Daftar layanan, pilih jadwal, lalu unggah bukti pembayaran.",
+    isi: "Isi formulir, pilih jadwal, lalu unggah bukti pembayaran.",
     aktor: "Klien",
     peran: ["ADMIN"],
   },
@@ -40,7 +45,7 @@ export const TAHAP: Tahap[] = [
     kode: "TERVERIFIKASI",
     nomor: 2,
     judul: "Verifikasi Pembayaran",
-    isi: "Admin memeriksa bukti pembayaran dan mengonfirmasi jadwal tes Anda.",
+    isi: "Admin memeriksa bukti dan mengonfirmasi jadwal tes Anda.",
     aktor: "Admin",
     peran: ["ADMIN"],
   },
@@ -48,7 +53,7 @@ export const TAHAP: Tahap[] = [
     kode: "PELAKSANAAN",
     nomor: 3,
     judul: "Pelaksanaan Tes",
-    isi: "Kerjakan tes melalui tautan dari asisten, sesuai jadwal Anda.",
+    isi: "Datang ke biro sesuai jadwal; asisten mendampingi tes Anda secara Tatap Muka.",
     aktor: "Klien & Asisten",
     peran: ["ASISTEN"],
   },
@@ -56,15 +61,15 @@ export const TAHAP: Tahap[] = [
     kode: "PENGOLAHAN_DATA",
     nomor: 4,
     judul: "Pelaporan Hasil",
-    isi: "Tes selesai dikerjakan. Psikolog menyusun laporan hasil Anda.",
+    isi: "Psikolog menyusun laporan hasil asesmen Anda.",
     aktor: "Psikolog",
     peran: ["ASISTEN", "PSIKOLOG"],
   },
   {
     kode: "SELESAI",
     nomor: 5,
-    judul: "Selesai",
-    isi: "Laporan diserahkan pada sesi umpan balik bersama psikolog.",
+    judul: "Selesai & Umpan Balik",
+    isi: "Terima laporan pada sesi umpan balik bersama psikolog.",
     aktor: "Psikolog",
     peran: ["PSIKOLOG"],
   },
@@ -110,11 +115,4 @@ export function tahapSebelumnya(status: string): Tahap | null {
   const n = nomorTahap(status);
   if (n <= 1) return null;
   return tahapKe(n - 1) ?? null;
-}
-
-/** Apakah status berada pada atau setelah tahap tertentu. */
-export function sudahMencapai(status: string, target: StatusAlur): boolean {
-  const a = nomorTahap(status);
-  const b = nomorTahap(target);
-  return a > 0 && b > 0 && a >= b;
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { Muncul } from "@/components/publik/gerak";
 import { ambilLayanan } from "@/lib/data-publik";
 import {
   anchorKategori,
@@ -34,23 +35,31 @@ export default async function HalamanBiaya() {
     <>
       <section className="border-b border-line bg-paper-2">
         <div className="wadah py-14">
-          <span className="label-kecil">Biaya</span>
-          <h1 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight text-ink sm:text-4xl lg:text-5xl">
-            Tarif yang transparan
-          </h1>
-          <p className="mt-5 max-w-2xl text-ink-soft">
-            Biaya bergantung pada jenis layanan, durasi, dan metode pelaksanaan.
-            Untuk program korporasi, rincian disusun dalam proposal.
-          </p>
+          <Muncul className="max-w-3xl">
+            <span className="label-kecil">Biaya</span>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+              Tarif yang transparan
+            </h1>
+            <p className="mt-5 text-ink-soft">
+              Biaya bergantung pada jenis layanan, durasi, dan metode pelaksanaan.
+              Untuk program korporasi, rincian disusun dalam proposal.
+            </p>
+          </Muncul>
         </div>
       </section>
 
       <div className="wadah space-y-12 py-14">
-        {kategoriUrut.map((kat) => {
+        {kategoriUrut.map((kat, ki) => {
           const item = layanan.filter((l) => l.kategori === kat);
           if (item.length === 0) return null;
           return (
-            <section key={kat} id={anchorKategori[kat]} className="scroll-mt-24">
+            <Muncul
+              key={kat}
+              sebagai="section"
+              id={anchorKategori[kat]}
+              tunda={ki * 100}
+              className="scroll-mt-24"
+            >
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-bold text-ink sm:text-2xl">
@@ -90,11 +99,11 @@ export default async function HalamanBiaya() {
                     {item.map((l) => {
                       const harga = hargaPerMetode(l);
                       return (
-                      <tr key={l.id} className="hover:bg-paper-2/40">
+                      <tr key={l.id} className="transition-colors hover:bg-paper-2/40">
                         <td className="border-b border-line px-4 py-3">
                           <Link
                             href={`/layanan/${l.slug}`}
-                            className="font-medium text-ink hover:text-brand-700"
+                            className="font-medium text-ink transition-colors hover:text-brand-700"
                           >
                             {l.nama}
                           </Link>
@@ -103,28 +112,13 @@ export default async function HalamanBiaya() {
                           {l.durasiMenit ? `${l.durasiMenit} menit` : "Menyesuaikan"}
                         </td>
                         <td className="border-b border-line px-4 py-3 text-xs text-ink-soft">
-                          {l.metode
-                            .map((m) => (m === "ONLINE" ? "Daring" : "Tatap muka"))
-                            .join(", ")}
+                          Tatap Muka
                         </td>
                         <td className="border-b border-line px-4 py-3 text-right font-semibold text-ink">
                           <div className="flex flex-col items-end gap-1 text-[0.7rem]">
-                            {l.metode.includes("ONLINE") && (
-                              <span className="text-muted">
-                                Daring:{" "}
-                                <span className="font-semibold text-brand-700">
-                                  {harga.online ? formatRupiah(harga.online) : "Hubungi kami"}
-                                </span>
-                              </span>
-                            )}
-                            {l.metode.includes("OFFLINE") && (
-                              <span className="text-muted">
-                                Tatap muka:{" "}
-                                <span className="font-semibold text-brand-700">
-                                  {harga.offline ? formatRupiah(harga.offline) : "Hubungi kami"}
-                                </span>
-                              </span>
-                            )}
+                            <span className="font-semibold text-brand-700">
+                              {harga.offline ? formatRupiah(harga.offline) : "Hubungi kami"}
+                            </span>
                           </div>
                         </td>
                       </tr>
@@ -133,7 +127,7 @@ export default async function HalamanBiaya() {
                   </tbody>
                 </table>
               </div>
-            </section>
+            </Muncul>
           );
         })}
 
@@ -143,7 +137,7 @@ export default async function HalamanBiaya() {
           </div>
         )}
 
-        <section className="kartu bg-paper-2 p-6">
+        <Muncul sebagai="section" className="kartu bg-paper-2 p-6">
           <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-muted">
             Catatan
           </h2>
@@ -155,9 +149,14 @@ export default async function HalamanBiaya() {
               </li>
             ))}
           </ul>
-        </section>
+        </Muncul>
 
-        <div className="kartu flex flex-col items-center justify-between gap-5 bg-brand-600 p-8 text-white sm:flex-row">
+        <Muncul className="kartu gradien-gerak flex flex-col items-center justify-between gap-5 p-8 text-white sm:flex-row"
+          style={{
+            backgroundImage:
+              "linear-gradient(120deg, var(--color-brand-700), var(--color-brand-500), var(--color-brand-800))",
+          }}
+        >
           <div>
             <h2 className="text-lg font-bold">Butuh penawaran untuk institusi?</h2>
             <p className="mt-1.5 text-sm text-white/75">
@@ -172,7 +171,7 @@ export default async function HalamanBiaya() {
               Daftar
             </Link>
           </div>
-        </div>
+        </Muncul>
       </div>
     </>
   );

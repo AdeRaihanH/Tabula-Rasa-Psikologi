@@ -6,39 +6,82 @@ import {
   Td,
   Th,
 } from "@/components/dashboard/ui";
+import { Paginasi } from "@/components/dashboard/Paginasi";
 import { wajibKemampuan } from "@/lib/auth/dal";
 import { labelStatusPendaftaran } from "@/lib/config";
+import { UKURAN_HALAMAN, hitungPaginasi } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 import { infoZona } from "@/lib/rbac";
 import { formatTanggalWaktu } from "@/lib/utils";
 
-export default async function HalamanJadwal() {
+export default async function HalamanJadwal({
+  searchParams,
+}: PageProps<"/dashboard/jadwal">) {
   const sesi = await wajibKemampuan("jadwal:lihat");
+  const sp = await searchParams;
 
-  const daftar = await prisma.jadwalSesi.findMany({
-    where: sesi.role === "PSIKOLOG" ? { psikologId: sesi.userId } : undefined,
-    orderBy: { mulai: "asc" },
-    take: 100,
-    include: {
-      psikolog: { select: { nama: true } },
-      pendaftaran: {
-        select: {
-          nomor: true,
-          status: true,
-          metode: true,
-          klien: { select: { nama: true } },
-          layanan: { select: { nama: true } },
-        },
+  // Dua bagian dipaginasi terpisah agar halaman pertama tetap menampilkan
+  // agenda yang relevan (sesi mendatang terdekat, bukan sesi lampau).
+  const halMendatang = hitungPaginasi(sp?.hal);
+  const halLampau = hitungPaginasi(sp?.halLalu);
+
+  const dasar =
+    sesi.role === "PSIKOLOG" ? { psikologId: sesi.userId } : {};
+  const sekarang = new Date();
+  const whereMendatang = { ...dasar, mulai: { gte: sekarang } };
+  const whereLampau = { ...dasar, mulai: { lt: sekarang } };
+
+  const sertakan = {
+    psikolog: { select: { nama: true } },
+    pendaftaran: {
+      select: {
+        nomor: true,
+        status: true,
+        metode: true,
+        klien: { select: { nama: true } },
+        layanan: { select: { nama: true } },
       },
     },
-  });
+  } as const;
 
-  const mendatang = daftar.filter((j) => j.mulai >= new Date());
-  const lampau = daftar.filter((j) => j.mulai < new Date());
+  const [mendatang, totalMendatang, lampau, totalLampau] = await Promise.all([
+    prisma.jadwalSesi.findMany({
+      where: whereMendatang,
+      orderBy: { mulai: "asc" },
+      skip: halMendatang.skip,
+      take: halMendatang.take,
+      include: sertakan,
+    }),
+    prisma.jadwalSesi.count({ where: whereMendatang }),
+    prisma.jadwalSesi.findMany({
+      where: whereLampau,
+      orderBy: { mulai: "desc" },
+      skip: halLampau.skip,
+      take: halLampau.take,
+      include: sertakan,
+    }),
+    prisma.jadwalSesi.count({ where: whereLampau }),
+  ]);
 
   const bagian = [
-    { judul: "Jadwal mendatang", data: mendatang },
-    { judul: "Riwayat sesi", data: lampau.reverse() },
+    {
+      judul: "Jadwal mendatang",
+      data: mendatang,
+      total: totalMendatang,
+      hal: halMendatang.hal,
+      jalur: "/dashboard/jadwal",
+      param: "hal",
+      lain: { halLalu: halLampau.hal > 1 ? String(halLampau.hal) : undefined },
+    },
+    {
+      judul: "Riwayat sesi",
+      data: lampau,
+      total: totalLampau,
+      hal: halLampau.hal,
+      jalur: "/dashboard/jadwal",
+      param: "halLalu",
+      lain: { hal: halMendatang.hal > 1 ? String(halMendatang.hal) : undefined },
+    },
   ];
 
   return (
@@ -90,7 +133,7 @@ export default async function HalamanJadwal() {
                       </Td>
                       <Td className="text-xs">{j.psikolog.nama}</Td>
                       <Td className="text-xs">
-                        {j.metode === "ONLINE" ? "Daring" : "Tatap muka"}
+                        Tatap Muka
                         {j.lokasi ? <span className="block text-muted">{j.lokasi}</span> : null}
                       </Td>
                       <Td>
@@ -107,6 +150,15 @@ export default async function HalamanJadwal() {
                 </tbody>
               </Tabel>
             )}
+
+            <Paginasi
+              jalur={b.jalur}
+              hal={b.hal}
+              total={b.total}
+              ukuran={UKURAN_HALAMAN}
+              cari={{ ...b.lain, [b.param]: undefined }}
+              namaParam={b.param}
+            />
           </section>
         ))}
       </div>

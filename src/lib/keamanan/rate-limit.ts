@@ -72,11 +72,6 @@ export function cekBatas(
   return { ok: true, sisa: batas - catatan.jumlah, cobaDalamDetik: 0 };
 }
 
-/** Menghapus hitungan (mis. setelah login berhasil). */
-export function hapusBatas(kunci: string) {
-  peta.delete(kunci);
-}
-
 /** Pesan siap pakai saat sebuah aksi dibatasi. */
 export function pesanTerlaluSering(cobaDalamDetik: number) {
   const menit = Math.max(1, Math.ceil(cobaDalamDetik / 60));

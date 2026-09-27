@@ -8,6 +8,7 @@ import { wajibMasuk } from "@/lib/auth/dal";
 import { labelRole } from "@/lib/config";
 import { navDashboard } from "@/lib/nav-dashboard";
 import { ambilNotifikasi } from "@/lib/notifikasi";
+import { boleh } from "@/lib/rbac";
 import { inisial } from "@/lib/utils";
 
 export default async function LayoutDashboard({
@@ -60,11 +61,18 @@ export default async function LayoutDashboard({
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</main>
 
         <footer className="border-t border-line px-8 py-4 text-xs text-muted">
-          Data klien dilindungi. Setiap akses terhadap data sensitif dicatat pada{" "}
-          <Link href="/dashboard/audit" className="font-medium text-brand-700 hover:underline">
-            log audit
-          </Link>
-          .
+          Data klien dilindungi.{" "}
+          {boleh(sesi.role, "audit:lihat") ? (
+            <>
+              Setiap akses terhadap data sensitif dicatat pada{" "}
+              <Link href="/dashboard/audit" className="font-medium text-brand-700 hover:underline">
+                log audit
+              </Link>
+              .
+            </>
+          ) : (
+            "Setiap akses terhadap data sensitif dicatat pada log audit."
+          )}
         </footer>
       </div>
     </div>

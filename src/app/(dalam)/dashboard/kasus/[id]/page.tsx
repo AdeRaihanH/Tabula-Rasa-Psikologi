@@ -23,16 +23,18 @@ export default async function DetailKasus({
     where: { id },
     include: {
       klien: { select: { nama: true, tanggalLahir: true, jenisKelamin: true } },
-      layanan: { select: { nama: true, kategori: true } },
-      jadwal: { orderBy: { mulai: "asc" } },
-      lembarTes: {
-        orderBy: { createdAt: "asc" },
-        include: {
-          alatTes: { select: { nama: true, kode: true, kategori: true } },
-          skor: { orderBy: { createdAt: "asc" } },
-          asisten: { select: { nama: true } },
+      layanan: {
+        select: {
+          nama: true,
+          kategori: true,
+          checklist: {
+            orderBy: { urutan: "asc" },
+            include: { alatTes: { select: { nama: true, kode: true } } },
+          },
         },
       },
+      jadwal: { orderBy: { mulai: "asc" } },
+      konfirmasiTesOleh: { select: { nama: true } },
       laporan: true,
     },
   });
@@ -119,41 +121,39 @@ export default async function DetailKasus({
 
           <section className="kartu p-6">
             <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.08em] text-ink-soft">
-              Skor Mentah
+              Pelaksanaan Tes
               <BadgeZona zona="ZONA_2" />
             </h2>
-            {p.lembarTes.length === 0 ? (
-              <p className="mt-3 text-sm text-muted">
-                Asisten psikolog belum mengunggah lembar tes.
+            {!p.konfirmasiTesPada ? (
+              <p className="mt-3 text-sm leading-relaxed text-muted">
+                Asisten psikolog belum mengonfirmasi pelaksanaan tes. Setelah
+                klien melaksanakan tes di biro dan asisten mengonfirmasinya,
+                interpretasi dapat Anda susun.
               </p>
             ) : (
-              <div className="mt-4 space-y-4">
-                {p.lembarTes.map((t) => (
-                  <div key={t.id}>
-                    <p className="text-xs font-semibold text-ink">
-                      {t.alatTes.nama}{" "}
-                      <span className="font-normal text-muted">({t.alatTes.kode})</span>
-                    </p>
-                    {t.skor.length === 0 ? (
-                      <p className="mt-1 text-xs text-muted">Skor belum diisi.</p>
-                    ) : (
-                      <ul className="mt-2 space-y-1">
-                        {t.skor.map((s) => (
-                          <li
-                            key={s.id}
-                            className="flex justify-between gap-3 rounded bg-paper-2 px-2.5 py-1.5 text-xs"
-                          >
-                            <span className="text-ink-soft">{s.aspek}</span>
-                            <span className="font-semibold text-ink">
-                              {s.skor.toString()}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <>
+                <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[0.68rem] font-semibold text-emerald-700">
+                  ✓ Sudah dilaksanakan
+                  {p.konfirmasiTesOleh ? ` · dikonfirmasi ${p.konfirmasiTesOleh.nama}` : ""}
+                </p>
+                {p.layanan.checklist.length > 0 && (
+                  <ul className="mt-4 space-y-2">
+                    {p.layanan.checklist.map((c) => (
+                      <li
+                        key={c.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-paper-2 px-3 py-2"
+                      >
+                        <p className="text-xs font-semibold text-ink">
+                          {c.alatTes.nama}{" "}
+                          <span className="font-normal text-muted">
+                            ({c.alatTes.kode})
+                          </span>
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
             )}
           </section>
         </div>
@@ -175,9 +175,8 @@ export default async function DetailKasus({
 
           <FormLaporan
             pendaftaranId={p.id}
-            jumlahLembar={p.lembarTes.length}
-            jumlahLembarTanpaSkor={
-              p.lembarTes.filter((t) => t.skor.length === 0).length
+            jumlahAlatTes={
+              p.konfirmasiTesPada ? p.layanan.checklist.length : 0
             }
             awal={{
               ringkasan: l?.ringkasan ?? "",
@@ -186,6 +185,41 @@ export default async function DetailKasus({
               rekomendasi: l?.rekomendasi ?? "",
             }}
           />
+
+          <div className="mt-6 rounded-xl border border-line bg-paper-2 p-4">
+            <h3 className="text-xs font-bold uppercase tracking-[0.08em] text-ink-soft">
+              Dokumen Word Laporan
+            </h3>
+            <p className="mt-1 text-[0.68rem] leading-relaxed text-muted">
+              Dokumen dibuat otomatis saat laporan difinalkan dan diunggah ke
+              folder Drive Anda sendiri. Hanya Anda yang dapat membuka laporan
+              ini.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <a
+                href={`/dashboard/kasus/${p.id}/dokumen`}
+                className="tombol tombol-utama !py-2 !text-xs"
+              >
+                Unduh dokumen Word
+              </a>
+              {l?.dokumenUrl && (
+                <a
+                  href={l.dokumenUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="tombol tombol-garis !py-2 !text-xs"
+                >
+                  Buka di Drive ↗
+                </a>
+              )}
+            </div>
+            {l?.dokumenPada && (
+              <p className="mt-2 text-[0.62rem] text-muted">
+                Terakhir diunggah {formatTanggalWaktu(l.dokumenPada)}
+                {l.dokumenNama ? ` · ${l.dokumenNama}` : ""}
+              </p>
+            )}
+          </div>
         </section>
       </div>
     </>

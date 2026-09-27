@@ -7,10 +7,14 @@ import { prisma } from "@/lib/prisma";
 const contoh = [
   ["namaBiro", "Tabula Rasa", "Nama yang tampil di header, footer, dan judul halaman."],
   ["tagline", "Ruang untuk bertumbuh, lembar yang belum tertulis.", "Satu kalimat pendek."],
-  ["telepon", "0812-0000-0000", "Ditampilkan di footer dan halaman kontak."],
-  ["whatsapp", "6281200000000", "Format internasional tanpa tanda + (dipakai tautan wa.me)."],
+  ["telepon", "082229145081", "Ditampilkan di footer dan halaman kontak."],
+  ["whatsapp", "6282229145081", "Format internasional tanpa tanda + (dipakai tautan wa.me)."],
   ["email", "halo@tabularasa.id", "Alamat surel resmi."],
-  ["alamat", "Jl. Contoh No. 1, Kota Anda", "Alamat kantor."],
+  [
+    "alamat",
+    "Jl. Kapas, Semaki, Kec. Umbulharjo, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55166",
+    "Alamat kantor.",
+  ],
   ["jamOperasional", "Senin–Sabtu, 08.00–20.00 WIB", "Jam layanan."],
   ["driveFolderId", "1AbCdEfGhIjKlMnOpQrStUv", "ID folder Google Drive untuk arsip digital."],
 ] as const;

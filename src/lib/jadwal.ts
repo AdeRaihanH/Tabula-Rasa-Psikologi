@@ -77,15 +77,23 @@ export function slotTerlewat(
 export type HasilValidasiJadwal = { ok: true } | { ok: false; pesan: string };
 
 /**
- * Validasi jadwal pertemuan. Kedua kolom bersifat opsional, tetapi bila salah
- * satu diisi maka keduanya wajib, dan tidak boleh berada di masa lalu.
+ * Validasi jadwal pertemuan.
+ *
+ * Jadwal WAJIB dipilih saat mendaftar karena seluruh tes dilaksanakan Tatap
+ * Muka di biro — jadwal inilah yang dipakai admin, asisten, dan psikolog.
+ * Tanggal dan waktu harus lengkap serta tidak boleh berada di masa lalu.
  */
 export function validasiJadwal(
   tanggal: string | null,
   waktu: string | null,
   sekarang: Date = new Date(),
 ): HasilValidasiJadwal {
-  if (!tanggal && !waktu) return { ok: true };
+  if (!tanggal && !waktu) {
+    return {
+      ok: false,
+      pesan: "Pilih tanggal dan waktu kedatangan Anda ke biro.",
+    };
+  }
 
   if (!tanggal) {
     return { ok: false, pesan: "Pilih tanggal pertemuan terlebih dahulu." };
@@ -137,6 +145,36 @@ export function nilaiDatetimeLokal(tanggal: Date) {
   const ambil = (tipe: string) => p.find((x) => x.type === tipe)?.value ?? "";
   const jam = ambil("hour") === "24" ? "00" : ambil("hour");
   return `${ambil("year")}-${ambil("month")}-${ambil("day")}T${jam}:${ambil("minute")}`;
+}
+
+/** Jam & menit dalam WIB ("07.00"). */
+export function jamWIB(tanggal: Date) {
+  return nilaiDatetimeLokal(tanggal).split("T")[1].replace(":", ".");
+}
+
+/** Tanggal dalam WIB ("YYYY-MM-DD"). */
+export function tanggalWIB(tanggal: Date) {
+  return bagianTanggal(tanggal);
+}
+
+/**
+ * Label hari relatif terhadap hari ini menurut WIB: "hari ini", "besok",
+ * "lusa", atau tanggal panjang bila lebih jauh.
+ */
+export function labelHariWIB(tanggal: Date, sekarang: Date = new Date()) {
+  const hari = new Date(`${bagianTanggal(tanggal)}T00:00:00Z`);
+  const kini = new Date(`${bagianTanggal(sekarang)}T00:00:00Z`);
+  const selisih = Math.round((hari.getTime() - kini.getTime()) / 86_400_000);
+  if (selisih === 0) return "hari ini";
+  if (selisih === 1) return "besok";
+  if (selisih === 2) return "lusa";
+  return new Intl.DateTimeFormat("id-ID", {
+    timeZone: ZONA_WAKTU,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(tanggal);
 }
 
 /**

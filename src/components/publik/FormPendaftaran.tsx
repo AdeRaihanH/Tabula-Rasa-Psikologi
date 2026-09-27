@@ -21,10 +21,8 @@ type LayananRingkas = {
   nama: string;
   kategori: string;
   slug: string;
-  hargaOnline: number | null;
   hargaOffline: number | null;
   durasiMenit: number | null;
-  metode: string[];
 };
 
 type PsikologRingkas = {
@@ -91,7 +89,6 @@ export function FormPendaftaran({
     kirimPendaftaran,
     undefined,
   );
-  const [metode, setMetode] = useState("OFFLINE");
   const [layananId, setLayananId] = useState(
     slugAwal ? (layanan.find((l) => l.slug === slugAwal)?.id ?? "") : "",
   );
@@ -116,21 +113,9 @@ export function FormPendaftaran({
       ? validasiJadwal(tanggal || null, waktuEfektif || null, sekarang)
       : null;
 
-  // Perkiraan biaya layanan yang dipilih sesuai metode.
+  // Perkiraan biaya layanan yang dipilih (semua layanan Tatap Muka).
   const layananTerpilih = layanan.find((l) => l.id === layananId) ?? null;
-
-  // Bila layanan terpilih tidak menyediakan metode yang sedang aktif, pakai
-  // metode pertama yang tersedia supaya pilihan tetap konsisten.
-  const metodeEfektif =
-    layananTerpilih && !layananTerpilih.metode.includes(metode)
-      ? layananTerpilih.metode[0]
-      : metode;
-
-  const biayaPerkiraan = layananTerpilih
-    ? metodeEfektif === "ONLINE"
-      ? layananTerpilih.hargaOnline
-      : layananTerpilih.hargaOffline
-    : null;
+  const biayaPerkiraan = layananTerpilih?.hargaOffline ?? null;
 
   if (hasil?.ok) {
     const adaRekening = Boolean(hasil.rekening.bank && hasil.rekening.nomor);
@@ -176,7 +161,7 @@ export function FormPendaftaran({
             <div className="flex items-center justify-between gap-4 border-b border-line pb-2.5">
               <span className="text-muted">Metode</span>
               <span className="font-semibold text-ink">
-                {hasil.metode === "ONLINE" ? "Daring" : "Tatap muka"}
+                Tatap Muka
               </span>
             </div>
             <div className="flex items-center justify-between gap-4">
@@ -215,7 +200,8 @@ export function FormPendaftaran({
                   `Transfer tepat sebesar ${formatRupiah(hasil.biaya)} ke rekening di atas.`,
                   "Simpan bukti transfer Anda.",
                   "Unggah bukti transfer langsung di bawah ini.",
-                  "Admin memverifikasi pembayaran, lalu asisten membagikan tautan tes sesuai jadwal yang Anda pilih.",
+                  "Admin memverifikasi pembayaran dan mengonfirmasi jadwal Anda.",
+                  "Datang ke biro sesuai jadwal untuk melaksanakan tes secara Tatap Muka bersama asisten psikolog.",
                 ].map((t, i) => (
                   <li key={t} className="flex gap-3 text-sm text-ink-soft">
                     <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-100 text-[0.65rem] font-bold text-brand-700">
@@ -440,8 +426,7 @@ export function FormPendaftaran({
             >
               <option value="">Pilih layanan…</option>
               {layanan.map((l) => {
-                const h =
-                  metode === "ONLINE" ? l.hargaOnline : l.hargaOffline;
+                const h = l.hargaOffline;
                 return (
                   <option key={l.id} value={l.id}>
                     {labelKategori[l.kategori] ?? l.kategori} — {l.nama}
@@ -453,49 +438,15 @@ export function FormPendaftaran({
             <Galat pesan={galat?.layananId} />
           </div>
 
-          <div>
-            <span className="label">Metode pelaksanaan</span>
-            <div className="flex flex-wrap gap-3">
-              {[
-                { v: "OFFLINE", t: "Tatap muka" },
-                { v: "ONLINE", t: "Daring" },
-              ].map((m) => {
-                // Metode yang tidak disediakan layanan terpilih dinonaktifkan.
-                const tersedia =
-                  !layananTerpilih || layananTerpilih.metode.includes(m.v);
-                return (
-                  <label
-                    key={m.v}
-                    className={cn(
-                      "flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm",
-                      tersedia
-                        ? "cursor-pointer has-checked:border-brand-400 has-checked:bg-brand-50"
-                        : "cursor-not-allowed opacity-45",
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="metode"
-                      value={m.v}
-                      checked={metodeEfektif === m.v}
-                      onChange={(e) => setMetode(e.target.value)}
-                      disabled={!tersedia}
-                      className="accent-brand-600"
-                    />
-                    {m.t}
-                  </label>
-                );
-              })}
-            </div>
-            {layananTerpilih && !layananTerpilih.metode.includes(metode) && (
-              <p className="mt-2 text-[0.68rem] text-muted">
-                Layanan ini hanya tersedia untuk metode{" "}
-                {layananTerpilih.metode
-                  .map((m) => (m === "ONLINE" ? "daring" : "tatap muka"))
-                  .join(" atau ")}
-                .
-              </p>
-            )}
+          <input type="hidden" name="metode" value="OFFLINE" />
+          <div className="rounded-xl border border-line bg-paper-2 px-4 py-3">
+            <p className="text-xs font-semibold text-ink-soft">
+              Metode pelaksanaan: Tatap Muka
+            </p>
+            <p className="mt-1 text-[0.68rem] leading-relaxed text-muted">
+              Seluruh layanan dilaksanakan di kantor biro sesuai jadwal yang
+              Anda pilih.
+            </p>
           </div>
 
           {layananTerpilih && (
@@ -506,7 +457,7 @@ export function FormPendaftaran({
                 </p>
                 <p className="mt-0.5 text-[0.68rem] text-brand-800/70">
                   {layananTerpilih.nama} ·{" "}
-                  {metodeEfektif === "ONLINE" ? "Daring" : "Tatap muka"}
+                  Tatap Muka
                 </p>
               </div>
               <p className="text-lg font-bold text-brand-700">
@@ -517,7 +468,9 @@ export function FormPendaftaran({
 
           <div className="animate-in fade-in slide-in-from-top-2 flex flex-col gap-5 rounded-xl border border-brand-200 bg-brand-50/50 p-5 mt-2">
             <div>
-              <label className="label" htmlFor="tanggalPertemuan">Pilih tanggal pertemuan</label>
+              <label className="label" htmlFor="tanggalPertemuan">
+                Pilih tanggal pertemuan <span className="text-brand-700">*</span>
+              </label>
               <input
                 type="date"
                 id="tanggalPertemuan"
@@ -526,15 +479,19 @@ export function FormPendaftaran({
                 value={tanggal}
                 onChange={(e) => setTanggal(e.target.value)}
                 min={sekarang ? tanggalHariIni(sekarang) : undefined}
+                required
               />
               <p className="mt-1.5 text-[0.68rem] text-muted">
-                Tanggal sebelum hari ini tidak dapat dipilih.
+                Tanggal sebelum hari ini tidak dapat dipilih. Jadwal ini yang
+                dipakai admin, asisten, dan psikolog Anda.
               </p>
             </div>
             <div>
-              <span className="label">Pilih waktu kedatangan</span>
+              <span className="label">
+                Pilih waktu kedatangan <span className="text-brand-700">*</span>
+              </span>
               <div className="flex flex-wrap gap-3">
-                {SLOT_WAKTU.map((slot) => {
+                {SLOT_WAKTU.map((slot, i) => {
                   const lewat = terlewat.includes(slot.label);
                   return (
                     <label
@@ -553,6 +510,7 @@ export function FormPendaftaran({
                         checked={waktuEfektif === slot.label}
                         onChange={(e) => setWaktu(e.target.value)}
                         disabled={lewat}
+                        required={i === 0}
                         className="accent-brand-600"
                       />
                       <span className={cn(lewat && "line-through")}>{slot.label}</span>
@@ -677,8 +635,8 @@ export function FormPendaftaran({
           {pending ? "Mengirim…" : "Kirim Pendaftaran"}
         </button>
         <p className="mt-3 text-center text-xs text-muted">
-          Tahap berikutnya: skrining kebutuhan oleh admin, lalu persetujuan dan
-          pembayaran.
+          Tahap berikutnya: verifikasi pembayaran oleh admin, lalu datang ke
+          biro sesuai jadwal untuk melaksanakan tes.
         </p>
       </section>
     </form>

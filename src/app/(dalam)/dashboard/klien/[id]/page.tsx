@@ -149,9 +149,9 @@ export default async function DetailKlien({
 
           <div className="kartu mt-4 border-dashed p-5">
             <p className="text-xs leading-relaxed text-ink-soft">
-              Lembar tes, skor mentah (Zona 2), dan laporan hasil (Zona 3) tidak
-              ditampilkan di sini. Bagian tersebut hanya dapat dibuka oleh asisten
-              psikolog dan psikolog penanggung jawab kasus.
+              Konfirmasi pelaksanaan tes (Zona 2) dan laporan hasil (Zona 3)
+              tidak ditampilkan di sini. Bagian tersebut hanya dapat dibuka oleh
+              asisten psikolog dan psikolog penanggung jawab kasus.
             </p>
           </div>
         </section>

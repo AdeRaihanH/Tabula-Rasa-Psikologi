@@ -2,7 +2,7 @@ import "server-only";
 
 import { google } from "googleapis";
 
-import { authGoogle, driveAktif } from "@/lib/gdrive";
+import { authGoogle } from "@/lib/gdrive";
 
 /**
  * Penulisan arsip pendaftaran ke Google Spreadsheet.
@@ -32,10 +32,6 @@ export const KOLOM_PENDAFTARAN = [
   "Kebutuhan",
   "Folder Drive",
 ] as const;
-
-export function sheetsAktif() {
-  return driveAktif();
-}
 
 function drive() {
   return google.drive({ version: "v3", auth: authGoogle() });

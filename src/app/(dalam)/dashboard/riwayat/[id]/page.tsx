@@ -31,7 +31,17 @@ export default async function DetailRiwayatKlien({
   const p = await prisma.pendaftaran.findFirst({
     where: { AND: [{ id }, where] },
     include: {
-      layanan: { select: { nama: true, kategori: true, durasiMenit: true } },
+      layanan: {
+        select: {
+          nama: true,
+          kategori: true,
+          durasiMenit: true,
+          checklist: {
+            orderBy: { urutan: "asc" },
+            include: { alatTes: { select: { nama: true } } },
+          },
+        },
+      },
       psikolog: { select: { nama: true } },
       // Jangan sertakan isi buktiUrl (base64 belasan MB) — cukup metadata.
       // Keberadaan bukti dicek lewat query ringan di bawah.
@@ -42,19 +52,6 @@ export default async function DetailRiwayatKlien({
           jumlah: true,
           status: true,
           catatan: true,
-        },
-      },
-      // Tes yang dibagikan asisten. Klien hanya melihat nama alat, tautan,
-      // dan instruksi — isi soal & skor tetap di Zona 2.
-      lembarTes: {
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          status: true,
-          tautan: true,
-          instruksi: true,
-          alatTes: { select: { nama: true } },
-          jadwalSesi: { select: { mulai: true, metode: true } },
         },
       },
       jadwal: { orderBy: { mulai: "asc" } },
@@ -93,15 +90,13 @@ export default async function DetailRiwayatKlien({
   const adaBuktiUntuk = (pembayaranId: string) =>
     buktiAdaMap.has(pembayaranId);
   const adaDitolak = daftarBayar.some((b) => b.status === "DITOLAK");
-  const daftarTes = p.lembarTes ?? [];
-  const sekarang = new Date();
   // Pilihan hari/jam pendaftar: utama dari baris jadwal otomatis, cadangan
   // dari teks preferensi pada formulir pendaftaran.
   const preferensi =
     p.jadwal.length === 0 ? parsePreferensiJadwal(p.kebutuhan) : null;
-  // Kartu tes tampil setelah pembayaran terverifikasi (atau bila asisten
-  // sudah membagikan tes) — tidak perlu menunggu tahap lain.
-  const tampilTes = semuaTerverifikasi || daftarTes.length > 0;
+  // Kartu pelaksanaan tes tampil setelah pembayaran terverifikasi.
+  const tampilTes = semuaTerverifikasi || Boolean(p.konfirmasiTesPada);
+  const sudahDilaksanakan = Boolean(p.konfirmasiTesPada);
   const set = await prisma.pengaturanSitus.findUnique({ where: { id: "utama" } });
 
   const wa = set?.whatsapp
@@ -148,7 +143,7 @@ export default async function DetailRiwayatKlien({
               <Baris label="Layanan" nilai={p.layanan.nama} />
               <Baris
                 label="Metode"
-                nilai={p.metode === "ONLINE" ? "Daring" : "Tatap muka"}
+                nilai="Tatap Muka"
               />
               {p.layanan.durasiMenit && (
                 <Baris label="Durasi" nilai={`${p.layanan.durasiMenit} menit`} />
@@ -206,7 +201,7 @@ export default async function DetailRiwayatKlien({
                       <BadgeStatus status={j.status} label={j.status} />
                     </div>
                     <p className="mt-1 text-xs text-muted">
-                      {j.metode === "ONLINE" ? "Daring" : "Tatap muka"}
+                      Tatap Muka
                       {j.lokasi ? ` · ${j.lokasi}` : ""}
                     </p>
                     {j.catatan?.includes("pilihan pendaftar") && (
@@ -360,68 +355,33 @@ export default async function DetailRiwayatKlien({
               <h2 className="text-sm font-bold uppercase tracking-[0.08em] text-ink-soft">
                 Pelaksanaan Tes
               </h2>
-              {daftarTes.length === 0 ? (
-                <p className="mt-3 text-sm leading-relaxed text-muted">
-                  Pembayaran Anda sudah terverifikasi. Asisten sedang
-                  menyiapkan tautan pengerjaan tes — tautan akan muncul di sini
-                  dan aktif mengikuti jadwal Anda.
-                </p>
-              ) : (
-                <ul className="mt-4 space-y-4">
-                  {daftarTes.map((t) => {
-                    const mulai =
-                      t.jadwalSesi?.mulai ?? p.jadwal[0]?.mulai ?? null;
-                    const sudahWaktunya =
-                      !mulai || sekarang >= new Date(mulai);
-                    const bisaKerjakan = Boolean(t.tautan) && sudahWaktunya;
-                    return (
-                      <li
-                        key={t.id}
-                        className="rounded-xl bg-paper-2 p-4"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-sm font-bold text-ink">
-                            {t.alatTes.nama}
-                          </p>
-                          <BadgeStatus status={t.status} label={t.status} />
-                        </div>
-                        {t.instruksi && (
-                          <p className="mt-2 text-xs leading-relaxed text-ink-soft">
-                            {t.instruksi}
-                          </p>
-                        )}
-                        {mulai && (
-                          <p className="mt-1 text-[0.7rem] text-muted">
-                            Jadwal: {formatTanggalWaktu(mulai)}
-                            {t.jadwalSesi
-                              ? ` · ${t.jadwalSesi.metode === "ONLINE" ? "Daring" : "Tatap muka"}`
-                              : ""}
-                          </p>
-                        )}
-                        <div className="mt-3">
-                          {bisaKerjakan ? (
-                            <a
-                              href={t.tautan!}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="tombol tombol-utama w-full !py-2 !text-xs"
-                            >
-                              Kerjakan Tes Sekarang ↗
-                            </a>
-                          ) : !t.tautan ? (
-                            <p className="text-xs text-muted">
-                              Tautan pengerjaan menyusul dari asisten.
-                            </p>
-                          ) : (
-                            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                              Tautan tersedia dan akan aktif pada jadwal di
-                              atas. Silakan kembali saat waktunya tiba.
-                            </p>
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
+              <p className="mt-2 text-xs leading-relaxed text-muted">
+                Tes dilaksanakan <span className="font-semibold text-ink">Tatap Muka di biro</span>{" "}
+                sesuai jadwal Anda. Soal diberikan langsung oleh asisten
+                psikolog, dan Anda tidak perlu mengerjakan apa pun secara
+                daring.
+              </p>
+              <div
+                className={`mt-4 rounded-xl px-4 py-3 text-xs font-medium ${
+                  sudahDilaksanakan
+                    ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border border-amber-200 bg-amber-50 text-amber-800"
+                }`}
+              >
+                {sudahDilaksanakan
+                  ? "✓ Tes Anda sudah dilaksanakan. Psikolog sedang menyusun laporan hasil."
+                  : "Pembayaran terverifikasi. Silakan datang ke biro sesuai jadwal; asisten akan mendampingi tes Anda."}
+              </div>
+              {p.layanan.checklist.length > 0 && (
+                <ul className="mt-4 flex flex-wrap gap-2">
+                  {p.layanan.checklist.map((c) => (
+                    <li
+                      key={c.id}
+                      className="rounded-lg bg-paper-2 px-3 py-1.5 text-[0.7rem] text-ink-soft"
+                    >
+                      {c.alatTes.nama}
+                    </li>
+                  ))}
                 </ul>
               )}
             </section>

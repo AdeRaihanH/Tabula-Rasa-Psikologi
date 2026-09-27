@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { Muncul } from "@/components/publik/gerak";
+import { NavKategori } from "@/components/publik/NavKategori";
 import { ambilLayanan } from "@/lib/data-publik";
 import {
   anchorKategori,
@@ -28,11 +30,11 @@ const penjelasan: Record<string, { untuk: string[]; proses: string[] }> = {
       "Individu yang ingin mengenali minat dan bakat",
     ],
     proses: [
-      "Pendaftaran daring dan skrining kebutuhan",
-      "Penjadwalan sesi bersama psikolog",
-      "Pelaksanaan asesmen (tatap muka/daring)",
-      "Pengolahan data dan penyusunan laporan",
-      "Sesi umpan balik penyerahan hasil",
+      "Pendaftaran & pembayaran melalui situs",
+      "Verifikasi pembayaran oleh admin",
+      "Pelaksanaan tes Tatap Muka di biro",
+      "Pelaporan hasil oleh psikolog",
+      "Selesai & umpan balik",
     ],
   },
   PERUSAHAAN: {
@@ -58,28 +60,30 @@ export default async function HalamanLayanan() {
     <>
       <section className="border-b border-line bg-paper-2">
         <div className="wadah py-14 lg:py-16">
-          <span className="label-kecil">Layanan</span>
-          <h1 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight text-ink sm:text-4xl lg:text-5xl">
-            Solusi psikologi untuk individu, sekolah, dan perusahaan
-          </h1>
-          <p className="mt-5 max-w-2xl text-ink-soft">
-            Setiap layanan dirancang dan ditandatangani psikolog berizin praktik,
-            serta dapat disesuaikan dengan konteks Anda.
-          </p>
-
-          <nav className="mt-8 flex flex-wrap gap-2">
-            {kategoriUrut.map((k) => (
-              <a
-                key={k}
-                href={`#${anchorKategori[k]}`}
-                className="pil border-line bg-white text-ink-soft hover:border-brand-300 hover:text-brand-700"
-              >
-                {labelKategori[k]}
-              </a>
-            ))}
-          </nav>
+          <Muncul className="max-w-3xl">
+            <span className="label-kecil">Layanan</span>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+              Solusi psikologi untuk individu, sekolah, dan perusahaan
+            </h1>
+            <p className="mt-5 text-ink-soft">
+              Setiap layanan dirancang dan ditandatangani psikolog berizin praktik,
+              serta dapat disesuaikan dengan konteks Anda.
+            </p>
+          </Muncul>
         </div>
       </section>
+
+      {/* Navigasi kategori — menempel di atas agar mudah berpindah bagian */}
+      <div className="sticky top-0 z-40 border-b border-line bg-paper/95 py-3 backdrop-blur-md">
+        <div className="wadah">
+          <NavKategori
+            item={kategoriUrut.map((k) => ({
+              id: anchorKategori[k],
+              label: labelKategori[k],
+            }))}
+          />
+        </div>
+      </div>
 
       <div className="wadah space-y-16 py-16">
         {kategoriUrut.map((kat, idx) => {
@@ -87,9 +91,9 @@ export default async function HalamanLayanan() {
           const info = penjelasan[kat];
 
           return (
-            <section key={kat} id={anchorKategori[kat]} className="scroll-mt-28">
+            <section key={kat} id={anchorKategori[kat]} className="scroll-mt-32">
               <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
-                <div>
+                <Muncul arah="kiri">
                   <span className="label-kecil">
                     Layanan {idx + 1}
                   </span>
@@ -127,16 +131,16 @@ export default async function HalamanLayanan() {
                       </ol>
                     </>
                   )}
-                </div>
+                </Muncul>
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:content-start">
-                  {item.map((l) => {
+                  {item.map((l, i) => {
                     const harga = hargaPerMetode(l);
                     return (
+                    <Muncul key={l.id} tunda={i * 80} arah="kanan" className="flex">
                     <Link
-                      key={l.id}
                       href={`/layanan/${l.slug}`}
-                      className="kartu group flex flex-col p-6 transition-all hover:-translate-y-1 hover:border-brand-300"
+                      className="kartu kartu-hidup kilau group flex w-full flex-col p-6"
                     >
                       <h3 className="text-base font-bold text-ink">{l.nama}</h3>
                       <p className="mt-2 flex-1 text-sm leading-relaxed text-ink-soft">
@@ -148,45 +152,29 @@ export default async function HalamanLayanan() {
                           {l.durasiMenit && (
                             <span className="text-muted">{l.durasiMenit} menit</span>
                           )}
-                          {l.metode.map((m) => (
-                            <span
-                              key={m}
-                              className="rounded bg-paper-2 px-1.5 py-0.5 font-medium text-ink-soft"
-                            >
-                              {m === "ONLINE" ? "Daring" : "Tatap muka"}
-                            </span>
-                          ))}
+                          <span className="rounded bg-paper-2 px-1.5 py-0.5 font-medium text-ink-soft">
+                            Tatap Muka
+                          </span>
                         </div>
 
                         <div className="mt-1 flex flex-col gap-3">
                           <div className="flex flex-col gap-1 text-[0.75rem] text-muted">
-                            {l.metode.includes("ONLINE") && (
-                              <div className="flex justify-between border-b border-line/50 pb-1">
-                                <span>Daring</span>
-                                <span className="font-semibold text-brand-700">
-                                  {harga.online
-                                    ? formatRupiah(harga.online)
-                                    : "Hubungi kami"}
-                                </span>
-                              </div>
-                            )}
-                            {l.metode.includes("OFFLINE") && (
-                              <div className="flex justify-between">
-                                <span>Tatap muka</span>
-                                <span className="font-semibold text-brand-700">
-                                  {harga.offline
-                                    ? formatRupiah(harga.offline)
-                                    : "Hubungi kami"}
-                                </span>
-                              </div>
-                            )}
+                            <div className="flex justify-between">
+                              <span>Biaya</span>
+                              <span className="font-semibold text-brand-700">
+                                {harga.offline
+                                  ? formatRupiah(harga.offline)
+                                  : "Hubungi kami"}
+                              </span>
+                            </div>
                           </div>
-                          <span className="w-full rounded-lg bg-brand-700 px-3 py-2 text-center font-semibold text-white transition hover:bg-brand-800">
+                          <span className="w-full rounded-lg bg-brand-700 px-3 py-2 text-center font-semibold text-white transition group-hover:bg-brand-800">
                             Detail Layanan
                           </span>
                         </div>
                       </div>
                     </Link>
+                    </Muncul>
                     );
                   })}
 

@@ -77,6 +77,48 @@ body {
   color: var(--color-brand-800);
 }
 
+/* ── Kursor: apa pun yang bisa diklik memakai pointer ── */
+a[href],
+button:not(:disabled),
+summary,
+select:not(:disabled),
+label[for],
+[role="button"],
+[role="menuitem"],
+[role="tab"],
+[role="option"],
+input[type="submit"]:not(:disabled),
+input[type="button"]:not(:disabled),
+input[type="reset"]:not(:disabled),
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+input[type="file"]:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+input:disabled,
+[aria-disabled="true"],
+[data-nonaktif="true"] {
+  cursor: not-allowed;
+}
+
+/* Teks yang bisa dipilih tetap memakai kursor teks. */
+input:not([type]),
+input[type="text"],
+input[type="search"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+input[type="date"],
+input[type="time"],
+textarea {
+  cursor: text;
+}
+
 @layer components {
   .wadah {
     width: 100%;
@@ -201,6 +243,19 @@ body {
       );
     background-size: 100% 2rem;
   }
+
+  /* Kartu yang mengangkat saat disorot — dipakai di kartu layanan/psikolog. */
+  .kartu-hidup {
+    transition:
+      transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.28s ease,
+      border-color 0.28s ease;
+  }
+  .kartu-hidup:hover {
+    transform: translateY(-4px);
+    border-color: var(--color-brand-300);
+    box-shadow: 0 12px 30px -14px rgb(26 35 25 / 0.3);
+  }
 }
 
 /* ── Animasi masuk elemen ── */
@@ -263,4 +318,126 @@ body {
 @keyframes floatC {
   0%, 100% { transform: translateY(0px) rotate(0deg); }
   50%       { transform: translateY(-10px) rotate(6deg); }
+}
+
+/* ══════════════════════════════════════
+   Interaksi situs publik — muncul saat digulir,
+   kilau kartu, denyut, dan parallax.
+══════════════════════════════════════ */
+
+/* Elemen yang muncul saat memasuki viewport (lihat komponen `Muncul`). */
+.muncul {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.muncul[data-arah="kiri"]  { transform: translateX(-30px); }
+.muncul[data-arah="kanan"] { transform: translateX(30px); }
+.muncul[data-arah="zoom"]  { transform: scale(0.94); }
+.muncul[data-arah="redup"] { transform: none; }
+.muncul.tampil {
+  opacity: 1;
+  transform: none;
+}
+
+/* Sorot kilau yang menyapu kartu saat disorot. */
+.kilau {
+  position: relative;
+  overflow: hidden;
+}
+.kilau::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgb(255 255 255 / 0.55) 50%,
+    transparent 70%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+.kilau:hover::after {
+  transform: translateX(120%);
+}
+
+/* Garis bawah judul yang tumbuh saat kartu disorot. */
+.garis-tumbuh {
+  position: relative;
+}
+.garis-tumbuh::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  height: 2px;
+  width: 0;
+  background: var(--color-brand-500);
+  transition: width 0.3s ease;
+}
+.garis-tumbuh:hover::after,
+.group:hover .garis-tumbuh::after {
+  width: 100%;
+}
+
+/* Titik yang berdenyut halus — penanda "sedang berjalan". */
+.denyut {
+  animation: denyut 2.2s ease-in-out infinite;
+}
+@keyframes denyut {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(0.86); }
+}
+
+/* Cincin yang memancar dari titik. */
+.pancar {
+  animation: pancar 2.4s ease-out infinite;
+}
+@keyframes pancar {
+  0%   { transform: scale(0.9); opacity: 0.55; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Latar gradien yang bergerak perlahan. */
+.gradien-gerak {
+  background-size: 200% 200%;
+  animation: gradienGerak 12s ease infinite;
+}
+@keyframes gradienGerak {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* Bilah kemajuan gulir di bagian paling atas. */
+.bilah-kemajuan {
+  transform-origin: 0 50%;
+  will-change: transform;
+}
+
+/* Hormati preferensi pengguna yang tidak menginginkan animasi. */
+@media (prefers-reduced-motion: reduce) {
+  .muncul {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .kilau::after,
+  .garis-tumbuh::after {
+    transition: none;
+  }
+  .denyut,
+  .pancar,
+  .gradien-gerak,
+  .marquee,
+  .animasi-naik {
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
 }

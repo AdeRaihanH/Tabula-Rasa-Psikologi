@@ -5,18 +5,28 @@ import {
   Td,
   Th,
 } from "@/components/dashboard/ui";
+import { Paginasi } from "@/components/dashboard/Paginasi";
 import { wajibKemampuan } from "@/lib/auth/dal";
+import { UKURAN_HALAMAN, hitungPaginasi } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 import { formatTanggalWaktu } from "@/lib/utils";
 
-export default async function HalamanAudit() {
+export default async function HalamanAudit({
+  searchParams,
+}: PageProps<"/dashboard/audit">) {
   await wajibKemampuan("audit:lihat");
+  const sp = await searchParams;
+  const { hal, skip, take } = hitungPaginasi(sp?.hal);
 
-  const log = await prisma.auditLog.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 200,
-    include: { user: { select: { nama: true, role: true } } },
-  });
+  const [log, total] = await Promise.all([
+    prisma.auditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+      include: { user: { select: { nama: true, role: true } } },
+    }),
+    prisma.auditLog.count(),
+  ]);
 
   return (
     <>
@@ -76,6 +86,13 @@ export default async function HalamanAudit() {
           </tbody>
         </Tabel>
       )}
+
+      <Paginasi
+        jalur="/dashboard/audit"
+        hal={hal}
+        total={total}
+        ukuran={UKURAN_HALAMAN}
+      />
     </>
   );
 }

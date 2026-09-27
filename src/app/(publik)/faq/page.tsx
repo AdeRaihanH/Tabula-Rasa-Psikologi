@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { FilterFaq } from "@/components/publik/FilterFaq";
+import { Muncul } from "@/components/publik/gerak";
 import { siteConfig } from "@/lib/config";
 
 export const metadata: Metadata = {
@@ -26,8 +28,8 @@ const grup = [
         a: "Umumnya 60 menit. Asesmen seperti tes IQ dapat memerlukan waktu lebih lama, dan akan diinformasikan saat penjadwalan.",
       },
       {
-        q: "Apakah layanan tersedia secara daring?",
-        a: "Sebagian layanan tersedia daring maupun tatap muka. Metode yang tersedia tercantum pada tiap halaman layanan dan dapat Anda pilih saat mendaftar.",
+        q: "Bagaimana metode pelaksanaan tesnya?",
+        a: "Seluruh layanan dilaksanakan Tatap Muka di biro. Anda memilih tanggal dan jam saat mendaftar, lalu datang ke biro sesuai jadwal untuk mengerjakan tes bersama asisten psikolog.",
       },
     ],
   },
@@ -76,39 +78,24 @@ export default function HalamanFaq() {
     <>
       <section className="border-b border-line bg-paper-2">
         <div className="wadah py-14">
-          <span className="label-kecil">FAQ</span>
-          <h1 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Pertanyaan yang sering diajukan
-          </h1>
-          <p className="mt-4 max-w-2xl text-ink-soft">
-            Belum menemukan jawabannya? Hubungi kami di {siteConfig.telepon}.
-          </p>
+          <Muncul className="max-w-3xl">
+            <span className="label-kecil">FAQ</span>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+              Pertanyaan yang sering diajukan
+            </h1>
+            <p className="mt-4 text-ink-soft">
+              Belum menemukan jawabannya? Hubungi kami di {siteConfig.telepon}.
+            </p>
+          </Muncul>
         </div>
       </section>
 
-      <div className="wadah max-w-3xl space-y-10 py-12">
-        {grup.map((g) => (
-          <section key={g.judul}>
-            <h2 className="text-lg font-bold text-ink">{g.judul}</h2>
-            <div className="mt-4 space-y-2">
-              {g.tanya.map((t) => (
-                <details key={t.q} className="kartu group px-5 py-4">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-ink marker:content-none">
-                    {t.q}
-                    <span className="shrink-0 text-brand-600 transition-transform group-open:rotate-45">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                        <path d="M12 5v14M5 12h14" />
-                      </svg>
-                    </span>
-                  </summary>
-                  <p className="mt-3 text-sm leading-relaxed text-ink-soft">{t.a}</p>
-                </details>
-              ))}
-            </div>
-          </section>
-        ))}
+      <div className="wadah max-w-3xl py-12">
+        <Muncul>
+          <FilterFaq grup={grup} />
+        </Muncul>
 
-        <div className="kartu flex flex-col items-center justify-between gap-5 bg-brand-600 p-8 text-white sm:flex-row">
+        <Muncul className="kartu mt-12 flex flex-col items-center justify-between gap-5 bg-brand-600 p-8 text-white sm:flex-row">
           <div>
             <h2 className="text-lg font-bold">Masih ada pertanyaan?</h2>
             <p className="mt-1.5 text-sm text-white/75">
@@ -118,7 +105,7 @@ export default function HalamanFaq() {
           <Link href="/kontak" className="tombol tombol-sand shrink-0">
             Hubungi Kami
           </Link>
-        </div>
+        </Muncul>
       </div>
     </>
   );
