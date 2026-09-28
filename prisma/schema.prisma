@@ -1,7 +1,7 @@
 // Tabula Rasa — Skema Data Biro Psikologi
 // Klasifikasi kerahasiaan (zona):
 //   ZONA_1  admin      -> data diri klien, jadwal sesi
-//   ZONA_2  asisten    -> konfirmasi pelaksanaan alat tes
+//   ZONA_2  asisten    -> konfirmasi pelaksanaan tes
 //   ZONA_3  psikolog   -> laporan hasil & interpretasi (hanya psikolog pemegang kasus)
 
 generator client {
@@ -175,7 +175,6 @@ model Layanan {
   updatedAt    DateTime        @updatedAt
 
   pendaftaran Pendaftaran[]
-  checklist   LayananAlatTes[]
 
   @@index([kategori])
   @@map("layanan")
@@ -259,42 +258,6 @@ model JadwalSesi {
   @@index([psikologId])
   @@index([mulai])
   @@map("jadwal_sesi")
-}
-
-// ---------- ZONA 2: instrumen & konfirmasi pelaksanaan ----------
-
-model AlatTes {
-  id          String   @id @default(cuid())
-  kode        String   @unique
-  nama        String
-  kategori    String
-  deskripsi   String?
-  aktif       Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  layananAlatTes LayananAlatTes[]
-
-  @@map("alat_tes")
-}
-
-// ---------- Checklist alat tes per layanan ----------
-
-/// Alat tes apa saja yang harus dikerjakan klien untuk sebuah layanan.
-/// Dipakai asisten sebagai daftar periksa saat pelaksanaan di biro.
-model LayananAlatTes {
-  id        String  @id @default(cuid())
-  layananId String
-  alatTesId String
-  urutan    Int     @default(0)
-  wajib     Boolean @default(true)
-
-  layanan Layanan @relation(fields: [layananId], references: [id], onDelete: Cascade)
-  alatTes AlatTes @relation(fields: [alatTesId], references: [id], onDelete: Cascade)
-
-  @@unique([layananId, alatTesId])
-  @@index([layananId])
-  @@map("layanan_alat_tes")
 }
 
 // ---------- ZONA 3: laporan hasil & interpretasi ----------

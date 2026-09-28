@@ -4,6 +4,33 @@ Aplikasi web biro psikologi: situs publik untuk klien/korporasi, **portal klien*
 untuk memantau pendaftaran sendiri, dan portal internal dengan **tiga zona
 kerahasiaan data**.
 
+## Tentang Tabula Rasa
+
+Tabula Rasa adalah **sistem informasi manajemen layanan psikologi** — platform
+digital terpadu yang menghubungkan klien, biro, dan psikolog dalam satu alur
+layanan yang rapi dan aman.
+
+Aplikasi ini terdiri dari tiga lapisan yang saling terhubung:
+
+| Lapisan | Untuk siapa | Isi |
+| --- | --- | --- |
+| Situs publik | Calon klien / masyarakat | Company profile: beranda, katalog layanan, harga, tim, alur, FAQ, kontak |
+| Portal klien | Klien terdaftar | Buat akun → daftar layanan → pantau status → unggah bukti bayar |
+| Portal internal | Staf (admin / asisten / psikolog) | Operasional: verifikasi bayar, jadwal, konfirmasi tes, laporan hasil, arsip |
+
+Ciri utamanya:
+
+- **Kerahasiaan data berlapis** — data dipisah menjadi tiga zona akses sehingga
+  tidak ada satu peran pun yang melihat seluruh isi data.
+- **Alur layanan 5 tahap** yang ditegakkan sistem — status tidak dapat melompat,
+  setiap tahap punya syarat dan penanggung jawab yang jelas.
+- **Isolasi antar-psikolog** — setiap psikolog hanya dapat membuka kasus yang
+  ditugaskan kepadanya.
+- **Otomatisasi penuh** — tagihan, jadwal, dokumen Word, dan arsip Google
+  Drive/Sheets dibuat otomatis dari tindakan pengguna.
+- **Jejak audit** — setiap tindakan penting tercatat, termasuk percobaan akses
+  yang ditolak.
+
 ## Fitur
 
 **Situs publik**
@@ -13,27 +40,27 @@ kerahasiaan data**.
   status pendaftaran.
 - **Pembuatan akun klien** (`/daftar-akun`) — satu akun untuk mendaftar layanan,
   memantau status, mengunggah bukti pembayaran, dan mengakses riwayat.
-- Formulir pendaftaran daring (Zona 1) dengan informed consent dan **pemilihan
-  psikolog** (wajib). Halaman `/daftar` **memerlukan login klien**; data diri
-  otomatis terisi dari akun dan dapat diubah di **Profil Saya**.
+- Formulir pendaftaran daring (Zona 1) dengan informed consent, **pemilihan
+  psikolog** (wajib), dan **pemilihan jadwal kedatangan** (wajib). Halaman
+  `/daftar` **memerlukan login klien**; data diri otomatis terisi dari akun.
 - Header sadar sesi: menampilkan tombol *Masuk/Buat Akun* atau *Dashboard Saya*.
 - Palet warna *earth tone* (krem, terracotta, pasir, zaitun).
 
-**Katalog layanan**
+**Katalog layanan** (seluruh tes dilaksanakan **Tatap Muka** di biro)
 
 | Kategori | Layanan | Harga |
 | --- | --- | --- |
-| A. Tes & Asesmen | Tes IQ | Rp375.000 daring / Rp545.000 tatap muka |
-| A. Tes & Asesmen | Tes Minat Bakat | Rp375.000 daring / Rp545.000 tatap muka |
-| A. Tes & Asesmen | Tes Kesiapan Sekolah | Rp545.000 tatap muka |
+| A. Tes & Asesmen | Tes IQ | Rp545.000 |
+| A. Tes & Asesmen | Tes Minat Bakat | Rp545.000 |
+| A. Tes & Asesmen | Tes Kesiapan Sekolah | Rp545.000 |
 | B. Untuk Perusahaan (B2B) | Psikologi Industri & Organisasi (PIO) | Sesuai proposal |
 
-Harga dikelola admin di `/dashboard/layanan` (per metode) dan otomatis menjadi
-tagihan saat klien mendaftar.
+Harga dikelola admin di `/dashboard/layanan` dan otomatis menjadi tagihan saat
+klien mendaftar.
 
 **Alur pembayaran klien**
 
-1. Klien mendaftar → **tagihan otomatis** dibuat sesuai layanan + metode.
+1. Klien mendaftar → **tagihan otomatis** dibuat sesuai layanan.
 2. Halaman sukses menampilkan total biaya, nomor rekening, dan langkah pembayaran.
 3. Klien **mengunggah bukti transfer** langsung dari portal
    (`/dashboard/riwayat/[id]`) — atau mengirimnya via WhatsApp/email.
@@ -50,30 +77,31 @@ di atas dan nama di bawahnya, serta tombol *Daftar dengan psikolog ini*.
 
 **Arsip digital (Google Drive & Spreadsheet)** — opsional
 
-- Setiap pendaftaran mendapat satu folder Drive di folder psikolog yang dipilih,
-  berisi ringkasan pendaftaran, plus tautan pintas di folder *Data Keseluruhan Klien*.
+- Setiap pendaftaran memperoleh satu folder Drive di folder psikolog yang
+  dipilih, berisi ringkasan pendaftaran.
 - Baris pendaftaran otomatis tercatat di spreadsheet arsip psikolog **dan**
   spreadsheet master seluruh klien.
 - Tabel spreadsheet **otomatis dirapikan**: header terwarnai, baris judul
-  dibekukan, lebar kolom disesuaikan, warna baris selang-seling, filter aktif,
-  dan kolom telepon diformat teks agar angka `0` di depan tidak hilang.
+  dibekukan, lebar kolom disesuaikan, warna baris selang-seling, teks data
+  berwarna gelap, filter aktif, dan kolom telepon diformat teks agar angka `0`
+  di depan tidak hilang.
 - Tombol **Rapikan semua tabel** tersedia di `/dashboard/psikolog`.
-- Bila kredensial Drive belum diisi, seluruh fitur Google nonaktif dan aplikasi
+- Bila kredensial Google belum diisi, seluruh fitur Google nonaktif dan aplikasi
   tetap berjalan normal (pendaftaran tetap tersimpan).
 
-> **Penting:** service account Google **tidak punya kuota penyimpanan**, jadi
-> ia tidak bisa membuat folder/berkas/spreadsheet baru. Karena itu spreadsheet
-> dibuat manual lalu di-*share* sebagai **Editor** ke email service account;
-> aplikasi hanya menambah baris ke spreadsheet tersebut. Untuk pembuatan
-> otomatis penuh, gunakan mode OAuth (`npm run google:consent`).
+> **Penting (mode service account):** service account Google **tidak punya
+> kuota penyimpanan**, jadi ia tidak bisa membuat folder/berkas/spreadsheet
+> baru. Spreadsheet dibuat manual lalu di-*share* sebagai **Editor** ke email
+> service account; aplikasi hanya menambah baris. Untuk pembuatan otomatis
+> penuh, gunakan **mode OAuth akun biro** (`npm run google:consent`).
 
 **Portal internal** (login email + kata sandi, sesi JWT httpOnly 8 jam)
 
 | Peran | Zona | Cakupan |
 | --- | --- | --- |
-| Admin | Zona 1 | Data diri klien, pendaftaran, jadwal, verifikasi pembayaran, katalog layanan, **tim psikolog & arsip Drive**, pengarsipan, pengguna & peran, pengaturan situs, log audit |
-| Asisten Psikolog | Zona 2 | Lembar tes, skor mentah, master alat tes |
-| Psikolog | Zona 3 | Laporan hasil, interpretasi, rekomendasi — **hanya kasus miliknya** (Zona 2 hanya baca) |
+| Admin | Zona 1 | Data diri klien, pendaftaran, jadwal, verifikasi pembayaran, katalog layanan, tim psikolog & arsip Drive, pengarsipan, pengguna & peran, pengaturan situs, log audit |
+| Asisten Psikolog | Zona 2 | Konfirmasi pelaksanaan tes (satu tindakan), jadwal sesi |
+| Psikolog | Zona 3 | Laporan hasil, interpretasi, rekomendasi — **hanya kasus miliknya** (jadwal sesi miliknya) |
 | Klien | — | **Hanya data miliknya sendiri**: riwayat pendaftaran, jadwal, dan unggah bukti pembayaran |
 
 Semua peran memiliki halaman **Profil Saya** untuk memperbarui data diri dan
@@ -88,26 +116,44 @@ kata sandi. Psikolog juga mengelola profil publiknya.
   biaya, dan ringkasan tahap (mis. *Tahap 3 dari 5*).
 - `/dashboard/riwayat/[id]` — detail: ringkasan layanan, jadwal sesi (dibuat
   otomatis dari pilihan saat mendaftar), penanda 5 tahap, total biaya +
-  rekening, **form unggah bukti pembayaran** (PDF/JPG/PNG, maks. 8 MB), dan
-  **kartu Pelaksanaan Tes** berisi tautan pengerjaan dari asisten yang aktif
-  mengikuti jadwal. Hasil asesmen dan interpretasi psikolog **tidak**
-  ditampilkan di portal — diserahkan langsung melalui sesi umpan balik.
+  rekening, dan **form unggah bukti pembayaran** (PDF/JPG/PNG, maks. 8 MB).
+- **Pengingat tes** — bila jadwal tes jatuh dalam 24 jam ke depan, muncul
+  notifikasi pada lonceng dashboard (judul *Pengingat: tes …* dengan tautan ke
+  detail riwayat).
 - Hasil asesmen dan interpretasi psikolog **tidak** ditampilkan di portal —
   diserahkan langsung melalui sesi umpan balik.
 
-Alur pendaftaran mengikuti 5 tahap yang **ditegakkan sistem** — status tidak
-dapat melompat dan setiap tahap punya syarat serta penanggung jawab:
+**Alur layanan 5 tahap**
+
+Alur ditegakkan sistem — status tidak dapat melompat dan setiap tahap punya
+syarat serta penanggung jawab:
 
 | # | Tahap | Aktor | Syarat untuk dicapai |
 | --- | --- | --- | --- |
 | 1 | Pendaftaran & Pembayaran | Klien | Ada tagihan pembayaran |
 | 2 | Verifikasi Pembayaran | Admin | Pembayaran diverifikasi |
 | 3 | Pelaksanaan Tes | Klien & Asisten | Ada jadwal sesi (otomatis dari pilihan pendaftar) |
-| 4 | Pelaporan Hasil | Psikolog | Semua lembar tes punya skor |
-| 5 | Selesai | Psikolog | Laporan berstatus FINAL |
+| 4 | Pelaporan Hasil | Psikolog | Asisten sudah mengonfirmasi pelaksanaan tes |
+| 5 | Selesai & Umpan Balik | Psikolog | Laporan berstatus FINAL |
 
 Penanda tahap tampil di halaman detail pendaftaran (admin), detail asesmen
-(asisten), detail kasus (psikolog), dan halaman publik **Cek Status**.
+(asisten), detail kasus (psikolog), portal klien, dan halaman publik
+**Cek Status**.
+
+**Pelaksanaan tes (Zona 2)**
+
+Seluruh tes dilaksanakan **Tatap Muka di biro** — bukan daring. Asisten psikolog
+**hanya mengonfirmasi** (satu tombol) bahwa klien sudah melaksanakan tes;
+tidak ada pengisian skor di sistem. Setelah konfirmasi, kasus naik ke tahap
+Pelaporan Hasil dan psikolog dinotifikasi.
+
+**Laporan hasil (Zona 3)**
+
+Psikolog menyusun ringkasan, interpretasi, kesimpulan, dan rekomendasi. Saat
+laporan difinalkan, aplikasi otomatis membuat **dokumen Word** (logo biro +
+data diri klien + alat tes + interpretasi) dan mengunggahnya ke folder Drive
+psikolog penanggung jawab. Unduhan dokumen hanya dapat diakses psikolog pemilik
+kasus (`/dashboard/kasus/[id]/dokumen`).
 
 ## Isolasi data
 
@@ -119,7 +165,7 @@ Penanda tahap tampil di halaman detail pendaftaran (admin), detail asesmen
   (`filterPendaftaranKlien`) membatasi query berdasarkan kepemilikan, dan aksi
   unggah bukti memverifikasi ulang kepemilikan sebelum menyentuh berkas.
 - Setiap tindakan penting dicatat pada `audit_log`, termasuk percobaan akses
-  yang ditolak (`AKSES_DITOLAK`, `AKSES_BUKTI_DITOLAK`).
+  yang ditolak (`AKSES_DITOLAK`, `AKSES_BUKTI_DITOLAK`, `AKSES_DOKUMEN_DITOLAK`).
 
 ## Keamanan
 
@@ -164,8 +210,8 @@ Perlindungan berlapis; modulnya ada di `src/lib/keamanan/`.
 - Server Actions Next.js sudah membandingkan `Origin` dengan `Host`; `proxy.ts`
   menambah pemeriksaan serupa untuk semua permintaan yang mengubah data.
 - `next.config.ts` memasang **CSP**, **HSTS**, `X-Content-Type-Options`,
-  `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, dan
-  menyembunyikan header `X-Powered-By`.
+  `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`,
+  `Cross-Origin-Opener-Policy`, dan menyembunyikan header `X-Powered-By`.
 
 **Penyalahgunaan & DDoS**
 
@@ -186,6 +232,7 @@ Perlindungan berlapis; modulnya ada di `src/lib/keamanan/`.
 - Prisma ORM 7 + driver adapter `@prisma/adapter-pg`
 - PostgreSQL (Supabase)
 - Autentikasi: `bcryptjs` + `jose` (JWT httpOnly)
+- Dokumen Word: `docx` · Integrasi Google: `googleapis`
 
 ## Menjalankan secara lokal
 
@@ -197,17 +244,26 @@ Perlindungan berlapis; modulnya ada di `src/lib/keamanan/`.
    SESSION_SECRET="hasil openssl rand -base64 32"
    SEED_PASSWORD="kata-sandi-awal-akun-staf"                     # dipakai saat seed
 
-   # Opsional — arsip digital Google Drive
+   # Opsional — URL kanonik untuk sitemap/robots
+   # NEXT_PUBLIC_SITE_URL="https://tabularasa.id"
+
+   # Opsional — arsip digital Google (pilih salah satu mode)
+   # Mode OAuth akun biro (DISARANKAN — bisa membuat folder/berkas/spreadsheet)
+   GOOGLE_OAUTH_CLIENT_ID="..."
+   GOOGLE_OAUTH_CLIENT_SECRET="..."
+   GOOGLE_OAUTH_REFRESH_TOKEN="..."
+   # Mode service account (cadangan — baca saja, kuota penyimpanan 0 byte)
    GOOGLE_SERVICE_ACCOUNT_EMAIL="nama@proyek.iam.gserviceaccount.com"
    GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
    GOOGLE_DRIVE_FOLDER_ID="1AbCdEfGhIjKlMnOpQrStUv"
    ```
 
-   > Untuk Google Drive & Spreadsheet: buat *service account*, aktifkan
-   > **Google Drive API** dan **Google Sheets API**, lalu bagikan **setiap**
-   > folder tujuan ke email service account dengan akses **Editor**.
-   > Daftar folder diatur di aplikasi (Admin → Tim Psikolog dan Pengaturan Situs),
-   > sehingga `GOOGLE_DRIVE_FOLDER_ID` hanya sebagai cadangan.
+   > Mode **OAuth akun biro** membuat berkas atas nama akun biro sendiri,
+   > sehingga folder tidak perlu dibagikan dan kuota akun biro yang terpakai.
+   > Mode **service account** hanya bisa membaca; untuk menambah baris ke
+   > spreadsheet, buat spreadsheet manual lalu bagikan ke email service account
+   > sebagai **Editor**. Folder & spreadsheet per psikolog diatur di aplikasi
+   > (Admin → Tim Psikolog dan Pengaturan Situs).
 
 2. Pasang dependensi, migrasi, dan seed:
 
@@ -223,8 +279,17 @@ Perlindungan berlapis; modulnya ada di `src/lib/keamanan/`.
    npm run dev
    ```
 
-   > Bila baru mengubah skema Prisma, **restart** dev server agar Prisma Client
-   > yang baru dipakai.
+   > Bila baru mengubah skema Prisma, **restart** dev server (dan hapus `.next`)
+   > agar Prisma Client yang baru dipakai.
+
+### Otorisasi OAuth akun biro (opsional, sekali jalan)
+
+```bash
+npm run google:consent
+```
+
+Membuka browser ke halaman izin Google lalu menyimpan `GOOGLE_OAUTH_REFRESH_TOKEN`
+ke `.env` secara otomatis.
 
 ### Akun awal (hasil seed)
 
@@ -246,6 +311,7 @@ tidak disimpan di repositori. Wajib diganti sebelum dipakai produksi.
 | `npm run db:deploy` | Terapkan migrasi (produksi) |
 | `npm run db:push` | Sinkronkan skema tanpa migrasi |
 | `npm run db:studio` | Prisma Studio |
+| `npm run google:consent` | Otorisasi OAuth akun biro (sekali jalan) |
 
 ## Deploy ke Vercel
 
@@ -255,8 +321,11 @@ tidak disimpan di repositori. Wajib diganti sebelum dipakai produksi.
    - `DATABASE_URL` — transaction pooler (port `6543`, `?pgbouncer=true`)
    - `DIRECT_URL` — session pooler (port `5432`)
    - `SESSION_SECRET` — nilai acak
-   - `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`,
-     `GOOGLE_DRIVE_FOLDER_ID` — bila memakai arsip Google (opsional)
+   - `NEXT_PUBLIC_SITE_URL` — URL kanonik (opsional)
+   - `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`,
+     `GOOGLE_OAUTH_REFRESH_TOKEN` — mode OAuth (opsional), atau
+     `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`,
+     `GOOGLE_DRIVE_FOLDER_ID` — mode service account (opsional)
 3. Terapkan migrasi ke database produksi dari mesin lokal:
 
    ```bash
@@ -266,7 +335,7 @@ tidak disimpan di repositori. Wajib diganti sebelum dipakai produksi.
 
 4. Deploy.
 
-> **Catatan Google Drive di Vercel:** pada Environment Variables, tempel
+> **Catatan Google di Vercel:** pada Environment Variables, tempel
 > `GOOGLE_PRIVATE_KEY` **apa adanya** (dengan `\n` literal) — aplikasi otomatis
 > mengubahnya menjadi baris baru.
 
@@ -275,23 +344,34 @@ tidak disimpan di repositori. Wajib diganti sebelum dipakai produksi.
 ```
 prisma/
   schema.prisma        # model + enum (3 zona)
-  seed.ts              # data awal: 5 psikolog, 4 layanan, alat tes, folder Drive
+  seed.ts              # data awal: 5 psikolog, 4 layanan, folder Drive
 public/
   psikolog/            # foto profil psikolog
 src/
-   app/(publik)/        # situs publik (termasuk /daftar-akun)
+   app/(publik)/        # situs publik (termasuk /daftar-akun, /daftar, /cek-status)
    app/(dalam)/dashboard/  # portal internal + portal klien (/riwayat)
    app/masuk/           # login
-   app/actions/         # server actions (termasuk akun.ts untuk klien)
+   app/api/bukti/[id]/  # API unduh bukti pembayaran
+   app/actions/         # server actions (akun, pendaftaran, pembayaran, dll.)
   lib/
     config.ts          # identitas, katalog, konten publik
     rbac.ts            # matriks hak akses & 3 zona
+    alur.ts            # definisi alur 5 tahap
+    alur-otomatis.ts   # syarat tahap & kenaikan otomatis
+    jadwal.ts          # slot waktu, validasi, zona waktu WIB
+    jadwal-otomatis.ts # pembuatan jadwal dari pilihan pendaftar
+    pembayaran.ts      # hitung biaya (tatap muka)
+    notifikasi.ts      # notifikasi lonceng & pengingat tes
+    pagination.ts      # helper paginasi tabel
     auth/              # session (cookie, sesi DB), password, DAL
     keamanan/          # rate limit, IP, jebakan bot
     prisma.ts          # Prisma Client + driver adapter
-    gdrive.ts          # Google Drive (folder, unggah berkas)
-    gsheets.ts         # Google Sheets (spreadsheet arsip)
+    gdrive.ts          # Google Drive (OAuth / service account)
+    gsheets.ts         # Google Sheets (tambah baris + rapikan tabel)
     drive-arsip.ts     # orkestrasi arsip per pendaftaran
-  components/          # UI publik, dashboard, ui
-  proxy.ts             # throttle, CSRF, blokir pemindai, penjaga /dashboard
+    laporan-doc.ts     # penyusunan dokumen Word (.docx)
+    laporan-arsip.ts   # unggah dokumen laporan ke Drive psikolog
+    data-publik.ts     # identitas situs dari database
+   components/          # UI publik, dashboard, ui
+   proxy.ts             # throttle, CSRF, blokir pemindai, penjaga /dashboard
 ```

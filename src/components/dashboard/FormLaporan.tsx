@@ -7,7 +7,7 @@ import { simpanLaporan, type HasilLaporan } from "@/app/actions/laporan";
 export function FormLaporan({
   pendaftaranId,
   awal,
-  jumlahAlatTes,
+  sudahDikonfirmasi,
 }: {
   pendaftaranId: string;
   awal: {
@@ -16,8 +16,8 @@ export function FormLaporan({
     kesimpulan: string;
     rekomendasi: string;
   };
-  /** Jumlah alat tes yang sudah dikonfirmasi asisten psikolog. */
-  jumlahAlatTes: number;
+  /** Pelaksanaan tes sudah dikonfirmasi asisten psikolog. */
+  sudahDikonfirmasi: boolean;
 }) {
   const [hasil, aksi, pending] = useActionState<HasilLaporan, FormData>(
     simpanLaporan,
@@ -26,7 +26,7 @@ export function FormLaporan({
 
   // Psikolog hanya boleh mengisi interpretasi setelah asisten mengonfirmasi
   // bahwa klien sudah melaksanakan tes di biro.
-  const siapDiisi = jumlahAlatTes > 0;
+  const siapDiisi = sudahDikonfirmasi;
 
   return (
     <form action={aksi} className="mt-5 space-y-4">

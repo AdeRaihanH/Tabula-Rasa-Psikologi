@@ -93,26 +93,22 @@ export async function cekSyaratTahap(
  */
 export async function syaratFinalkan(
   pendaftaranId: string,
-): Promise<{ ok: boolean; pesan: string; jumlahAlat: number }> {
+): Promise<{ ok: boolean; pesan: string }> {
   const p = await prisma.pendaftaran.findUnique({
     where: { id: pendaftaranId },
-    select: {
-      konfirmasiTesPada: true,
-      layanan: { select: { _count: { select: { checklist: true } } } },
-    },
+    select: { konfirmasiTesPada: true },
   });
-  if (!p) return { ok: false, pesan: "Pendaftaran tidak ditemukan.", jumlahAlat: 0 };
+  if (!p) return { ok: false, pesan: "Pendaftaran tidak ditemukan." };
 
   if (!p.konfirmasiTesPada) {
     return {
       ok: false,
       pesan:
         "Asisten psikolog belum mengonfirmasi pelaksanaan tes klien.",
-      jumlahAlat: 0,
     };
   }
 
-  return { ok: true, pesan: "", jumlahAlat: p.layanan._count.checklist };
+  return { ok: true, pesan: "" };
 }
 
 /**

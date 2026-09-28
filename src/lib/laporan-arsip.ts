@@ -26,15 +26,7 @@ export async function bangunDataDokumen(
           alamat: true,
         },
       },
-      layanan: {
-        select: {
-          nama: true,
-          checklist: {
-            orderBy: { urutan: "asc" },
-            include: { alatTes: { select: { nama: true, kode: true, kategori: true } } },
-          },
-        },
-      },
+      layanan: { select: { nama: true } },
       psikolog: {
         select: {
           nama: true,
@@ -68,11 +60,6 @@ export async function bangunDataDokumen(
     gelarPsikolog: p.psikolog?.profilPsikolog?.gelar ?? null,
     namaBiro: pengaturan?.namaBiro ?? "Tabula Rasa",
     difinalkanPada: p.laporan.difinalkanPada,
-    alatDilaksanakan: p.layanan.checklist.map((c) => ({
-      namaAlat: c.alatTes.nama,
-      kode: c.alatTes.kode,
-      kategori: c.alatTes.kategori,
-    })),
     ringkasan: p.laporan.ringkasan,
     interpretasi: p.laporan.interpretasi,
     kesimpulan: p.laporan.kesimpulan,

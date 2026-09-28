@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 const catatan = [
   {
     judul: "Informed consent wajib",
-    isi: "Klien menandatangani persetujuan sebelum asesmen dimulai, termasuk penjelasan tujuan, alat tes, dan penggunaan hasil.",
+    isi: "Klien menandatangani persetujuan sebelum asesmen dimulai, termasuk penjelasan tujuan asesmen dan penggunaan hasil.",
   },
   {
     judul: "MOU untuk korporasi",

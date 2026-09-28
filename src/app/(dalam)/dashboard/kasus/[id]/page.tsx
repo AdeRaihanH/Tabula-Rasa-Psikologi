@@ -23,16 +23,7 @@ export default async function DetailKasus({
     where: { id },
     include: {
       klien: { select: { nama: true, tanggalLahir: true, jenisKelamin: true } },
-      layanan: {
-        select: {
-          nama: true,
-          kategori: true,
-          checklist: {
-            orderBy: { urutan: "asc" },
-            include: { alatTes: { select: { nama: true, kode: true } } },
-          },
-        },
-      },
+      layanan: { select: { nama: true, kategori: true } },
       jadwal: { orderBy: { mulai: "asc" } },
       konfirmasiTesOleh: { select: { nama: true } },
       laporan: true,
@@ -136,23 +127,6 @@ export default async function DetailKasus({
                   ✓ Sudah dilaksanakan
                   {p.konfirmasiTesOleh ? ` · dikonfirmasi ${p.konfirmasiTesOleh.nama}` : ""}
                 </p>
-                {p.layanan.checklist.length > 0 && (
-                  <ul className="mt-4 space-y-2">
-                    {p.layanan.checklist.map((c) => (
-                      <li
-                        key={c.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-paper-2 px-3 py-2"
-                      >
-                        <p className="text-xs font-semibold text-ink">
-                          {c.alatTes.nama}{" "}
-                          <span className="font-normal text-muted">
-                            ({c.alatTes.kode})
-                          </span>
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </>
             )}
           </section>
@@ -175,9 +149,7 @@ export default async function DetailKasus({
 
           <FormLaporan
             pendaftaranId={p.id}
-            jumlahAlatTes={
-              p.konfirmasiTesPada ? p.layanan.checklist.length : 0
-            }
+            sudahDikonfirmasi={Boolean(p.konfirmasiTesPada)}
             awal={{
               ringkasan: l?.ringkasan ?? "",
               interpretasi: l?.interpretasi ?? "",

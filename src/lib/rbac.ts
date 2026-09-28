@@ -13,7 +13,7 @@ export const infoZona: Record<
   ZONA_2: {
     nama: "Zona 2 — Operasional Asesmen",
     pemegang: "Asisten Psikolog",
-    isi: "Konfirmasi pelaksanaan alat tes, catatan pelaksanaan",
+    isi: "Konfirmasi pelaksanaan tes, catatan pelaksanaan",
     warna: "#b45309",
   },
   ZONA_3: {
@@ -28,9 +28,9 @@ export type Role = "ADMIN" | "ASISTEN" | "PSIKOLOG" | "KLIEN";
 
 /**
  * Matriks hak akses. Setiap kemampuan dipetakan ke peran yang memilikinya.
- * Prinsip: pemisahan tugas (segregation of duties) — admin tidak membaca isi
- * alat tes, asisten tidak membaca interpretasi, psikolog tidak mengubah data
- * administratif klien.
+ * Prinsip: pemisahan tugas (segregation of duties) — admin tidak menangani
+ * pelaksanaan tes, asisten tidak membaca interpretasi, psikolog tidak mengubah
+ * data administratif klien.
  */
 export const hakAkses = {
   // Zona 1 — hanya admin. Pendaftaran memuat data diri klien, jadi psikolog &

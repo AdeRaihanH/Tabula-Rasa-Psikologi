@@ -34,8 +34,7 @@ function revalidasiUmum(pendaftaranId: string) {
  * Konfirmasi pelaksanaan tes — satu-satunya tindakan asisten psikolog.
  *
  * Asisten cukup menekan "Konfirmasi" bila klien sudah melaksanakan tes secara
- * Tatap Muka di biro. Tidak ada pengisian skor maupun pencatatan per alat tes:
- * alat tes yang berlaku sudah ditentukan oleh layanan.
+ * Tatap Muka di biro. Tidak ada pengisian skor maupun pencatatan tes apa pun.
  *
  * Setelah dikonfirmasi, kasus otomatis naik ke tahap Pelaporan Hasil sehingga
  * psikolog penanggung jawab dapat menyusun interpretasi.

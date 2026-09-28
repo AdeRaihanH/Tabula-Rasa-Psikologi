@@ -26,18 +26,7 @@ export default async function DetailAsesmen({
     where: { id },
     include: {
       klien: { select: { nama: true } },
-      layanan: {
-        select: {
-          id: true,
-          nama: true,
-          checklist: {
-            orderBy: { urutan: "asc" },
-            include: {
-              alatTes: { select: { nama: true, kode: true, kategori: true } },
-            },
-          },
-        },
-      },
+      layanan: { select: { id: true, nama: true } },
       psikolog: { select: { nama: true } },
       jadwal: { orderBy: { mulai: "asc" } },
       konfirmasiTesOleh: { select: { nama: true } },
@@ -158,27 +147,6 @@ export default async function DetailAsesmen({
           </div>
           <BadgeZona zona="ZONA_2" />
         </div>
-
-        {/* Alat tes layanan — hanya keterangan, tanpa centang per item */}
-        {p.layanan.checklist.length > 0 && (
-          <div className="mt-4 rounded-xl bg-paper-2 px-4 py-3">
-            <p className="text-[0.68rem] font-semibold uppercase tracking-wide text-muted">
-              Alat tes layanan ini
-            </p>
-            <ul className="mt-2 flex flex-wrap gap-2">
-              {p.layanan.checklist.map((c) => (
-                <li
-                  key={c.id}
-                  className="rounded-lg bg-white px-2.5 py-1 text-[0.68rem] text-ink-soft"
-                >
-                  <span className="font-semibold text-ink">{c.alatTes.kode}</span>
-                  {" · "}
-                  {c.alatTes.nama}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
 
         <div
           className={`mt-4 rounded-xl px-4 py-3 text-xs font-medium ${

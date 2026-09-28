@@ -38,15 +38,7 @@ export default async function DetailRiwayatKlien({
     where: { AND: [{ id }, where] },
     include: {
       layanan: {
-        select: {
-          nama: true,
-          kategori: true,
-          durasiMenit: true,
-          checklist: {
-            orderBy: { urutan: "asc" },
-            include: { alatTes: { select: { nama: true } } },
-          },
-        },
+        select: { nama: true, kategori: true, durasiMenit: true },
       },
       psikolog: { select: { nama: true } },
       // Jangan sertakan isi buktiUrl (base64 belasan MB) — cukup metadata.
@@ -478,18 +470,6 @@ export default async function DetailRiwayatKlien({
                   ? "✓ Tes Anda sudah dilaksanakan. Psikolog sedang menyusun laporan hasil."
                   : "Pembayaran terverifikasi. Silakan datang ke biro sesuai jadwal; asisten akan mendampingi tes Anda."}
               </div>
-              {p.layanan.checklist.length > 0 && (
-                <ul className="mt-4 flex flex-wrap gap-2">
-                  {p.layanan.checklist.map((c) => (
-                    <li
-                      key={c.id}
-                      className="rounded-lg bg-paper-2 px-3 py-1.5 text-[0.7rem] text-ink-soft"
-                    >
-                      {c.alatTes.nama}
-                    </li>
-                  ))}
-                </ul>
-              )}
             </section>
           )}
 

@@ -26,12 +26,6 @@ import {
  * dapat membukanya.
  */
 
-export type AlatDilaksanakan = {
-  namaAlat: string;
-  kode: string;
-  kategori?: string;
-};
-
 export type DataDokumen = {
   nomor: string;
   namaKlien: string;
@@ -46,7 +40,6 @@ export type DataDokumen = {
   gelarPsikolog?: string | null;
   namaBiro: string;
   difinalkanPada?: Date | null;
-  alatDilaksanakan: AlatDilaksanakan[];
   ringkasan?: string | null;
   interpretasi?: string | null;
   kesimpulan?: string | null;
@@ -249,33 +242,6 @@ export async function buildLaporanDocx(data: DataDokumen): Promise<Buffer> {
     rows: barisIdentitas,
   });
 
-  // --- Tabel alat tes yang dilaksanakan ---------------------------------
-  const barisAlat: TableRow[] = [
-    new TableRow({
-      tableHeader: true,
-      children: [
-        sel("No", { tebal: true, lebar: 8, rataTengah: true, warna: "FFFFFF", latar: WARNA_BRAND }),
-        sel("Alat Tes", { tebal: true, lebar: 62, warna: "FFFFFF", latar: WARNA_BRAND }),
-        sel("Kode", { tebal: true, lebar: 30, warna: "FFFFFF", latar: WARNA_BRAND }),
-      ],
-    }),
-    ...data.alatDilaksanakan.map(
-      (a, i) =>
-        new TableRow({
-          children: [
-            sel(String(i + 1), { rataTengah: true, lebar: 8 }),
-            sel(a.namaAlat, { lebar: 62 }),
-            sel(a.kode, { lebar: 30 }),
-          ],
-        }),
-    ),
-  ];
-
-  const bagianAlat = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: barisAlat,
-  });
-
   const doc = new Document({
     creator: data.namaBiro,
     title: `Laporan Hasil — ${data.nomor} — ${data.namaKlien}`,
@@ -287,9 +253,6 @@ export async function buildLaporanDocx(data: DataDokumen): Promise<Buffer> {
           kop,
           ...kopAnak,
           tabelIdentitas,
-
-          judul("Alat Tes yang Dilaksanakan"),
-          bagianAlat,
 
           judul("Ringkasan Hasil"),
           ...paragraf(data.ringkasan),

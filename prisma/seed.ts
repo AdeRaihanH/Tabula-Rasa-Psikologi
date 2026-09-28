@@ -71,20 +71,6 @@ const layanan = [
   },
 ];
 
-const alatTes = [
-  { kode: "IST", nama: "Intelligenz-Struktur-Test", kategori: "Inteligensi" },
-  { kode: "CFIT", nama: "Culture Fair Intelligence Test", kategori: "Inteligensi" },
-  { kode: "DISC", nama: "DISC Personality Profile", kategori: "Kepribadian" },
-  { kode: "16PF", nama: "16 Personality Factors", kategori: "Kepribadian" },
-  { kode: "PAPI", nama: "PAPI Kostick", kategori: "Sikap Kerja" },
-  { kode: "EPPS", nama: "Edwards Personal Preference Schedule", kategori: "Kepribadian" },
-  { kode: "RMIB", nama: "Rothwell Miller Interest Blank", kategori: "Minat" },
-  { kode: "SSCT", nama: "Sack's Sentence Completion Test", kategori: "Proyektif" },
-  { kode: "DAP", nama: "Draw A Person", kategori: "Proyektif" },
-  { kode: "BAUM", nama: "Baum Tree Test", kategori: "Proyektif" },
-  { kode: "BEI", nama: "Behavioral Event Interview", kategori: "Kompetensi" },
-];
-
 async function main() {
   const seedPassword = process.env.SEED_PASSWORD;
   if (!seedPassword || seedPassword.length < 8) {
@@ -258,49 +244,6 @@ async function main() {
         unggulan: l.unggulan ?? false,
         urutan: l.urutan,
         ...harga,
-      },
-    });
-  }
-
-  for (const a of alatTes) {
-    await prisma.alatTes.upsert({
-      where: { kode: a.kode },
-      update: {},
-      create: a,
-    });
-  }
-
-  // ---------- Checklist alat tes per layanan ----------
-  // Alat tes apa saja yang harus dikerjakan klien untuk tiap layanan.
-  // Asisten psikolog mencentangnya sebagai konfirmasi pelaksanaan di biro.
-  const checklist: { slug: string; kode: string; wajib: boolean }[] = [
-    { slug: "tes-iq", kode: "IST", wajib: true },
-    { slug: "tes-iq", kode: "CFIT", wajib: false },
-    { slug: "tes-minat-bakat", kode: "RMIB", wajib: true },
-    { slug: "tes-minat-bakat", kode: "EPPS", wajib: true },
-    { slug: "tes-kesiapan-sekolah", kode: "DAP", wajib: true },
-    { slug: "tes-kesiapan-sekolah", kode: "BAUM", wajib: true },
-    { slug: "tes-kesiapan-sekolah", kode: "SSCT", wajib: false },
-    { slug: "pio", kode: "DISC", wajib: true },
-    { slug: "pio", kode: "PAPI", wajib: true },
-    { slug: "pio", kode: "BEI", wajib: true },
-  ];
-
-  const urutanPerLayanan = new Map<string, number>();
-  for (const c of checklist) {
-    const lay = await prisma.layanan.findUnique({ where: { slug: c.slug } });
-    const alat = await prisma.alatTes.findUnique({ where: { kode: c.kode } });
-    if (!lay || !alat) continue;
-    const urutan = urutanPerLayanan.get(c.slug) ?? 0;
-    urutanPerLayanan.set(c.slug, urutan + 1);
-    await prisma.layananAlatTes.upsert({
-      where: { layananId_alatTesId: { layananId: lay.id, alatTesId: alat.id } },
-      update: { urutan, wajib: c.wajib },
-      create: {
-        layananId: lay.id,
-        alatTesId: alat.id,
-        urutan,
-        wajib: c.wajib,
       },
     });
   }
